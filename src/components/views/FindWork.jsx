@@ -222,12 +222,28 @@ export default function FindWork() {
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[264px_1fr]">
-        {/* Filters sidebar */}
-        <div className={`${showFilters ? "block" : "hidden"} lg:block`}>
+        {/* Filters sidebar — persistent on desktop */}
+        <div className="hidden lg:block">
           <div className="lg:sticky lg:top-6">
             <Filters {...{ cat, setCat: (v) => { setCat(v); setPage(1); }, type, setType: (v) => { setType(v); setPage(1); }, skills, toggleSkill, budget, setBudget: (v) => { setBudget(v); setPage(1); }, langs, toggleLang, onClear: clear }} />
           </div>
         </div>
+
+        {/* Filters — slide-in panel on mobile/tablet */}
+        {showFilters && (
+          <>
+            <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden" onClick={() => setShowFilters(false)} />
+            <div className="fixed inset-y-0 left-0 z-50 w-[300px] max-w-[85vw] animate-feed-in overflow-y-auto border-r border-white/10 bg-[#0a0f0d] lg:hidden">
+              <div className="flex items-center justify-between border-b border-white/8 p-4">
+                <p className="text-[13px] font-bold">Filters</p>
+                <button onClick={() => setShowFilters(false)} aria-label="Close filters" className="rounded-lg p-1.5 text-white/50 hover:text-white">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <Filters {...{ cat, setCat: (v) => { setCat(v); setPage(1); }, type, setType: (v) => { setType(v); setPage(1); }, skills, toggleSkill, budget, setBudget: (v) => { setBudget(v); setPage(1); }, langs, toggleLang, onClear: clear }} />
+            </div>
+          </>
+        )}
 
         {/* Results */}
         <div className="min-w-0">
@@ -252,7 +268,7 @@ export default function FindWork() {
                 key={job.id}
                 onClick={() => nav("project", job)}
                 style={{ animationDelay: `${i * 55}ms` }}
-                className="animate-rise-in cursor-pointer transition-all duration-300 hover:-translate-y-0.5 hover:border-brand/40"
+                className="animate-rise-in cursor-pointer transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.02] hover:border-brand/40"
               >
                 <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
                   <div className="min-w-0 flex-1">

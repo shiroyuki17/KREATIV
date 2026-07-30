@@ -34,7 +34,7 @@ function TalentCard({ f, nav, style }) {
   const topRated = f.rating >= 4.9;
 
   return (
-    <div style={style} className="glass animate-rise-in rounded-2xl p-5 transition-transform duration-300 hover:-translate-y-0.5 sm:p-6">
+    <div style={style} className="glass animate-rise-in rounded-2xl p-5 transition-transform duration-300 hover:-translate-y-0.5 hover:scale-[1.02] sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <span className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand/50 to-neon/40 font-display text-[13px] font-bold ring-1 ring-white/15">
