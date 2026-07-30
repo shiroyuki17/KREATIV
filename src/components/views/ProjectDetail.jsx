@@ -1,16 +1,56 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, Star, BadgeCheck, ShieldCheck, Clock, Users, Check } from "lucide-react";
 import SpotlightCard from "../fx/SpotlightCard.jsx";
 import Magnet from "../fx/Magnet.jsx";
 import { JOBS, MILESTONES } from "../../data/mock.js";
 import { useNav } from "../../nav.jsx";
+import { fetchJobs } from "../../lib/jobsApi.js";
+
+function timeAgo(iso) {
+  const hours = Math.floor((Date.now() - new Date(iso).getTime()) / 3_600_000);
+  if (hours < 1) return "just now";
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
+// Jobs can arrive here two ways: a real record from the Jobs API (Find Work,
+// which is wired to the backend) or a mock record from the still-mock Home
+// showcases (BentoShowcase/LiveBriefs/TrendingNow). Normalize both into one
+// display shape rather than picking a single source of truth prematurely.
+function normalize(job) {
+  const isReal = "budgetType" in job;
+  if (!isReal) {
+    return {
+      isReal, id: job.id, cat: job.cat, type: job.type, posted: job.posted,
+      clientName: job.client, verified: job.verified, rating: job.rating,
+      tags: job.tags, budget: job.budget, proposals: job.proposals,
+      description: null,
+    };
+  }
+  return {
+    isReal, id: job.id, cat: job.category, type: job.budgetType === "FIXED" ? "Fixed" : "Hourly",
+    posted: timeAgo(job.createdAt), clientName: job.client?.name || job.client?.orgName || "Client",
+    verified: !!job.client?.verifiedPayer, rating: job.client?.ratingAvg > 0 ? job.client.ratingAvg : null,
+    tags: job.skills || [], proposals: null, description: job.description,
+    budget: job.budgetMin ? `$${job.budgetMin.toLocaleString("en-US")}${job.budgetType === "HOURLY" ? "/hr" : ""}` : "—",
+  };
+}
 
 export default function ProjectDetail() {
   const { params, nav } = useNav();
-  const job = params || JOBS[0];
+  const raw = params || JOBS[0];
+  const job = normalize(raw);
   const [bid, setBid] = useState("");
   const [sent, setSent] = useState(false);
-  const similar = JOBS.filter((j) => j.id !== job.id && j.cat === job.cat).slice(0, 2);
+  const [similar, setSimilar] = useState(job.isReal ? [] : JOBS.filter((j) => j.id !== raw.id && j.cat === raw.cat).slice(0, 2));
+
+  useEffect(() => {
+    if (!job.isReal) return;
+    fetchJobs({ category: job.cat, pageSize: 3 })
+      .then((res) => setSimilar(res.jobs.filter((j) => j.id !== raw.id).slice(0, 2)))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="mx-auto max-w-6xl px-6 pb-24 pt-8">
@@ -42,24 +82,22 @@ export default function ProjectDetail() {
             </div>
 
             <h1 className="mt-5 font-display text-[clamp(1.6rem,3vw,2.3rem)] font-bold leading-tight tracking-tight">
-              {job.title}
+              {raw.title}
             </h1>
 
             <div className="mt-4 flex items-center gap-2 text-[13px] text-white/55">
-              {job.client}
+              {job.clientName}
               {job.verified && <BadgeCheck className="h-4 w-4 text-neon" />}
-              <span className="inline-flex items-center gap-1">
-                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                {job.rating} client rating
-              </span>
+              {job.rating && (
+                <span className="inline-flex items-center gap-1">
+                  <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                  {job.rating} client rating
+                </span>
+              )}
             </div>
 
             <p className="mt-6 text-[14px] leading-relaxed text-white/60">
-              We're rebuilding our flagship experience and need a specialist who
-              can own this brief end-to-end. You'll work directly with our
-              product team, ship in weekly milestones, and every payment is
-              escrow-protected from day one. We value taste, velocity, and
-              clear async communication.
+              {job.description || "We're rebuilding our flagship experience and need a specialist who can own this brief end-to-end. You'll work directly with our product team, ship in weekly milestones, and every payment is escrow-protected from day one. We value taste, velocity, and clear async communication."}
             </p>
 
             <div className="mt-7">
@@ -114,15 +152,21 @@ export default function ProjectDetail() {
                 Similar briefs
               </p>
               <div className="grid gap-4 sm:grid-cols-2">
-                {similar.map((s) => (
-                  <SpotlightCard key={s.id} onClick={() => nav("project", s)} className="cursor-pointer">
-                    <div className="p-5">
-                      <p className="text-[10.5px] font-bold uppercase tracking-widest text-brand-soft">{s.cat}</p>
-                      <p className="mt-2 font-display text-[15px] font-semibold leading-snug">{s.title}</p>
-                      <p className="mt-3 text-[13px] font-bold text-mint">{s.budget}</p>
-                    </div>
-                  </SpotlightCard>
-                ))}
+                {similar.map((s) => {
+                  const sCat = job.isReal ? s.category : s.cat;
+                  const sBudget = job.isReal
+                    ? (s.budgetMin ? `$${s.budgetMin.toLocaleString("en-US")}${s.budgetType === "HOURLY" ? "/hr" : ""}` : "—")
+                    : s.budget;
+                  return (
+                    <SpotlightCard key={s.id} onClick={() => nav("project", s)} className="cursor-pointer">
+                      <div className="p-5">
+                        <p className="text-[10.5px] font-bold uppercase tracking-widest text-brand-soft">{sCat}</p>
+                        <p className="mt-2 font-display text-[15px] font-semibold leading-snug">{s.title}</p>
+                        <p className="mt-3 text-[13px] font-bold text-mint">{sBudget}</p>
+                      </div>
+                    </SpotlightCard>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -135,10 +179,12 @@ export default function ProjectDetail() {
             </p>
             <p className="mt-2 font-display text-4xl font-bold text-mint">{job.budget}</p>
             <div className="mt-5 space-y-3 border-t border-white/8 pt-5 text-[12.5px] text-white/55">
-              <p className="flex items-center gap-2.5">
-                <Users className="h-4 w-4 text-brand-soft" />
-                {job.proposals} proposals so far
-              </p>
+              {job.proposals != null && (
+                <p className="flex items-center gap-2.5">
+                  <Users className="h-4 w-4 text-brand-soft" />
+                  {job.proposals} proposals so far
+                </p>
+              )}
               <p className="flex items-center gap-2.5">
                 <Clock className="h-4 w-4 text-brand-soft" />
                 Avg. response in 3.2 hours
@@ -156,7 +202,7 @@ export default function ProjectDetail() {
               <div className="mt-4 rounded-xl border border-mint/30 bg-mint/10 p-4 text-[13px] font-medium text-mint">
                 <span className="inline-flex items-center gap-2">
                   <Check className="h-4 w-4" />
-                  Proposal sent — {job.client} typically replies within a day.
+                  Proposal sent — {job.clientName} typically replies within a day.
                 </span>
               </div>
             ) : (

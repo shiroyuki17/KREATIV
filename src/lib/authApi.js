@@ -11,10 +11,13 @@ function errorMessage(data) {
   return data?.error || "Алдаа гарлаа. Дахин оролдоно уу.";
 }
 
-async function postJson(path, body) {
+async function postJson(path, body, token) {
   const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
@@ -88,6 +91,15 @@ export function googleLoginUrl() {
 export function avatarSrc(avatarUrl) {
   if (!avatarUrl) return null;
   return avatarUrl.startsWith("http") ? avatarUrl : `${API_BASE}${avatarUrl}`;
+}
+
+// Onboarding (Day 8): creates the real FreelancerProfile/ClientProfile row —
+// without this, requireClientProfile (Jobs API) 403s for every new signup.
+export function saveFreelancerProfile(data, accessToken) {
+  return postJson("/profile/freelancer", data, accessToken);
+}
+export function saveClientProfile(data, accessToken) {
+  return postJson("/profile/client", data, accessToken);
 }
 
 // { id, email, name, phone, avatarUrl, role }

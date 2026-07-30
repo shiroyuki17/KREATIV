@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import prisma from '../lib/prisma.js';
 import { requireAuth, requireClientProfile } from '../middleware/auth.js';
+import { requireActiveUser, jobEditBlockReason, jobDeleteBlockReason } from '../middleware/abac.js';
 import { jobCreateSchema, jobUpdateSchema, jobQuerySchema } from '../validators/job.schema.js';
 
 const router = Router();
@@ -38,8 +39,8 @@ function publicJob(job) {
   };
 }
 
-// ── POST /jobs ── (зөвхөн client профайлтай хэрэглэгч, RBAC)
-router.post('/', requireAuth, requireClientProfile, async (req, res, next) => {
+// ── POST /jobs ── (зөвхөн client профайлтай, идэвхтэй хэрэглэгч — RBAC + ABAC)
+router.post('/', requireAuth, requireActiveUser, requireClientProfile, async (req, res, next) => {
   try {
     const { data, error } = validate(jobCreateSchema, req.body);
     if (error) return res.status(400).json({ error });
@@ -147,6 +148,8 @@ router.patch('/:id', requireAuth, requireClientProfile, async (req, res, next) =
     if (existing.clientId !== req.clientProfile.id) {
       return res.status(403).json({ error: 'Энэ зарыг засах эрхгүй' });
     }
+    const blockReason = jobEditBlockReason(existing);
+    if (blockReason) return res.status(409).json({ error: blockReason });
 
     const { data, error } = validate(jobUpdateSchema, req.body);
     if (error) return res.status(400).json({ error });
@@ -170,6 +173,8 @@ router.delete('/:id', requireAuth, requireClientProfile, async (req, res, next) 
     if (existing.clientId !== req.clientProfile.id) {
       return res.status(403).json({ error: 'Энэ зарыг устгах эрхгүй' });
     }
+    const blockReason = jobDeleteBlockReason(existing);
+    if (blockReason) return res.status(409).json({ error: blockReason });
 
     await prisma.job.delete({ where: { id: req.params.id } });
     res.status(204).end();

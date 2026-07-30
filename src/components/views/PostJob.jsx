@@ -6,12 +6,27 @@ import {
   Sparkles,
   ShieldCheck,
   Users,
+  AlertCircle,
 } from "lucide-react";
-import { CL_CATEGORIES, CL_BUDGETS } from "../../data/appMock.js";
+import { CL_CATEGORIES } from "../../data/appMock.js";
 import { FL_SKILLS } from "../../data/appMock.js";
 import { useNav } from "../../nav.jsx";
+import { getAccessToken } from "../../lib/authApi.js";
+import { createJob } from "../../lib/jobsApi.js";
 
 const STEPS = ["Basics", "Details", "Review"];
+
+// PostJob's own category labels predate the backend's Jobs schema enum
+// (Design/Dev/AI/Motion/Writing/Marketing) — map one onto the other rather
+// than reconciling the two taxonomies throughout the UI.
+const CATEGORY_TO_API = {
+  "Web Development": "Dev",
+  "Product Design": "Design",
+  "AI & Data": "AI",
+  "Motion & 3D": "Motion",
+  "Branding": "Design",
+  "Mobile Apps": "Dev",
+};
 
 function Steps({ step }) {
   return (
@@ -70,12 +85,45 @@ export default function PostJob() {
   const [type, setType] = useState("Fixed");
   const [budget, setBudget] = useState("");
   const [timeline, setTimeline] = useState("2–4 weeks");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   const toggleSkill = (s) =>
     setSkills((a) => (a.includes(s) ? a.filter((x) => x !== s) : [...a, s]));
 
   const canNext =
     step === 0 ? title.trim() && cat : step === 1 ? desc.trim() && budget.trim() : true;
+
+  async function publish() {
+    const token = getAccessToken();
+    if (!token) {
+      nav("auth", { mode: "login" });
+      return;
+    }
+
+    setSubmitting(true);
+    setError("");
+    try {
+      const amount = parseInt(budget.replace(/[^0-9]/g, ""), 10) || undefined;
+      await createJob(
+        {
+          title,
+          description: desc,
+          category: CATEGORY_TO_API[cat] || "Dev",
+          skills,
+          budgetType: type === "Fixed" ? "FIXED" : "HOURLY",
+          budgetMin: amount,
+          budgetMax: amount,
+        },
+        token
+      );
+      setPublished(true);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   if (published) {
     return (
@@ -297,6 +345,12 @@ export default function PostJob() {
           </div>
         )}
 
+        {error && (
+          <p className="mt-6 flex items-center gap-1.5 rounded-xl border border-red-500/30 bg-red-500/10 px-3.5 py-2.5 text-[12.5px] font-medium text-red-400">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" /> {error}
+          </p>
+        )}
+
         <div className="mt-8 flex items-center justify-between border-t border-white/8 pt-6">
           <button
             onClick={() => (step === 0 ? nav("home") : setStep((s) => s - 1))}
@@ -306,11 +360,11 @@ export default function PostJob() {
             {step === 0 ? "Cancel" : "Back"}
           </button>
           <button
-            onClick={() => (step < 2 ? setStep((s) => s + 1) : setPublished(true))}
-            disabled={!canNext}
+            onClick={() => (step < 2 ? setStep((s) => s + 1) : publish())}
+            disabled={!canNext || submitting}
             className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand to-brand-soft px-6 py-3 text-[13.5px] font-semibold glow-brand transition-all hover:shadow-[0_0_44px_rgba(0,211,149,0.6)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
           >
-            {step < 2 ? "Continue" : "Publish brief"}
+            {step < 2 ? "Continue" : submitting ? "Publishing…" : "Publish brief"}
             <ArrowRight className="h-4 w-4" />
           </button>
         </div>

@@ -1,16 +1,25 @@
-import { useEffect, useMemo, useState } from "react";
-import { Search, Star, BadgeCheck, Users, Sparkles, SlidersHorizontal, X, ChevronRight, ChevronDown } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Search, Star, BadgeCheck, ChevronLeft, ChevronRight as ChevronRightIcon, Sparkles, SlidersHorizontal, X, ChevronRight, ChevronDown, AlertCircle } from "lucide-react";
 import SpotlightCard from "../fx/SpotlightCard.jsx";
-import { JOBS } from "../../data/mock.js";
 import { useNav } from "../../nav.jsx";
-import { useLive } from "../../live.jsx";
-import AiPanel from "../ui/AiPanel.jsx";
+import { fetchJobs } from "../../lib/jobsApi.js";
 
 const CATS = ["All", "Design", "Dev", "AI", "Motion", "Writing", "Marketing"];
 const TYPES = ["Any", "Fixed", "Hourly"];
 const SKILLS = ["React", "Figma", "Python", "Node.js", "3D", "TypeScript", "SEO", "Next.js"];
 const LANGUAGES = ["English", "Spanish", "French", "German", "Portuguese", "Japanese"];
-const SORTS = { relevant: "Most relevant", newest: "Newest first", proposals: "Fewest proposals" };
+// Backend орders бүгд createdAt desc-ээр буцаадаг тул "Most relevant"/"Newest
+// first" хоёул ижил дараалал өгнө — "fewest proposals" бодит Job model-д
+// proposals тоо байдаггүй тул хассан (mock-only талбар байсан).
+const SORTS = { relevant: "Most relevant", newest: "Newest first" };
+
+function timeAgo(iso) {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const hours = Math.floor(diffMs / 3_600_000);
+  if (hours < 1) return "just now";
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
 
 function Section({ title, children }) {
   const [open, setOpen] = useState(true);
@@ -104,7 +113,6 @@ function Filters({ cat, setCat, type, setType, skills, toggleSkill, budget, setB
 
 export default function FindWork() {
   const { params, nav } = useNav();
-  const { liveJobs } = useLive();
   const [q, setQ] = useState(params?.query || "");
   const [cat, setCat] = useState("All");
   const [type, setType] = useState("Any");
@@ -113,44 +121,55 @@ export default function FindWork() {
   const [langs, setLangs] = useState([]);
   const [sort, setSort] = useState("relevant");
   const [showFilters, setShowFilters] = useState(false);
+  const [page, setPage] = useState(1);
+
+  const [jobs, setJobs] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => { if (params?.query) setQ(params.query); }, [params]);
 
-  const toggleSkill = (s) => setSkills((a) => (a.includes(s) ? a.filter((x) => x !== s) : [...a, s]));
+  const toggleSkill = (s) => { setSkills((a) => (a.includes(s) ? a.filter((x) => x !== s) : [...a, s])); setPage(1); };
   const toggleLang = (l) => setLangs((a) => (a.includes(l) ? a.filter((x) => x !== l) : [...a, l]));
-  const clear = () => { setCat("All"); setType("Any"); setBudget("any"); setSkills([]); setLangs([]); setQ(""); };
+  const clear = () => { setCat("All"); setType("Any"); setBudget("any"); setSkills([]); setLangs([]); setQ(""); setPage(1); };
 
-  const aiChips = [
-    { label: "Newest briefs", run: () => setSort("newest") },
-    { label: "Fewest proposals", run: () => setSort("proposals") },
-    { label: "Fixed price only", run: () => setType("Fixed") },
-    { label: "Under $5,000", run: () => setBudget("low") },
-  ];
+  // q-г бага зэрэг debounce хийж хэрэглэгч бичих бүрт хүсэлт илгээхээс сэргийлнэ
+  useEffect(() => {
+    const budgetRange =
+      budget === "low" ? { maxBudget: 4999 }
+      : budget === "mid" ? { minBudget: 5000, maxBudget: 10000 }
+      : budget === "high" ? { minBudget: 10001 }
+      : {};
 
-  const num = (b) => parseInt(String(b).replace(/[^0-9]/g, ""), 10) || 0;
-  // "2h ago" / "1d ago" -> hours, so "newest first" has something real to sort by
-  const postedHours = (s) => {
-    const m = /^(\d+)([hd])/.exec(s || "");
-    if (!m) return Infinity;
-    return m[2] === "d" ? Number(m[1]) * 24 : Number(m[1]);
-  };
-
-  const results = useMemo(() => {
-    let list = [...liveJobs, ...JOBS].filter((j) => {
-      const okCat = cat === "All" || j.cat === cat;
-      const okType = type === "Any" || j.type === type;
-      const okSkill = skills.length === 0 || skills.some((s) => j.tags.includes(s));
-      const okLang = langs.length === 0 || langs.some((l) => (j.languages || []).includes(l));
-      const v = num(j.budget);
-      const okBudget = budget === "any" || (budget === "low" && v < 5000) || (budget === "mid" && v >= 5000 && v <= 10000) || (budget === "high" && v > 10000);
-      const hay = (j.title + j.client + j.tags.join(" ")).toLowerCase();
-      const okQ = q.trim() === "" || hay.includes(q.toLowerCase());
-      return okCat && okType && okSkill && okLang && okBudget && okQ;
-    });
-    if (sort === "proposals") list = [...list].sort((a, b) => a.proposals - b.proposals);
-    if (sort === "newest") list = [...list].sort((a, b) => postedHours(a.posted) - postedHours(b.posted));
-    return list;
-  }, [q, cat, type, budget, skills, langs, sort, liveJobs]);
+    const t = setTimeout(async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const res = await fetchJobs({
+          q: q.trim() || undefined,
+          category: cat !== "All" ? cat : undefined,
+          type: type !== "Any" ? type.toUpperCase() : undefined,
+          skills: skills.length ? skills.join(",") : undefined,
+          page,
+          pageSize: 12,
+          ...budgetRange,
+        });
+        let list = res.jobs;
+        if (langs.length) list = list.filter((j) => langs.some((l) => (j.languages || []).includes(l)));
+        setJobs(list);
+        setTotal(res.total);
+        setTotalPages(res.totalPages);
+      } catch (err) {
+        setError(err.message);
+        setJobs([]);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [q, cat, type, budget, skills, langs, sort, page]);
 
   const activeCount = (cat !== "All") + (type !== "Any") + (budget !== "any") + skills.length + langs.length;
 
@@ -169,7 +188,7 @@ export default function FindWork() {
             Open briefs for you
           </h1>
           <p className="mt-2 inline-flex items-center gap-2 text-[12.5px] text-white/45">
-            <Sparkles className="h-3.5 w-3.5 text-brand-soft" /> AI-matched to your skills · updated live
+            <Sparkles className="h-3.5 w-3.5 text-brand-soft" /> Live from KREATIV's Jobs API
           </p>
         </div>
       </div>
@@ -180,7 +199,7 @@ export default function FindWork() {
           <Search className="h-4.5 w-4.5 shrink-0 text-white/40" />
           <input
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={(e) => { setQ(e.target.value); setPage(1); }}
             placeholder="Search briefs by skill, title, or client…"
             className="w-full bg-transparent text-[14px] outline-none placeholder:text-white/30"
           />
@@ -202,12 +221,11 @@ export default function FindWork() {
         </select>
       </div>
 
-      <div className="mt-6 flex items-start gap-6">
-      <div className="grid flex-1 gap-6 lg:grid-cols-[264px_1fr]">
+      <div className="mt-6 grid gap-6 lg:grid-cols-[264px_1fr]">
         {/* Filters sidebar */}
         <div className={`${showFilters ? "block" : "hidden"} lg:block`}>
           <div className="lg:sticky lg:top-6">
-            <Filters {...{ cat, setCat, type, setType, skills, toggleSkill, budget, setBudget, langs, toggleLang, onClear: clear }} />
+            <Filters {...{ cat, setCat: (v) => { setCat(v); setPage(1); }, type, setType: (v) => { setType(v); setPage(1); }, skills, toggleSkill, budget, setBudget: (v) => { setBudget(v); setPage(1); }, langs, toggleLang, onClear: clear }} />
           </div>
         </div>
 
@@ -215,15 +233,21 @@ export default function FindWork() {
         <div className="min-w-0">
           <div className="flex items-center justify-between">
             <p className="text-[13px] text-white/50">
-              <b className="text-white">{results.length}</b> {results.length === 1 ? "brief" : "briefs"} found
+              <b className="text-white">{total}</b> {total === 1 ? "brief" : "briefs"} found
             </p>
             {activeCount > 0 && (
               <button onClick={clear} className="text-[12px] font-semibold text-brand-soft hover:text-white">Clear filters</button>
             )}
           </div>
 
+          {error && (
+            <p className="mt-4 flex items-center gap-1.5 rounded-xl border border-red-500/30 bg-red-500/10 px-3.5 py-2.5 text-[12.5px] font-medium text-red-400">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" /> {error}
+            </p>
+          )}
+
           <div className="mt-4 space-y-3">
-            {results.map((job, i) => (
+            {jobs.map((job, i) => (
               <SpotlightCard
                 key={job.id}
                 onClick={() => nav("project", job)}
@@ -233,36 +257,34 @@ export default function FindWork() {
                 <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2.5">
-                      <span className={job.type === "Fixed"
+                      <span className={job.budgetType === "FIXED"
                         ? "rounded-full border border-mint/30 bg-mint/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-mint"
                         : "rounded-full border border-neon/30 bg-neon/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-neon"}>
-                        {job.type}
+                        {job.budgetType === "FIXED" ? "Fixed" : "Hourly"}
                       </span>
-                      <span className="rounded-full border border-brand/25 bg-brand/8 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-brand-soft">{job.cat}</span>
-                      {job.isNew && (
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-brand/50 bg-brand/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-brand-soft">
-                          <span className="h-1.5 w-1.5 animate-pulse-soft rounded-full bg-brand" />
-                          New
-                        </span>
-                      )}
-                      <span className="text-[11px] text-white/35">{job.posted}</span>
+                      <span className="rounded-full border border-brand/25 bg-brand/8 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-brand-soft">{job.category}</span>
+                      <span className="text-[11px] text-white/35">{timeAgo(job.createdAt)}</span>
                     </div>
                     <h3 className="mt-2.5 font-display text-[16.5px] font-semibold leading-snug">{job.title}</h3>
                     <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-white/45">
                       <span className="inline-flex items-center gap-1">
-                        {job.client}{job.verified && <BadgeCheck className="h-3.5 w-3.5 text-neon" />}
+                        {job.client?.name || job.client?.orgName || "Client"}
+                        {job.client?.verifiedPayer && <BadgeCheck className="h-3.5 w-3.5 text-neon" />}
                       </span>
-                      <span className="inline-flex items-center gap-1"><Star className="h-3 w-3 fill-amber-400 text-amber-400" />{job.rating}</span>
-                      <span className="inline-flex items-center gap-1"><Users className="h-3 w-3" />{job.proposals} proposals</span>
+                      {job.client?.ratingAvg > 0 && (
+                        <span className="inline-flex items-center gap-1"><Star className="h-3 w-3 fill-amber-400 text-amber-400" />{job.client.ratingAvg}</span>
+                      )}
                     </div>
                     <div className="mt-3 flex flex-wrap gap-1.5">
-                      {job.tags.map((t) => (
+                      {job.skills.map((t) => (
                         <span key={t} className={`rounded-full border px-2.5 py-1 text-[10.5px] ${skills.includes(t) ? "border-brand/50 bg-brand/10 text-brand-soft" : "border-white/10 text-white/45"}`}>{t}</span>
                       ))}
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center justify-between gap-4 border-t border-white/8 pt-4 sm:flex-col sm:items-end sm:border-l sm:border-t-0 sm:pl-6 sm:pt-0">
-                    <p className="font-display text-lg font-bold">{job.budget}</p>
+                    <p className="font-display text-lg font-bold">
+                      {job.budgetMin ? `$${job.budgetMin.toLocaleString("en-US")}${job.budgetType === "HOURLY" ? "/hr" : ""}` : "—"}
+                    </p>
                     <button
                       onClick={(e) => { e.stopPropagation(); nav("project", job); }}
                       className="rounded-xl bg-brand px-5 py-2.5 text-[12.5px] font-bold text-ink glow-brand transition-shadow hover:shadow-[0_0_30px_rgba(0,211,149,0.5)]"
@@ -275,7 +297,7 @@ export default function FindWork() {
             ))}
           </div>
 
-          {results.length === 0 && (
+          {!loading && jobs.length === 0 && !error && (
             <div className="glass mt-4 rounded-2xl p-12 text-center">
               <Search className="mx-auto h-9 w-9 text-white/20" />
               <p className="mt-4 text-[14.5px] font-semibold">No briefs match those filters</p>
@@ -285,10 +307,27 @@ export default function FindWork() {
               </button>
             </div>
           )}
-        </div>
-      </div>
 
-      <AiPanel title="AI Job Match" chips={aiChips} onRefine={setQ} />
+          {totalPages > 1 && (
+            <div className="mt-6 flex items-center justify-center gap-3">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 text-white/60 transition-colors hover:border-white/25 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <span className="text-[12.5px] text-white/50">Page {page} of {totalPages}</span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 text-white/60 transition-colors hover:border-white/25 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                <ChevronRightIcon className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

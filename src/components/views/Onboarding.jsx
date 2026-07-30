@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { ArrowLeft, ArrowRight, Check, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Sparkles, AlertCircle } from "lucide-react";
 import Magnet from "../fx/Magnet.jsx";
 import { FL_SKILLS, CL_CATEGORIES, CL_BUDGETS } from "../../data/appMock.js";
 import { useNav } from "../../nav.jsx";
+import { getAccessToken, saveFreelancerProfile, saveClientProfile } from "../../lib/authApi.js";
 
 function Field({ label, ...props }) {
   return (
@@ -71,6 +72,14 @@ export default function Onboarding() {
   const [step, setStep] = useState(0);
   const [picked, setPicked] = useState([]);
   const [avail, setAvail] = useState(isFl ? "Full-time" : "$1k – $5k");
+  const [fullName, setFullName] = useState("");
+  const [title, setTitle] = useState("");
+  const [rate, setRate] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [yourRole, setYourRole] = useState("");
+  const [teamSize, setTeamSize] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   const toggle = (s) =>
     setPicked((arr) => (arr.includes(s) ? arr.filter((x) => x !== s) : [...arr, s]));
@@ -78,6 +87,30 @@ export default function Onboarding() {
   const chips = isFl ? FL_SKILLS : CL_CATEGORIES;
   const availOptions = isFl ? ["Full-time", "Part-time", "Weekends"] : CL_BUDGETS;
   const doneTarget = isFl ? "freelancer-dashboard" : "client-dashboard";
+
+  async function finish() {
+    const token = getAccessToken();
+    if (!token) { nav(doneTarget); return; }
+
+    setSubmitting(true);
+    setError("");
+    try {
+      if (isFl) {
+        const priceMin = parseInt(rate.replace(/[^0-9]/g, ""), 10) || undefined;
+        await saveFreelancerProfile(
+          { headline: title || undefined, skills: picked, priceMin, priceMax: priceMin },
+          token
+        );
+      } else {
+        await saveClientProfile({ orgName: companyName || undefined }, token);
+      }
+      nav(doneTarget);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <div className="relative flex min-h-screen items-center justify-center px-6 py-28">
@@ -102,15 +135,15 @@ export default function Onboarding() {
               </h1>
               {isFl ? (
                 <>
-                  <Field label="Full name" placeholder="Daniel Kim" />
-                  <Field label="Professional title" placeholder="Full-Stack Developer" />
-                  <Field label="Hourly rate" placeholder="$95/hr" />
+                  <Field label="Full name" placeholder="Daniel Kim" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+                  <Field label="Professional title" placeholder="Full-Stack Developer" value={title} onChange={(e) => setTitle(e.target.value)} />
+                  <Field label="Hourly rate" placeholder="$95/hr" value={rate} onChange={(e) => setRate(e.target.value)} />
                 </>
               ) : (
                 <>
-                  <Field label="Company name" placeholder="Nova Studio" />
-                  <Field label="Your role" placeholder="Head of Product" />
-                  <Field label="Team size" placeholder="11 – 50" />
+                  <Field label="Company name" placeholder="Nova Studio" value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
+                  <Field label="Your role" placeholder="Head of Product" value={yourRole} onChange={(e) => setYourRole(e.target.value)} />
+                  <Field label="Team size" placeholder="11 – 50" value={teamSize} onChange={(e) => setTeamSize(e.target.value)} />
                 </>
               )}
             </div>
@@ -178,6 +211,12 @@ export default function Onboarding() {
             </div>
           )}
 
+          {error && (
+            <p className="mt-5 flex items-center gap-1.5 rounded-xl border border-red-500/30 bg-red-500/10 px-3.5 py-2.5 text-[12.5px] font-medium text-red-400">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" /> {error}
+            </p>
+          )}
+
           <div className="mt-8 flex items-center justify-between border-t border-white/8 pt-6">
             {step > 0 ? (
               <button
@@ -198,10 +237,11 @@ export default function Onboarding() {
             )}
             <Magnet strength={0.15}>
               <button
-                onClick={() => (step < 2 ? setStep((s) => s + 1) : nav(doneTarget))}
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand to-brand-soft px-6 py-3 text-[13.5px] font-semibold glow-brand transition-shadow hover:shadow-[0_0_44px_rgba(0,211,149,0.6)]"
+                onClick={() => (step < 2 ? setStep((s) => s + 1) : finish())}
+                disabled={submitting}
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand to-brand-soft px-6 py-3 text-[13.5px] font-semibold glow-brand transition-shadow hover:shadow-[0_0_44px_rgba(0,211,149,0.6)] disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {step < 2 ? "Continue" : "Go to dashboard"}
+                {step < 2 ? "Continue" : submitting ? "Setting up…" : "Go to dashboard"}
                 <ArrowRight className="h-4 w-4" />
               </button>
             </Magnet>
