@@ -160,13 +160,13 @@ export default function Hero() {
           <div className="mt-10 flex flex-wrap items-center gap-4">
             <button
               onClick={() => nav("find-talent")}
-              className="rounded-2xl bg-gradient-to-r from-brand to-brand-soft px-7 py-3.5 text-[14px] font-semibold glow-brand transition-shadow hover:shadow-[0_0_44px_rgba(0,211,149,0.65)]"
+              className="rounded-2xl bg-gradient-to-r from-brand to-brand-soft px-7 py-3.5 text-[14px] font-semibold glow-brand transition-all duration-200 hover:scale-[1.03] hover:shadow-[0_0_44px_rgba(0,211,149,0.65)]"
             >
               Find Talent
             </button>
             <button
               onClick={() => nav("post-job")}
-              className="glass rounded-2xl px-7 py-3.5 text-[14px] font-semibold text-white/85 transition-colors hover:border-white/25"
+              className="glass rounded-2xl px-7 py-3.5 text-[14px] font-semibold text-white/85 transition-all duration-200 hover:scale-[1.03] hover:border-white/25"
             >
               Post a Job
             </button>

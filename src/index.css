@@ -100,6 +100,14 @@ body {
 @utility glow-brand {
   box-shadow: 0 0 24px rgba(0, 211, 149, 0.38), 0 0 72px rgba(0, 211, 149, 0.16);
 }
+
+/* Tactile press feedback for primary buttons (150–250ms micro-interaction
+   spec) — scoped to button elements only so it never affects non-button
+   glows (badges, cards) that also reach for glow-brand/glow-mint. */
+button.glow-brand:active,
+button.glow-mint:active {
+  transform: scale(0.96);
+}
 @utility glow-violet {
   box-shadow: 0 0 24px rgba(139, 92, 246, 0.38), 0 0 72px rgba(139, 92, 246, 0.16);
 }

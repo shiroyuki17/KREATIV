@@ -24,7 +24,7 @@ export default function BentoShowcase() {
 
         <div className="mt-12 grid gap-4 md:grid-cols-4 md:[grid-template-rows:repeat(2,minmax(180px,auto))]">
           {/* Large: featured job */}
-          <SpotlightCard className="md:col-span-2 md:row-span-2">
+          <SpotlightCard className="md:col-span-2 md:row-span-2 transition-transform duration-300 hover:scale-[1.015]">
             <div className="relative flex h-full flex-col p-7">
               <div
                 aria-hidden="true"
@@ -79,7 +79,7 @@ export default function BentoShowcase() {
 
           {/* Medium: top talent */}
           <SpotlightCard
-            className="md:col-span-2"
+            className="md:col-span-2 transition-transform duration-300 hover:scale-[1.015]"
             spotColor="rgba(6, 182, 212, 0.16)"
           >
             <div className="flex h-full flex-col p-6">
@@ -129,7 +129,7 @@ export default function BentoShowcase() {
           </SpotlightCard>
 
           {/* Small: live jobs counter */}
-          <SpotlightCard spotColor="rgba(16, 185, 129, 0.16)">
+          <SpotlightCard className="transition-transform duration-300 hover:scale-[1.02]" spotColor="rgba(16, 185, 129, 0.16)">
             <div className="flex h-full flex-col justify-between p-6">
               <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-mint/30 bg-mint/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-mint">
                 <span className="h-1.5 w-1.5 animate-pulse-soft rounded-full bg-mint" />
@@ -147,7 +147,7 @@ export default function BentoShowcase() {
           </SpotlightCard>
 
           {/* Small: match speed */}
-          <SpotlightCard>
+          <SpotlightCard className="transition-transform duration-300 hover:scale-[1.02]">
             <div className="flex h-full flex-col justify-between p-6">
               <Zap className="h-5 w-5 text-brand-soft" />
               <div>
