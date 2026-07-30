@@ -38,6 +38,13 @@ git push -u origin main
 
 ## 3. Backend hosting (Railway / Render — аль нь ч Dockerfile-аас шууд deploy хийдэг)
 
+> **Render ашиглах бол:** repo-ийн үндэст байгаа [`render.yaml`](../render.yaml)
+> нь backend (Docker) + frontend (static) + Postgres гурвыг нэг Blueprint-аар
+> тодорхойлсон байгаа. Render dashboard → **New** → **Blueprint** → энэ
+> GitHub repo-г сонговол доорх алхмуудыг гараар давтахгүйгээр шууд эхэлнэ —
+> зөвхөн `FRONTEND_URL`/`GOOGLE_*`/`VITE_API_URL` шиг `sync: false` тэмдэглэсэн
+> хувьсагчдыг deploy хийсний дараа дашбоард дээр гараар бөглөнө.
+
 1. GitHub repo-гоо холбоно (эсвэл CLI-ээр шууд deploy хийнэ).
 2. Root directory: `backend/` (Dockerfile байгаа хавтас).
 3. Орчны хувьсагч (Environment Variables) тохируулна:

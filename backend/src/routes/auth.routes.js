@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import prisma from '../lib/prisma.js';
 import { config } from '../config/env.js';
+import { sendMail } from '../lib/mailer.js';
 import { hashPassword, verifyPassword } from '../utils/password.js';
 import {
   signAccessToken,
@@ -80,6 +81,14 @@ router.post('/register', authLimiter, async (req, res, next) => {
     const refreshToken = await issueRefreshToken(user.id);
 
     res.status(201).json({ user: publicUser(user), accessToken, refreshToken });
+
+    // Хариултын дараа илгээнэ (fire-and-forget) — имэйл удаашрал/алдаа
+    // бүртгэлийн хариултыг хойшлуулах ёсгүй.
+    sendMail({
+      to: user.email,
+      subject: 'Тавтай морил KREATIV-д!',
+      html: `<p>Сайн байна уу, ${user.name || 'найз'}!</p><p>KREATIV дээр бүртгэл амжилттай үүслээ. Одоо профайлаа бөглөж, ажил хайж эсвэл зар нийтэлж эхэлж болно.</p>`,
+    });
   } catch (err) {
     next(err);
   }

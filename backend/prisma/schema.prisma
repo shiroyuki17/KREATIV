@@ -26,6 +26,7 @@ model User {
   refreshTokens     RefreshToken[]
   freelancerProfile FreelancerProfile?
   clientProfile     ClientProfile?
+  transactions      Transaction[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -137,4 +138,32 @@ enum JobStatus {
   IN_PROGRESS
   CLOSED
   CANCELLED
+}
+
+// ── Payments ──
+// Day 9 (PRD): QPay-тэй жинхэнэ мерчант данс/key байхгүй тул демо горимоор
+// ажиллана — deposit нь бодит банкны төлбөрийн оронд гараар "confirm"
+// хийгддэг (жинхэнэ webhook ирэхэд confirm-ийн байрыг л түүгээр солино).
+model Transaction {
+  id          String            @id @default(uuid())
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  kind        TransactionKind
+  status      TransactionStatus @default(PENDING)
+  amount      Int
+  provider    String            @default("qpay_demo")
+  createdAt   DateTime          @default(now())
+  completedAt DateTime?
+
+  @@index([userId])
+}
+
+enum TransactionKind {
+  DEPOSIT
+  WITHDRAWAL
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
 }

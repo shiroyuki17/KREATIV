@@ -1,0 +1,59 @@
+# Render Blueprint — эрх бүхий account холбож, "New +" → "Blueprint" сонгоод
+# энэ repo-г заавал л дараагийн алхам үлдэнэ (би Render account үүсгэж
+# чадахгүй тул энэ файл л бэлдэж өгч чадах хэсэг). Дараа нь:
+#   1. Render dashboard → New → Blueprint → энэ GitHub repo-г сонгох
+#   2. kreativ-backend service-д GOOGLE_CLIENT_ID/SECRET/REDIRECT_URI-г
+#      (хэрэв бодит Google OAuth ашиглах бол) гараар бөглөх
+#   3. kreativ-backend deploy дууссаны дараа Shell дээр:
+#      npx prisma migrate deploy && npm run seed
+#   4. kreativ-frontend-ийн VITE_API_URL-ийг kreativ-backend-ийн бодит
+#      URL-ээр солиод дахин deploy хийх (эхний deploy дээр backend URL
+#      мэдэгдэхгүй тул placeholder-оор эхэлнэ)
+databases:
+  - name: kreativ-pg
+    plan: free
+    databaseName: kreativ_db
+    user: kreativ
+
+services:
+  - type: web
+    name: kreativ-backend
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: kreativ-pg
+          property: connectionString
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: PORT
+        value: "4100"
+      - key: NODE_ENV
+        value: production
+      - key: FRONTEND_URL
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
+
+  - type: web
+    name: kreativ-frontend
+    runtime: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

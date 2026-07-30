@@ -21,12 +21,41 @@ async function issueRefreshToken(userId) {
   return token;
 }
 
+// ── GET /auth/google/demo ── (Google Cloud Console key байхгүй үед демо
+// зорилгоор ашиглах — тогтмол "demo Google" акаунтаар шууд нэвтэрнэ. Жинхэнэ
+// GOOGLE_CLIENT_ID/SECRET орж ирмэгц /google дараа энэ route-ыг дуудахгүй.)
+router.get('/google/demo', async (req, res, next) => {
+  try {
+    const DEMO_EMAIL = 'demo.google@kreativ.mn';
+    let user = await prisma.user.findUnique({ where: { email: DEMO_EMAIL } });
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          email: DEMO_EMAIL,
+          name: 'Demo Google User',
+          googleId: 'demo-google-user',
+        },
+      });
+    }
+    if (!user.isActive) {
+      return res.redirect(`${config.FRONTEND_URL}/#/auth?oauth_error=account_disabled`);
+    }
+
+    const accessToken = signAccessToken({ sub: user.id, role: user.role });
+    const refreshToken = await issueRefreshToken(user.id);
+    const redirectParams = new URLSearchParams({ accessToken, refreshToken });
+    res.redirect(`${config.FRONTEND_URL}/#/auth-callback?${redirectParams.toString()}`);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── GET /auth/google ── (Google-ийн зөвшөөрлийн дэлгэц рүү redirect хийнэ)
 router.get('/google', (req, res) => {
   if (!oauthConfigured()) {
-    return res.status(501).json({
-      error: 'Google OAuth тохируулагдаагүй байна (GOOGLE_CLIENT_ID/SECRET/REDIRECT_URI .env-д дутуу)',
-    });
+    // Демо орчинд жинхэнэ Google key хүлээхийн оронд шууд демо акаунтаар
+    // нэвтрүүлнэ — товч нь идэвхгүй болохын оронд ажиллаж харагдана.
+    return res.redirect('/auth/google/demo');
   }
 
   // CSRF хамгаалалт: санамсаргүй state-ийг богино хугацаатай httpOnly cookie-д

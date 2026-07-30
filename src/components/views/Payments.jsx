@@ -9,9 +9,125 @@ import {
   BadgeCheck,
   Briefcase,
   Clock,
+  X,
+  QrCode,
+  AlertCircle,
 } from "lucide-react";
 import { TRANSACTIONS, RECEIVED, SENT } from "../../data/appMock.js";
 import { useNav } from "../../nav.jsx";
+import { getAccessToken } from "../../lib/authApi.js";
+import { fetchBalance, fetchTransactions, createDeposit, confirmDeposit } from "../../lib/paymentsApi.js";
+
+// Бодит /payments/transactions мөрийг Recent transactions жагсаалтын хэлбэрт хөрвүүлнэ
+function toLedgerRow(tx) {
+  return {
+    id: `QPAY-${tx.id.slice(0, 6).toUpperCase()}`,
+    desc: "Demo QPay deposit",
+    party: "QPay (demo)",
+    date: new Date(tx.createdAt).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }),
+    amount: `+$${tx.amount.toLocaleString("en-US")}`,
+    dir: "in",
+    status: tx.status === "COMPLETED" ? "Completed" : "Pending",
+  };
+}
+
+function DepositModal({ onClose, onDeposited }) {
+  const [amount, setAmount] = useState("100");
+  const [invoice, setInvoice] = useState(null); // { transaction, qpayInvoiceNo, qrText }
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const createInvoice = async () => {
+    const token = getAccessToken();
+    if (!token) { setError("Эхлээд нэвтэрнэ үү."); return; }
+    const n = parseInt(amount, 10);
+    if (!Number.isFinite(n) || n <= 0) { setError("Дүн буруу байна."); return; }
+    setBusy(true);
+    setError("");
+    try {
+      const res = await createDeposit(n, token);
+      setInvoice(res);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirm = async () => {
+    const token = getAccessToken();
+    setBusy(true);
+    setError("");
+    try {
+      const res = await confirmDeposit(invoice.transaction.id, token);
+      onDeposited(res.balance, res.transaction);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="glass w-full max-w-sm rounded-2xl p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <p className="text-[15px] font-bold">Add funds · Demo QPay</p>
+          <button onClick={onClose} aria-label="Close" className="rounded-lg p-1.5 text-white/50 hover:text-white">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {!invoice ? (
+          <>
+            <p className="mt-2 text-[12px] text-white/45">
+              Жинхэнэ QPay мерчант данс холбогдоогүй тул демо invoice үүсгэнэ — доорх "Би төлсөн" товч нь бодит банкны webhook-ийн байрыг эзэлнэ.
+            </p>
+            <label className="mt-5 block text-[11px] font-semibold uppercase tracking-wider text-white/40">Дүн (USD)</label>
+            <input
+              value={amount}
+              onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))}
+              className="mt-2 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[16px] font-bold outline-none focus:border-brand/50"
+            />
+            {error && (
+              <p className="mt-3 flex items-center gap-1.5 text-[12px] font-medium text-red-400">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" /> {error}
+              </p>
+            )}
+            <button
+              onClick={createInvoice}
+              disabled={busy}
+              className="mt-5 w-full rounded-xl bg-brand py-3 text-[13.5px] font-bold text-ink glow-brand transition-shadow hover:shadow-[0_0_30px_rgba(0,211,149,0.5)] disabled:opacity-50"
+            >
+              {busy ? "Түр хүлээнэ үү…" : "Invoice үүсгэх"}
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="mt-4 flex flex-col items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-6 text-center">
+              <QrCode className="h-16 w-16 text-brand-soft" />
+              <p className="font-mono text-[11px] text-white/50">{invoice.qpayInvoiceNo}</p>
+              <p className="font-display text-2xl font-bold">${Number(amount).toLocaleString("en-US")}</p>
+              <p className="text-[11px] text-white/40">QPay апп-аар уг QR-ийг уншуулна (демо горим)</p>
+            </div>
+            {error && (
+              <p className="mt-3 flex items-center gap-1.5 text-[12px] font-medium text-red-400">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" /> {error}
+              </p>
+            )}
+            <button
+              onClick={confirm}
+              disabled={busy}
+              className="mt-5 w-full rounded-xl bg-gradient-to-r from-brand to-brand-soft py-3 text-[13.5px] font-bold text-ink glow-brand transition-shadow hover:shadow-[0_0_30px_rgba(0,211,149,0.5)] disabled:opacity-50"
+            >
+              {busy ? "Баталгаажуулж байна…" : "Би төлсөн"}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 const TABS = [
   { id: "overview", label: "Overview", Icon: Wallet },
@@ -99,10 +215,22 @@ function MonthLedger({ groups, dir }) {
 export default function Payments() {
   const { params } = useNav();
   const [tab, setTab] = useState(params?.tab || "overview");
+  const [balance, setBalance] = useState(null); // null = ачаалж/нэвтрээгүй → mock утга харагдана
+  const [liveTx, setLiveTx] = useState([]);
+  const [showDeposit, setShowDeposit] = useState(false);
 
   useEffect(() => {
     if (params?.tab) setTab(params.tab);
   }, [params]);
+
+  const loadWallet = () => {
+    const token = getAccessToken();
+    if (!token) return;
+    fetchBalance(token).then((r) => setBalance(r.balance)).catch(() => {});
+    fetchTransactions(token).then((r) => setLiveTx(r.transactions.map(toLedgerRow))).catch(() => {});
+  };
+
+  useEffect(loadWallet, []);
 
   return (
     <div className="mx-auto max-w-6xl px-6 pb-24 pt-8">
@@ -136,13 +264,23 @@ export default function Payments() {
                 <span className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border ${ACCENT.mint}`}>
                   <Wallet className="h-4.5 w-4.5" />
                 </span>
-                <button className="rounded-lg border border-mint/40 bg-mint/10 px-3.5 py-1.5 text-[11.5px] font-bold text-mint transition-all hover:bg-mint hover:text-ink">
-                  Withdraw
-                </button>
+                <div className="flex gap-1.5">
+                  <button
+                    onClick={() => setShowDeposit(true)}
+                    className="rounded-lg border border-brand/40 bg-brand/10 px-3.5 py-1.5 text-[11.5px] font-bold text-brand-soft transition-all hover:bg-brand hover:text-ink"
+                  >
+                    Add funds
+                  </button>
+                  <button className="rounded-lg border border-mint/40 bg-mint/10 px-3.5 py-1.5 text-[11.5px] font-bold text-mint transition-all hover:bg-mint hover:text-ink">
+                    Withdraw
+                  </button>
+                </div>
               </div>
-              <p className="mt-5 font-display text-3xl font-bold">$4,250</p>
+              <p className="mt-5 font-display text-3xl font-bold">
+                {balance !== null ? `$${balance.toLocaleString("en-US")}` : "$4,250"}
+              </p>
               <p className="mt-1 text-[11px] font-medium uppercase tracking-wider text-white/40">
-                Available balance
+                Available balance {balance !== null && <span className="text-brand-soft">· live</span>}
               </p>
             </div>
             <div className="glass rounded-2xl p-6">
@@ -171,7 +309,7 @@ export default function Payments() {
                 Recent transactions
               </p>
               <div className="mt-3 divide-y divide-white/6">
-                {TRANSACTIONS.map((tx) => (
+                {[...liveTx, ...TRANSACTIONS].map((tx) => (
                   <div key={tx.id} className="flex items-center gap-4 py-4">
                     <span
                       className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${
@@ -270,6 +408,17 @@ export default function Payments() {
             Pro plan commission: <b className="text-brand-soft">5%</b> · applied at milestone release
           </p>
         </>
+      )}
+
+      {showDeposit && (
+        <DepositModal
+          onClose={() => setShowDeposit(false)}
+          onDeposited={(newBalance, tx) => {
+            setBalance(newBalance);
+            setLiveTx((list) => [toLedgerRow(tx), ...list]);
+            setShowDeposit(false);
+          }}
+        />
       )}
     </div>
   );

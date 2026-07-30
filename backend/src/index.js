@@ -15,6 +15,7 @@ import googleOAuthRoutes from './routes/google-oauth.routes.js';
 import profileRoutes from './routes/profile.routes.js';
 import jobRoutes from './routes/job.routes.js';
 import analyticsRoutes from './routes/analytics.routes.js';
+import paymentRoutes from './routes/payment.routes.js';
 
 const app = express();
 // Railway/Render гэх мэт hosting нь reverse proxy ард ажилладаг тул
@@ -47,6 +48,7 @@ app.use('/auth', googleOAuthRoutes);
 app.use('/profile', profileRoutes);
 app.use('/jobs', jobRoutes);
 app.use('/analytics', analyticsRoutes);
+app.use('/payments', paymentRoutes);
 
 // 404
 app.use((req, res) => {

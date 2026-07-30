@@ -4,6 +4,7 @@ import SplitText from "../fx/SplitText.jsx";
 import BlurText from "../fx/BlurText.jsx";
 import TiltedCard from "../fx/TiltedCard.jsx";
 import CountUp from "../fx/CountUp.jsx";
+import AmbientOrb from "../fx/AmbientOrb.jsx";
 import { STATS, TAGS } from "../../data/mock.js";
 import { useNav } from "../../nav.jsx";
 
@@ -172,7 +173,10 @@ export default function Hero() {
           </div>
         </div>
 
-        <div className="hidden justify-center lg:flex">
+        <div className="relative hidden justify-center lg:flex">
+          <div className="pointer-events-none absolute -right-16 top-1/2 -z-10 -translate-y-1/2 opacity-80">
+            <AmbientOrb size={420} />
+          </div>
           <DashboardPreview />
         </div>
       </div>
