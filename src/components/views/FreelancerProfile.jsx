@@ -156,7 +156,7 @@ export default function FreelancerProfile() {
               </Magnet>
               <div className="flex gap-2">
                 <button
-                  onClick={() => nav("messages")}
+                  onClick={() => nav("messages", isReal ? { withUserId: f.userId } : undefined)}
                   className="glass inline-flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-[13.5px] font-semibold text-white/85 transition-colors hover:border-white/25"
                 >
                   <MessageSquare className="h-4 w-4" />

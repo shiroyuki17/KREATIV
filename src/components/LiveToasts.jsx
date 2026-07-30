@@ -1,4 +1,4 @@
-import { Sparkles, MessageSquare, CircleDollarSign, X } from "lucide-react";
+import { Sparkles, MessageSquare, CircleDollarSign, Briefcase, Bell, X } from "lucide-react";
 import { useLive } from "../live.jsx";
 import { useNav } from "../nav.jsx";
 
@@ -6,7 +6,9 @@ const META = {
   brief: { Icon: Sparkles, cls: "border-brand/30 bg-brand/10 text-brand-soft", page: "find-work" },
   message: { Icon: MessageSquare, cls: "border-neon/30 bg-neon/10 text-neon", page: "messages" },
   payment: { Icon: CircleDollarSign, cls: "border-mint/30 bg-mint/10 text-mint", page: "payments" },
+  job: { Icon: Briefcase, cls: "border-brand/30 bg-brand/10 text-brand-soft", page: "my-projects" },
 };
+const FALLBACK_META = { Icon: Bell, cls: "border-white/15 bg-white/[0.05] text-white/70", page: "notifications" };
 
 /** Slide-in toasts driven by the simulated realtime stream. */
 export default function LiveToasts() {
@@ -18,7 +20,7 @@ export default function LiveToasts() {
   return (
     <div className="pointer-events-none fixed bottom-24 right-6 z-[60] flex w-[min(330px,calc(100vw-3rem))] flex-col gap-2.5">
       {toasts.map((t) => {
-        const { Icon, cls, page } = META[t.kind];
+        const { Icon, cls, page } = META[t.kind] || FALLBACK_META;
         return (
           <div
             key={t.id}

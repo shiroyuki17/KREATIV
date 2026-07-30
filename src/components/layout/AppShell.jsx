@@ -21,19 +21,31 @@ import {
   Star,
   Info,
   CheckCheck,
+  Briefcase,
 } from "lucide-react";
 import { useNav } from "../../nav.jsx";
 import { useLive } from "../../live.jsx";
-import { logoutUser } from "../../lib/authApi.js";
-import { NOTIFS } from "../../data/appMock.js";
+import { logoutUser, getAccessToken } from "../../lib/authApi.js";
+import { fetchNotifications, markAllNotificationsRead } from "../../lib/notificationsApi.js";
 
 const NOTIF_META = {
   payment: { Icon: CircleDollarSign, cls: "text-mint border-mint/30 bg-mint/10" },
   message: { Icon: MessageSquare, cls: "text-neon border-neon/30 bg-neon/10" },
+  job: { Icon: Briefcase, cls: "text-brand-soft border-brand/30 bg-brand/10" },
   invite: { Icon: Mail, cls: "text-brand-soft border-brand/30 bg-brand/10" },
   review: { Icon: Star, cls: "text-amber-400 border-amber-400/30 bg-amber-400/10" },
   system: { Icon: Info, cls: "text-white/60 border-white/15 bg-white/[0.05]" },
 };
+
+function timeAgo(iso) {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
 
 const TABS = [
   { page: "freelancer-dashboard", label: "Home", Icon: LayoutDashboard, alias: ["client-dashboard"] },
@@ -310,6 +322,8 @@ function UserCard({ go, collapsed, user, setUser, authReady }) {
 function NotifDropdown({ anchorRef, open, onClose, onViewAll, align = "left" }) {
   const [pos, setPos] = useState(null);
   const panelRef = useRef(null);
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!open || !anchorRef.current) return;
@@ -320,6 +334,19 @@ function NotifDropdown({ anchorRef, open, onClose, onViewAll, align = "left" }) 
         : { top: r.bottom + 10, left: r.left }
     );
   }, [open, anchorRef, align]);
+
+  // Fetch fresh each time it's opened rather than polling in the background —
+  // this is a rarely-open dropdown, not a live feed.
+  useEffect(() => {
+    if (!open) return;
+    const token = getAccessToken();
+    if (!token) { setItems([]); setLoading(false); return; }
+    setLoading(true);
+    fetchNotifications(token)
+      .then((res) => setItems(res.notifications.slice(0, 5)))
+      .catch(() => setItems([]))
+      .finally(() => setLoading(false));
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -333,8 +360,7 @@ function NotifDropdown({ anchorRef, open, onClose, onViewAll, align = "left" }) 
 
   if (!open || !pos) return null;
 
-  const recent = NOTIFS.slice(0, 5);
-  const unreadCount = recent.filter((n) => n.unread).length;
+  const unreadCount = items.filter((n) => !n.read).length;
 
   return createPortal(
     <div
@@ -344,24 +370,31 @@ function NotifDropdown({ anchorRef, open, onClose, onViewAll, align = "left" }) 
     >
       <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
         <p className="text-[13px] font-bold">Notifications</p>
-        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-white/40">
+        <button
+          onClick={() => { markAllNotificationsRead(getAccessToken()).catch(() => {}); setItems((arr) => arr.map((n) => ({ ...n, read: true }))); }}
+          className="inline-flex items-center gap-1 text-[11px] font-medium text-white/40 transition-colors hover:text-mint"
+        >
           <CheckCheck className="h-3.5 w-3.5" />
           {unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
-        </span>
+        </button>
       </div>
       <div className="max-h-[360px] overflow-y-auto">
-        {recent.map((n, i) => {
-          const { Icon, cls } = NOTIF_META[n.type];
+        {loading && <p className="px-4 py-6 text-center text-[12px] text-white/35">Ачааллаж байна…</p>}
+        {!loading && items.length === 0 && (
+          <p className="px-4 py-6 text-center text-[12px] text-white/35">No notifications yet</p>
+        )}
+        {items.map((n) => {
+          const { Icon, cls } = NOTIF_META[n.type] || NOTIF_META.system;
           return (
-            <div key={i} className="flex items-start gap-3 border-b border-white/5 px-4 py-3 last:border-b-0 hover:bg-white/[0.03]">
+            <div key={n.id} className="flex items-start gap-3 border-b border-white/5 px-4 py-3 last:border-b-0 hover:bg-white/[0.03]">
               <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${cls}`}>
                 <Icon className="h-3.5 w-3.5" />
               </span>
               <div className="min-w-0 flex-1">
                 <p className="text-[12.5px] leading-snug text-white/85">{n.text}</p>
-                <p className="mt-0.5 text-[10.5px] text-white/35">{n.time}</p>
+                <p className="mt-0.5 text-[10.5px] text-white/35">{timeAgo(n.createdAt)}</p>
               </div>
-              {n.unread && <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />}
+              {!n.read && <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />}
             </div>
           );
         })}

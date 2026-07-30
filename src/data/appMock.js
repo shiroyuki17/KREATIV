@@ -1,87 +1,9 @@
-export const CONVERSATIONS = [
-  {
-    id: 1,
-    name: "Daniel Kim",
-    initials: "DK",
-    role: "Full-Stack Developer",
-    last: "Pushed the checkout fix — can you review?",
-    time: "2m",
-    unread: 2,
-    online: true,
-  },
-  {
-    id: 2,
-    name: "Ava Torres",
-    initials: "AT",
-    role: "Senior Product Designer",
-    last: "Sending the updated design tokens today.",
-    time: "1h",
-    unread: 0,
-    online: true,
-  },
-  {
-    id: 3,
-    name: "Nova Studio",
-    initials: "NS",
-    role: "Client",
-    last: "Milestone 2 approved. Great work!",
-    time: "3h",
-    unread: 0,
-    online: false,
-  },
-  {
-    id: 4,
-    name: "Mina Okafor",
-    initials: "MO",
-    role: "Motion Designer",
-    last: "The Rive file exports are ready.",
-    time: "1d",
-    unread: 1,
-    online: false,
-  },
-];
-
-// Keyed by CONVERSATIONS[].id — each contact has their own history.
-export const THREADS = {
-  1: [
-    { from: "them", text: "Hey! Phase 1 build is up — v0.9.2 deployed to staging.", time: "10:24" },
-    { from: "me", text: "Nice. Checkout flow feels much faster now.", time: "10:31" },
-    { from: "them", text: "Yeah, cut LCP by 40%. One thing left: the escrow release animation.", time: "10:33" },
-    { from: "me", text: "Let's ship it with the neon pulse we discussed.", time: "10:40" },
-    { from: "them", text: "Pushed the checkout fix — can you review?", time: "10:52" },
-  ],
-  2: [
-    { from: "them", text: "Wrapping up the token audit today.", time: "9:02" },
-    { from: "me", text: "Perfect timing, we need them for the sprint review.", time: "9:15" },
-    { from: "them", text: "Sending the updated design tokens today.", time: "9:40" },
-  ],
-  3: [
-    { from: "me", text: "Milestone 2 is ready for review whenever you have a moment.", time: "2:10" },
-    { from: "them", text: "Just walked through it with the team.", time: "2:44" },
-    { from: "them", text: "Milestone 2 approved. Great work!", time: "2:46" },
-  ],
-  4: [
-    { from: "them", text: "Rendering the last few Rive scenes now.", time: "11:05" },
-    { from: "me", text: "No rush, whenever they're ready.", time: "11:20" },
-    { from: "them", text: "The Rive file exports are ready.", time: "yesterday" },
-  ],
-};
-
 export const TRANSACTIONS = [
   { id: "TX-4821", desc: "Milestone 2 — Checkout flow revamp", party: "Nova Studio", date: "Jul 21, 2026", amount: "+$2,400", dir: "in", status: "Completed" },
   { id: "TX-4790", desc: "Milestone 3 funding", party: "Nova Studio", date: "Jul 20, 2026", amount: "$1,800", dir: "escrow", status: "In escrow" },
   { id: "TX-4711", desc: "Brand system sprint", party: "Luminary Finance", date: "Jul 12, 2026", amount: "+$3,250", dir: "in", status: "Completed" },
   { id: "TX-4688", desc: "Withdrawal to Visa •• 4821", party: "Payout", date: "Jul 08, 2026", amount: "−$5,000", dir: "out", status: "Completed" },
   { id: "TX-4655", desc: "AI chatbot integration — deposit", party: "Helix Health", date: "Jul 02, 2026", amount: "$2,000", dir: "escrow", status: "Pending" },
-];
-
-export const NOTIFS = [
-  { type: "payment", text: "Nova Studio released $2,400 from escrow", time: "2h ago", unread: true, group: "Today" },
-  { type: "message", text: "Daniel Kim sent you 2 new messages", time: "2h ago", unread: true, group: "Today" },
-  { type: "invite", text: "Meridian Bank invited you to “React dashboard for fintech analytics”", time: "6h ago", unread: true, group: "Today" },
-  { type: "review", text: "Luminary Finance left you a 5.0★ review", time: "1d ago", unread: false, group: "Earlier" },
-  { type: "system", text: "Your Pro plan renews on Aug 01 — 5% escrow commission active", time: "2d ago", unread: false, group: "Earlier" },
-  { type: "payment", text: "Withdrawal of $5,000 arrived in Visa •• 4821", time: "2w ago", unread: false, group: "Earlier" },
 ];
 
 export const PORTFOLIO = [

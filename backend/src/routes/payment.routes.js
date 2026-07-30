@@ -8,6 +8,7 @@
 import { Router } from 'express';
 import prisma from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
+import { createNotification } from './notification.routes.js';
 
 const router = Router();
 
@@ -84,6 +85,12 @@ router.post('/deposit/:id/confirm', requireAuth, async (req, res, next) => {
     });
 
     res.json({ transaction: updated, balance: await computeBalance(req.user.id) });
+    createNotification({
+      userId: req.user.id,
+      type: 'payment',
+      text: `$${updated.amount.toLocaleString('en-US')} үлдэгдэлд амжилттай нэмэгдлээ`,
+      link: 'payments',
+    });
   } catch (err) {
     next(err);
   }

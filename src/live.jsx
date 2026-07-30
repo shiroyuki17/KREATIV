@@ -1,117 +1,74 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { getAccessToken } from "./lib/authApi.js";
+import { fetchNotifications } from "./lib/notificationsApi.js";
+import { fetchMessageUnreadCount } from "./lib/messagesApi.js";
 
 /**
- * Simulated realtime layer.
- *
- * There's no backend in this prototype, so a timer plays a scripted stream of
- * events (new brief, incoming message, escrow release…). Everything downstream
- * — toasts, sidebar badges, the live counters — reads from here, so swapping
- * this for a WebSocket later only means replacing the `useEffect` below.
+ * Realtime-ish layer, backed by real polling (no WebSocket yet, so a short
+ * interval stands in for push). Sidebar badges and toast popups both read
+ * from real /notifications and /messages/unread-count — previously this
+ * played a scripted, entirely fake event stream, which stopped being honest
+ * once real Notifications/Messages existed to actually track this.
  */
 const LiveCtx = createContext(null);
 
-const SCRIPT = [
-  {
-    kind: "brief",
-    title: "New brief matched to you",
-    body: "Realtime dashboard for a trading desk · $9,500",
-    job: {
-      id: 101,
-      title: "Realtime dashboard for a trading desk",
-      client: "Meridian Bank",
-      rating: 5.0,
-      verified: true,
-      type: "Fixed",
-      budget: "$9,500",
-      cat: "Dev",
-      tags: ["React", "WebSocket", "D3"],
-      posted: "just now",
-      proposals: 0,
-      languages: ["English"],
-    },
-  },
-  {
-    kind: "message",
-    title: "Daniel Kim",
-    body: "Just pushed the realtime price feed — take a look when you can.",
-    from: 1,
-  },
-  {
-    kind: "payment",
-    title: "Escrow released",
-    body: "Nova Studio released $1,800 for Milestone 3",
-  },
-  {
-    kind: "brief",
-    title: "New brief matched to you",
-    body: "Live collaboration cursors for a design tool · $6,200",
-    job: {
-      id: 102,
-      title: "Live collaboration cursors for a design tool",
-      client: "Nova Studio",
-      rating: 4.9,
-      verified: true,
-      type: "Fixed",
-      budget: "$6,200",
-      cat: "Dev",
-      tags: ["CRDT", "WebRTC", "React"],
-      posted: "just now",
-      proposals: 1,
-      languages: ["English", "French"],
-    },
-  },
-  {
-    kind: "message",
-    title: "Ava Torres",
-    body: "Design tokens are synced — everything updates live now.",
-    from: 2,
-  },
-];
+function toToast(n) {
+  const TITLES = { message: "New message", payment: "Payment update", job: "Job posted", invite: "New invite", review: "New review" };
+  return { id: n.id, kind: n.type, title: TITLES[n.type] || "Notification", body: n.text };
+}
 
 export function LiveProvider({ children }) {
   const [toasts, setToasts] = useState([]);
-  const [liveJobs, setLiveJobs] = useState([]);
-  const [inbox, setInbox] = useState([]); // incoming chat messages
-  const [unread, setUnread] = useState({ messages: 3, notifications: 3 });
+  const [unread, setUnread] = useState({ messages: 0, notifications: 0 });
   const [openBriefs, setOpenBriefs] = useState(1284);
-  const step = useRef(0);
+  const seenNotifIds = useRef(new Set());
+  const isFirstPoll = useRef(true);
 
   const dismiss = (id) => setToasts((list) => list.filter((t) => t.id !== id));
   // Bail out (return the same reference) when already 0 — otherwise every
-  // consumer effect keyed on markMessagesRead's identity re-fires forever,
-  // since this always minted a new object even for a no-op clear.
+  // consumer effect keyed on clearUnread's identity re-fires forever, since
+  // this always minted a new object even for a no-op clear.
   const clearUnread = (key) => setUnread((u) => (u[key] === 0 ? u : { ...u, [key]: 0 }));
-  const markMessagesRead = () => clearUnread("messages");
 
-  // Scripted event stream
+  // Poll real unread counts + turn brand-new unread notifications into toasts
   useEffect(() => {
-    const timer = setInterval(() => {
-      const event = SCRIPT[step.current % SCRIPT.length];
-      step.current += 1;
-      const id = `${Date.now()}-${step.current}`;
+    const token = getAccessToken();
+    if (!token) return;
 
-      setToasts((list) => [...list, { ...event, id }].slice(-3));
-      setTimeout(() => dismiss(id), 6000);
+    const poll = async () => {
+      try {
+        const [notifRes, msgCount] = await Promise.all([
+          fetchNotifications(token),
+          fetchMessageUnreadCount(token),
+        ]);
+        setUnread({ messages: msgCount.count, notifications: notifRes.unreadCount });
 
-      if (event.kind === "brief") {
-        // the script loops, so mint a fresh id each time to keep React keys unique
-        const job = { ...event.job, id: `live-${id}`, isNew: true };
-        setLiveJobs((j) => [job, ...j].slice(0, 4));
-        setUnread((u) => ({ ...u, notifications: u.notifications + 1 }));
+        // Skip the very first poll so logging in doesn't dump your whole
+        // notification history as a burst of toasts.
+        if (!isFirstPoll.current) {
+          for (const n of notifRes.notifications) {
+            if (!n.read && !seenNotifIds.current.has(n.id)) {
+              const toast = toToast(n);
+              setToasts((list) => [...list, toast].slice(-3));
+              setTimeout(() => dismiss(toast.id), 6000);
+            }
+          }
+        }
+        isFirstPoll.current = false;
+        notifRes.notifications.forEach((n) => seenNotifIds.current.add(n.id));
+      } catch {
+        /* transient network hiccup — next poll retries */
       }
-      if (event.kind === "message") {
-        setInbox((m) => [...m, { from: event.from, text: event.body, at: Date.now() }]);
-        setUnread((u) => ({ ...u, messages: u.messages + 1 }));
-      }
-      if (event.kind === "payment") {
-        setUnread((u) => ({ ...u, notifications: u.notifications + 1 }));
-      }
-    }, 14000);
+    };
 
-    return () => clearInterval(timer);
+    poll();
+    const t = setInterval(poll, 12000);
+    return () => clearInterval(t);
   }, []);
 
-  // Open-brief counter drifts like a real marketplace
+  // Ambient "platform activity" counter — a cosmetic aggregate drift, not a
+  // claim about any specific real event (unlike the old message/payment
+  // toast script, this never names a person or job that doesn't exist).
   useEffect(() => {
     const t = setInterval(
       () => setOpenBriefs((n) => n + Math.floor(Math.random() * 5) - 1),
@@ -121,8 +78,8 @@ export function LiveProvider({ children }) {
   }, []);
 
   const value = useMemo(
-    () => ({ toasts, dismiss, liveJobs, inbox, unread, clearUnread, markMessagesRead, openBriefs }),
-    [toasts, liveJobs, inbox, unread, openBriefs]
+    () => ({ toasts, dismiss, unread, clearUnread, openBriefs }),
+    [toasts, unread, openBriefs]
   );
 
   return <LiveCtx.Provider value={value}>{children}</LiveCtx.Provider>;

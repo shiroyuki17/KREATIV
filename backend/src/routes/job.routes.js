@@ -4,6 +4,7 @@ import { requireAuth, requireClientProfile } from '../middleware/auth.js';
 import { requireActiveUser, jobEditBlockReason, jobDeleteBlockReason } from '../middleware/abac.js';
 import { jobCreateSchema, jobUpdateSchema, jobQuerySchema } from '../validators/job.schema.js';
 import { sendMail } from '../lib/mailer.js';
+import { createNotification } from './notification.routes.js';
 
 const router = Router();
 
@@ -64,6 +65,12 @@ router.post('/', requireAuth, requireActiveUser, requireClientProfile, async (re
         html: `<p>Сайн байна уу, ${owner.name || 'найз'}!</p><p>Таны <b>${job.title}</b> зар KREATIV дээр амжилттай нийтлэгдэж, freelancer-үүдэд харагдаж эхэллээ.</p>`,
       }))
       .catch(() => {});
+    createNotification({
+      userId: req.user.id,
+      type: 'job',
+      text: `Таны "${job.title}" зар нийтлэгдлээ`,
+      link: 'my-projects',
+    });
   } catch (err) {
     next(err);
   }

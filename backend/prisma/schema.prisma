@@ -27,6 +27,10 @@ model User {
   freelancerProfile FreelancerProfile?
   clientProfile     ClientProfile?
   transactions      Transaction[]
+  notifications     Notification[]
+  sentMessages       Message[]
+  conversationsAsA   Conversation[]   @relation("ConversationsAsA")
+  conversationsAsB   Conversation[]   @relation("ConversationsAsB")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -169,4 +173,52 @@ enum TransactionKind {
 enum TransactionStatus {
   PENDING
   COMPLETED
+}
+
+// ── Notifications ──
+
+model Notification {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  type      String // "job" | "message" | "payment" | "system" | "invite" | "review"
+  text      String
+  link      String? // жишээ нь "messages" — эх сурвалж руу шилжих frontend page
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ── Messages ──
+// 1:1 харилцан яриа. Хэн эхлүүлснээс үл хамааран давхардуулахгүйн тулд
+// userAId/userBId-г үргэлж canonical (жижиг ID эхэндээ) дараалалтай хадгална
+// (@@unique-ийг л биелүүлэхийн тулд бус — application код бүхэлдээ үүнийг
+// хүлээж ажилладаг тул canonical order-ийг бусад route-д давхар мөрдөнө).
+model Conversation {
+  id        String    @id @default(uuid())
+  userA     User      @relation("ConversationsAsA", fields: [userAId], references: [id], onDelete: Cascade)
+  userAId   String
+  userB     User      @relation("ConversationsAsB", fields: [userBId], references: [id], onDelete: Cascade)
+  userBId   String
+  messages  Message[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([userAId, userBId])
+  @@index([userAId])
+  @@index([userBId])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversationId String
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  senderId       String
+  text           String
+  readAt         DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId])
 }

@@ -59,7 +59,7 @@ function TalentCard({ f, nav, style }) {
             Follow
           </button>
           <button
-            onClick={() => nav("messages")}
+            onClick={() => nav("messages", { withUserId: f.userId })}
             className="rounded-full bg-gradient-to-r from-brand to-brand-soft px-5 py-2.5 text-[13px] font-bold text-ink glow-brand transition-shadow hover:shadow-[0_0_30px_rgba(0,211,149,0.55)]"
           >
             Message

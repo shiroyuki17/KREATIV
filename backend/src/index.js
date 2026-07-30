@@ -16,6 +16,8 @@ import profileRoutes from './routes/profile.routes.js';
 import jobRoutes from './routes/job.routes.js';
 import analyticsRoutes from './routes/analytics.routes.js';
 import paymentRoutes from './routes/payment.routes.js';
+import notificationRoutes from './routes/notification.routes.js';
+import messageRoutes from './routes/message.routes.js';
 
 const app = express();
 // Railway/Render гэх мэт hosting нь reverse proxy ард ажилладаг тул
@@ -49,6 +51,8 @@ app.use('/profile', profileRoutes);
 app.use('/jobs', jobRoutes);
 app.use('/analytics', analyticsRoutes);
 app.use('/payments', paymentRoutes);
+app.use('/notifications', notificationRoutes);
+app.use('/messages', messageRoutes);
 
 // 404
 app.use((req, res) => {
