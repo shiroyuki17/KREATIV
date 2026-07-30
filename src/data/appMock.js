@@ -156,6 +156,10 @@ export const FL_SKILLS = [
   "Motion", "AI / LLM", "Python", "Rive", "Next.js", "UX Research",
 ];
 
+// Backend-ийн FreelancerProfile.category-той (мөн Job.category-тэй) яг
+// тохирсон жагсаалт — Find Talent-ийн шүүлт бодит утгуудтай нийцнэ.
+export const FL_CATEGORIES = ["Design", "Dev", "AI", "Motion", "Writing", "Marketing"];
+
 export const CL_CATEGORIES = [
   "Web Development", "Product Design", "AI & Data", "Motion & 3D", "Branding", "Mobile Apps",
 ];

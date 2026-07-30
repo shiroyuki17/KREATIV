@@ -20,22 +20,34 @@ const CLIENTS = [
 
 const FREELANCERS = [
   {
-    email: 'daniel@demo.kreativ.mn', name: 'Daniel Kim',
+    email: 'daniel@demo.kreativ.mn', name: 'Daniel Kim', category: 'Dev',
     headline: 'Full-Stack Developer', bio: 'React + Node specialist, 8 years shipping fintech products.',
     skills: ['React', 'TypeScript', 'Node.js'], priceMin: 60, priceMax: 120,
     portfolio: { title: 'Fintech analytics dashboard', description: 'Real-time trading dashboard for a hedge fund.', link: 'https://example.com/daniel' },
   },
   {
-    email: 'ava@demo.kreativ.mn', name: 'Ava Torres',
+    email: 'ava@demo.kreativ.mn', name: 'Ava Torres', category: 'Design',
     headline: 'Senior Product Designer', bio: 'Design systems specialist crafting coherent, scalable product languages.',
     skills: ['Figma', 'Design Systems', 'Motion'], priceMin: 70, priceMax: 140,
     portfolio: { title: 'Brand system for Luminary Finance', description: 'Full token library + component kit.', link: 'https://example.com/ava' },
   },
   {
-    email: 'mina@demo.kreativ.mn', name: 'Mina Okafor',
+    email: 'mina@demo.kreativ.mn', name: 'Mina Okafor', category: 'Motion',
     headline: 'Motion Designer', bio: 'Rive/Lottie animation specialist for product and marketing.',
     skills: ['Rive', 'Lottie', 'After Effects'], priceMin: 50, priceMax: 100,
     portfolio: { title: 'Mobile app motion language', description: 'Full micro-interaction system for a fitness app.', link: 'https://example.com/mina' },
+  },
+  {
+    email: 'leo@demo.kreativ.mn', name: 'Leo Vance', category: 'AI',
+    headline: 'AI Engineer', bio: 'RAG pipelines and LLM infra for production products.',
+    skills: ['Python', 'LLM', 'RAG'], priceMin: 90, priceMax: 150,
+    portfolio: { title: 'RAG chatbot infra', description: 'Production retrieval-augmented chatbot for a healthtech client.', link: 'https://example.com/leo' },
+  },
+  {
+    email: 'sara@demo.kreativ.mn', name: 'Sara Cohen', category: 'Design',
+    headline: 'Brand & UI Designer', bio: 'Distinctive brand systems for consumer startups.',
+    skills: ['Branding', 'Figma', 'Illustration'], priceMin: 55, priceMax: 90,
+    portfolio: { title: 'Luminary token library', description: 'Full brand identity and component library.', link: 'https://example.com/sara' },
   },
 ];
 
@@ -92,8 +104,8 @@ async function main() {
     });
     const profile = await prisma.freelancerProfile.upsert({
       where: { userId: user.id },
-      update: { headline: f.headline, bio: f.bio, skills: f.skills, priceMin: f.priceMin, priceMax: f.priceMax },
-      create: { userId: user.id, headline: f.headline, bio: f.bio, skills: f.skills, priceMin: f.priceMin, priceMax: f.priceMax },
+      update: { headline: f.headline, bio: f.bio, category: f.category, skills: f.skills, priceMin: f.priceMin, priceMax: f.priceMax },
+      create: { userId: user.id, headline: f.headline, bio: f.bio, category: f.category, skills: f.skills, priceMin: f.priceMin, priceMax: f.priceMax },
     });
     const hasPortfolio = await prisma.portfolioItem.findFirst({ where: { freelancerId: profile.id } });
     if (!hasPortfolio) {

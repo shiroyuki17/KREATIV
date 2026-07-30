@@ -1,23 +1,36 @@
 import nodemailer from 'nodemailer';
+import { config } from '../config/env.js';
 
-// Demo-safe email sending: real SMTP account/API key байхгүй тул Ethereal
-// (nodemailer-ийн үнэгэн, автоматаар үүсдэг тест inbox) ашиглана. Илгээсэн
-// имэйл бодит хаяг руу очихгүй ч preview URL-аар (console дээр) агуулгыг нь
-// бүрэн харах боломжтой — жинхэнэ SMTP/SES key орж ирэхэд getTransporter-ийг
-// солиход л бэлэн бүтэц.
+// Real SMTP (Gmail, SendGrid, Resend г.м) тохируулагдвал шууд түүгээр
+// явуулна; SMTP_HOST/USER/PASS .env-д байхгүй бол Ethereal-ийн үнэгэн,
+// автоматаар үүсдэг тест inbox руу орно (илгээсэн имэйл бодит хаяг руу
+// очихгүй ч console дээрх preview URL-аар агуулгыг бүрэн харах боломжтой).
+function smtpConfigured() {
+  return !!(config.SMTP_HOST && config.SMTP_USER && config.SMTP_PASS);
+}
+
 let transporterPromise;
 
 async function getTransporter() {
   if (!transporterPromise) {
-    transporterPromise = (async () => {
-      const testAccount = await nodemailer.createTestAccount();
-      return nodemailer.createTransport({
-        host: testAccount.smtp.host,
-        port: testAccount.smtp.port,
-        secure: testAccount.smtp.secure,
-        auth: { user: testAccount.user, pass: testAccount.pass },
-      });
-    })();
+    transporterPromise = smtpConfigured()
+      ? Promise.resolve(
+          nodemailer.createTransport({
+            host: config.SMTP_HOST,
+            port: config.SMTP_PORT || 587,
+            secure: config.SMTP_SECURE ?? false,
+            auth: { user: config.SMTP_USER, pass: config.SMTP_PASS },
+          })
+        )
+      : (async () => {
+          const testAccount = await nodemailer.createTestAccount();
+          return nodemailer.createTransport({
+            host: testAccount.smtp.host,
+            port: testAccount.smtp.port,
+            secure: testAccount.smtp.secure,
+            auth: { user: testAccount.user, pass: testAccount.pass },
+          });
+        })();
   }
   return transporterPromise;
 }
@@ -28,12 +41,13 @@ export async function sendMail({ to, subject, html }) {
   try {
     const transporter = await getTransporter();
     const info = await transporter.sendMail({
-      from: '"KREATIV" <noreply@kreativ.mn>',
+      from: config.SMTP_FROM || '"KREATIV" <noreply@kreativ.mn>',
       to,
       subject,
       html,
     });
-    console.log(`[mail] "${subject}" → ${to} — preview: ${nodemailer.getTestMessageUrl(info)}`);
+    const preview = nodemailer.getTestMessageUrl(info);
+    console.log(`[mail] "${subject}" → ${to}${preview ? ` — preview: ${preview}` : ' — sent via real SMTP'}`);
   } catch (err) {
     console.error('[mail] илгээхэд алдаа гарлаа:', err.message);
   }

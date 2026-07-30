@@ -4,6 +4,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { uploadAvatar } from '../middleware/upload.js';
 import {
   freelancerProfileSchema,
+  freelancerQuerySchema,
   clientProfileSchema,
   portfolioItemSchema,
 } from '../validators/profile.schema.js';
@@ -16,6 +17,33 @@ function validate(schema, body) {
     return { error: result.error.issues.map((i) => i.message) };
   }
   return { data: result.data };
+}
+
+// Card/list-д хэрэгтэй хэсгийг л дамжуулна — TALENT mock-ийн шиг "earned"/
+// "followers"/"available" зэрэг тал нь бодит DB-д байдаггүй тул огт хайлгахгүй
+// (байхгүй утгыг зохиомлоор дүүргэхээс илүү, frontend үүнийг харгалзан UI-аа
+// тохируулна — ProjectDetail.jsx-ийн real-vs-mock normalize() хэв маягтай адил).
+function publicFreelancer(profile) {
+  return {
+    id: profile.id,
+    userId: profile.userId,
+    name: profile.user?.name,
+    avatarUrl: profile.user?.avatarUrl,
+    headline: profile.headline,
+    bio: profile.bio,
+    category: profile.category,
+    skills: profile.skills,
+    priceMin: profile.priceMin,
+    priceMax: profile.priceMax,
+    ratingAvg: profile.ratingAvg,
+    jobsCompleted: profile.jobsCompleted,
+    portfolio: (profile.portfolio || []).slice(0, 4).map((p) => ({
+      id: p.id,
+      title: p.title,
+      description: p.description,
+      link: p.link,
+    })),
+  };
 }
 
 // FR-1.5: профайлын бүрэн байдал — хадгалаагүй, хүсэлт бүрт тооцно
@@ -79,6 +107,59 @@ router.post('/freelancer', requireAuth, async (req, res, next) => {
   }
 });
 
+// ── GET /profile/freelancers ── (нийтэд, Find Talent-ийн бодит хайлт/шүүлт)
+router.get('/freelancers', async (req, res, next) => {
+  try {
+    const { data, error } = validate(freelancerQuerySchema, req.query);
+    if (error) return res.status(400).json({ error });
+
+    const and = [{ headline: { not: null } }]; // онбоардинг дуусаагүй "хоосон" профайл алгасна
+    if (data.category) and.push({ category: data.category });
+    if (data.skills) {
+      const list = data.skills.split(',').map((s) => s.trim()).filter(Boolean);
+      if (list.length) and.push({ skills: { hasSome: list } });
+    }
+    if (data.q) {
+      and.push({
+        OR: [
+          { headline: { contains: data.q, mode: 'insensitive' } },
+          { bio: { contains: data.q, mode: 'insensitive' } },
+          { skills: { has: data.q } },
+        ],
+      });
+    }
+
+    const where = { AND: and };
+    const skip = (data.page - 1) * data.pageSize;
+    const orderBy =
+      data.sort === 'rateLow' ? [{ priceMin: 'asc' }]
+      : data.sort === 'rateHigh' ? [{ priceMin: 'desc' }]
+      : data.sort === 'rating' ? [{ ratingAvg: 'desc' }]
+      : [{ ratingAvg: 'desc' }, { jobsCompleted: 'desc' }];
+
+    const [profiles, total] = await Promise.all([
+      prisma.freelancerProfile.findMany({
+        where,
+        include: { user: { select: { name: true, avatarUrl: true } }, portfolio: true },
+        orderBy,
+        skip,
+        take: data.pageSize,
+      }),
+      prisma.freelancerProfile.count({ where }),
+    ]);
+
+    res.json({
+      freelancers: profiles.map(publicFreelancer),
+      total,
+      page: data.page,
+      pageSize: data.pageSize,
+      totalPages: Math.max(1, Math.ceil(total / data.pageSize)),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── GET /profile/freelancer/me ──
 router.get('/freelancer/me', requireAuth, async (req, res, next) => {
   try {
@@ -100,7 +181,7 @@ router.get('/freelancer/:userId', async (req, res, next) => {
       where: { userId: req.params.userId },
       include: {
         portfolio: true,
-        user: { select: { id: true, name: true } },
+        user: { select: { id: true, name: true, avatarUrl: true } },
       },
     });
     if (!profile) return res.status(404).json({ error: 'Олдсонгүй' });

@@ -11,11 +11,26 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(4000),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 
-  // ── Google OAuth (заавал биш — тохируулаагүй бол /auth/google алдаа буцаана) ──
+  // ── Google OAuth (заавал биш — тохируулаагүй бол demo акаунтаар нэвтэрнэ) ──
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   GOOGLE_REDIRECT_URI: z.string().optional(),
   FRONTEND_URL: z.string().default('http://localhost:5174'),
+
+  // ── SMTP (заавал биш — тохируулаагүй бол Ethereal демо inbox ашиглана) ──
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().optional(),
+  SMTP_SECURE: z.coerce.boolean().optional(),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_FROM: z.string().optional(),
+
+  // ── QPay (заавал биш — тохируулаагүй бол демо invoice/confirm ашиглана) ──
+  QPAY_BASE_URL: z.string().optional(),
+  QPAY_USERNAME: z.string().optional(),
+  QPAY_PASSWORD: z.string().optional(),
+  QPAY_INVOICE_CODE: z.string().optional(),
+  QPAY_CALLBACK_URL: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

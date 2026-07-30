@@ -60,6 +60,7 @@ model FreelancerProfile {
   userId        String   @unique
   headline      String?
   bio           String?
+  category      String?
   skills        String[] @default([])
   priceMin      Int?
   priceMax      Int?
@@ -70,6 +71,8 @@ model FreelancerProfile {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([category])
 }
 
 model ClientProfile {

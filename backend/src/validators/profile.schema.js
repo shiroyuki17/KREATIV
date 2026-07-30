@@ -1,9 +1,14 @@
 import { z } from 'zod';
 
+// Job-ийн category-тэй ижил жагсаалт — Find Talent-ийн шүүлт Find Work-тэй
+// нэгдсэн ойлголт хэрэглэдэг байхын тулд.
+export const FREELANCER_CATEGORIES = ['Design', 'Dev', 'AI', 'Motion', 'Writing', 'Marketing'];
+
 export const freelancerProfileSchema = z
   .object({
     headline: z.string().max(120).optional(),
     bio: z.string().max(2000).optional(),
+    category: z.enum(FREELANCER_CATEGORIES).optional(),
     skills: z.array(z.string().min(1)).max(30).optional(),
     priceMin: z.coerce.number().int().nonnegative().optional(),
     priceMax: z.coerce.number().int().nonnegative().optional(),
@@ -12,6 +17,15 @@ export const freelancerProfileSchema = z
     (d) => d.priceMin == null || d.priceMax == null || d.priceMin <= d.priceMax,
     { message: 'priceMin нь priceMax-аас их байж болохгүй', path: ['priceMin'] }
   );
+
+export const freelancerQuerySchema = z.object({
+  q: z.string().max(200).optional(),
+  category: z.enum(FREELANCER_CATEGORIES).optional(),
+  skills: z.string().optional(), // таслалаар тусгаарласан
+  sort: z.enum(['relevant', 'rateLow', 'rateHigh', 'rating']).default('relevant'),
+  page: z.coerce.number().int().positive().default(1),
+  pageSize: z.coerce.number().int().positive().max(50).default(12),
+});
 
 export const clientProfileSchema = z.object({
   orgName: z.string().max(120).optional(),

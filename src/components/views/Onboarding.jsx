@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Sparkles, AlertCircle } from "lucide-react";
 import Magnet from "../fx/Magnet.jsx";
-import { FL_SKILLS, CL_CATEGORIES, CL_BUDGETS } from "../../data/appMock.js";
+import { FL_SKILLS, FL_CATEGORIES, CL_CATEGORIES, CL_BUDGETS } from "../../data/appMock.js";
 import { useNav } from "../../nav.jsx";
 import { getAccessToken, saveFreelancerProfile, saveClientProfile } from "../../lib/authApi.js";
 
@@ -70,6 +70,7 @@ export default function Onboarding() {
   const isFl = role === "freelancer";
 
   const [step, setStep] = useState(0);
+  const [category, setCategory] = useState(FL_CATEGORIES[0]);
   const [picked, setPicked] = useState([]);
   const [avail, setAvail] = useState(isFl ? "Full-time" : "$1k – $5k");
   const [fullName, setFullName] = useState("");
@@ -98,7 +99,7 @@ export default function Onboarding() {
       if (isFl) {
         const priceMin = parseInt(rate.replace(/[^0-9]/g, ""), 10) || undefined;
         await saveFreelancerProfile(
-          { headline: title || undefined, skills: picked, priceMin, priceMax: priceMin },
+          { headline: title || undefined, category, skills: picked, priceMin, priceMax: priceMin },
           token
         );
       } else {
@@ -159,6 +160,23 @@ export default function Onboarding() {
                   ? "Pick your core skills — our AI matches briefs to them."
                   : "Pick categories — our AI shortlists matching talent."}
               </p>
+              {isFl && (
+                <>
+                  <p className="mt-6 text-[11px] font-semibold uppercase tracking-widest text-white/40">
+                    Primary category
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2.5">
+                    {FL_CATEGORIES.map((c) => (
+                      <Chip key={c} active={category === c} onClick={() => setCategory(c)}>
+                        {c}
+                      </Chip>
+                    ))}
+                  </div>
+                  <p className="mt-7 text-[11px] font-semibold uppercase tracking-widest text-white/40">
+                    Skills
+                  </p>
+                </>
+              )}
               <div className="mt-6 flex flex-wrap gap-2.5">
                 {chips.map((s) => (
                   <Chip key={s} active={picked.includes(s)} onClick={() => toggle(s)}>
