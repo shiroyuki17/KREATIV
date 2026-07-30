@@ -9,6 +9,22 @@ const router = Router();
 
 const EMPTY_STATUS_COUNTS = { OPEN: 0, IN_PROGRESS: 0, CLOSED: 0, CANCELLED: 0 };
 
+// ── GET /analytics/public ── (нэвтрэлт шаардахгүй — Home хуудасны статистик)
+router.get('/public', async (req, res, next) => {
+  try {
+    const [freelancers, clients, jobs, openJobs, completedJobs] = await Promise.all([
+      prisma.freelancerProfile.count(),
+      prisma.clientProfile.count(),
+      prisma.job.count(),
+      prisma.job.count({ where: { status: 'OPEN' } }),
+      prisma.job.count({ where: { status: 'CLOSED' } }),
+    ]);
+    res.json({ freelancers, clients, jobs, openJobs, completedJobs });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get('/summary', requireAuth, async (req, res, next) => {
   try {
     const [clientProfile, freelancerProfile] = await Promise.all([
