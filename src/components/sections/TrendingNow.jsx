@@ -1,6 +1,8 @@
+import { motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
 import { JOBS, TALENT } from "../../data/mock.js";
 import { useNav } from "../../nav.jsx";
+import Reveal from "../fx/Reveal.jsx";
 
 // Contra's "Trending topics" strip, adapted: instead of community challenges
 // (a social-network concept KREATIV doesn't have), these are the briefs
@@ -22,7 +24,7 @@ export default function TrendingNow() {
   return (
     <section className="relative py-10">
       <div className="mx-auto max-w-6xl px-6">
-        <div className="flex items-center justify-between">
+        <Reveal className="flex items-center justify-between">
           <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/40">
             Trending briefs <ArrowUpRight className="h-3.5 w-3.5" />
           </p>
@@ -32,14 +34,19 @@ export default function TrendingNow() {
           >
             View all briefs
           </button>
-        </div>
+        </Reveal>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {TRENDING.map((job) => {
+          {TRENDING.map((job, i) => {
             const applicants = TALENT.filter((t) => t.cat === job.cat).slice(0, 3);
             return (
-              <button
+              <motion.button
                 key={job.id}
+                initial={{ opacity: 0, y: 18 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-60px" }}
+                transition={{ duration: 0.45, delay: i * 0.07, ease: [0.22, 1, 0.36, 1] }}
+                whileHover={{ y: -4 }}
                 onClick={() => nav("project", job)}
                 className={`relative overflow-hidden rounded-2xl border border-white/8 bg-gradient-to-br p-4 text-left transition-colors hover:border-white/20 ${CAT_GRAD[job.cat]}`}
               >
@@ -62,7 +69,7 @@ export default function TrendingNow() {
                     ))}
                   </div>
                 </div>
-              </button>
+              </motion.button>
             );
           })}
         </div>

@@ -1,3 +1,4 @@
+import { MotionConfig } from "framer-motion";
 import { NavProvider, useNav } from "./nav.jsx";
 import { LiveProvider } from "./live.jsx";
 import LiveToasts from "./components/LiveToasts.jsx";
@@ -159,12 +160,14 @@ function Shell() {
 
 export default function App() {
   return (
-    <NavProvider>
-      <LiveProvider>
-        <Shell />
-        <LiveToasts />
-        <ChatWidget />
-      </LiveProvider>
-    </NavProvider>
+    <MotionConfig reducedMotion="user">
+      <NavProvider>
+        <LiveProvider>
+          <Shell />
+          <LiveToasts />
+          <ChatWidget />
+        </LiveProvider>
+      </NavProvider>
+    </MotionConfig>
   );
 }

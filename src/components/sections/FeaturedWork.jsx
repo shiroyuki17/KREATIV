@@ -1,7 +1,10 @@
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { BadgeCheck } from "lucide-react";
 import { TALENT } from "../../data/mock.js";
 import { useNav } from "../../nav.jsx";
+import Reveal from "../fx/Reveal.jsx";
+import TiltedCard from "../fx/TiltedCard.jsx";
 
 // A curated row of large portfolio tiles — the same "verified studios" style
 // showcase pattern used by talent-marketplace discovery pages, built from
@@ -20,7 +23,7 @@ export default function FeaturedWork() {
   return (
     <section className="relative py-16">
       <div className="mx-auto max-w-6xl px-6">
-        <div className="flex flex-wrap items-end justify-between gap-3">
+        <Reveal className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-soft">
               — Featured work
@@ -35,9 +38,9 @@ export default function FeaturedWork() {
           >
             View more →
           </button>
-        </div>
+        </Reveal>
 
-        <div className="mt-6 flex flex-wrap gap-2">
+        <Reveal delay={0.1} className="mt-6 flex flex-wrap gap-2">
           {TABS.map((t) => (
             <button
               key={t}
@@ -51,26 +54,35 @@ export default function FeaturedWork() {
               {t}
             </button>
           ))}
-        </div>
+        </Reveal>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {shown.map((f) => (
-            <button
-              key={f.name}
-              onClick={() => nav("profile", f)}
-              className="group relative aspect-[4/3] overflow-hidden rounded-2xl text-left"
-            >
-              <div className={`absolute inset-0 bg-gradient-to-br ${f.portfolio[0].grad} transition-transform duration-500 group-hover:scale-105`} />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/5 to-transparent" />
-              <div className="absolute inset-x-0 bottom-0 p-4">
-                <p className="flex items-center gap-1.5 text-[13.5px] font-semibold text-white">
-                  {f.name}
-                  {f.verified && <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-neon" />}
-                </p>
-                <p className="truncate text-[11.5px] text-white/70">{f.role}</p>
-              </div>
-            </button>
-          ))}
+          <AnimatePresence mode="popLayout">
+            {shown.map((f, i) => (
+              <motion.button
+                key={`${tab}-${f.name}`}
+                layout
+                initial={{ opacity: 0, y: 16, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.97 }}
+                transition={{ duration: 0.35, delay: i * 0.05, ease: [0.22, 1, 0.36, 1] }}
+                onClick={() => nav("profile", f)}
+                className="text-left"
+              >
+                <TiltedCard maxTilt={5} className="group relative aspect-[4/3] overflow-hidden rounded-2xl">
+                  <div className={`absolute inset-0 bg-gradient-to-br ${f.portfolio[0].grad} transition-transform duration-500 group-hover:scale-105`} />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/5 to-transparent" />
+                  <div className="absolute inset-x-0 bottom-0 p-4">
+                    <p className="flex items-center gap-1.5 text-[13.5px] font-semibold text-white">
+                      {f.name}
+                      {f.verified && <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-neon" />}
+                    </p>
+                    <p className="truncate text-[11.5px] text-white/70">{f.role}</p>
+                  </div>
+                </TiltedCard>
+              </motion.button>
+            ))}
+          </AnimatePresence>
         </div>
       </div>
     </section>
