@@ -28,4 +28,9 @@ COPY --from=build /app/prisma.config.ts ./
 COPY package.json ./
 
 EXPOSE 4100
-CMD ["node", "src/index.js"]
+# Hosting-ууд (Render чөлөөт төлбөргүй төлөвлөгөө г.м) Shell/One-off Jobs
+# өгдөггүй үед migration ажиллуулах өөр арга байхгүй тул сервер асах бүрдээ
+# өөрөө хийнэ. `migrate deploy` зөвхөн pending migration-ыг хэрэглэдэг тул
+# (schema аль хэдийн сингк бол юу ч хийхгүй) энэ бүрэн аюулгүй, давтагдах
+# боломжтой. Seed нь мөн upsert-суурьтай тул давхар ажиллахад асуудалгүй.
+CMD ["sh", "-c", "npx prisma migrate deploy && npm run seed && node src/index.js"]

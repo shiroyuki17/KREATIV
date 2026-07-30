@@ -53,14 +53,15 @@ git push -u origin main
    - `PORT` — hosting өөрөө тохируулдаг бол хэрэггүй, эсвэл `4100`
    - `FRONTEND_URL` — deploy хийсэн frontend-ийн бодит домэйн (жишээ: `https://kreativ.vercel.app`)
    - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REDIRECT_URI` — Google Cloud Console-оос (README-ийн "Google OAuth тохируулах" хэсэг), redirect URI-г **production домэйнд** тааруулж шинэчилнэ
-4. Deploy хийсний дараа нэг удаа:
-   ```bash
-   npx prisma migrate deploy
-   ```
-   (`migrate dev`-ээс ялгаатай нь энэ нь non-interactive орчинд зориулагдсан —
-   зөвхөн pending migration-уудыг хэрэглэнэ, prompt асуухгүй)
-5. `npm run seed` — зөвхөн demo/staging орчинд, production дээр бодит
-   хэрэглэгчийн дата дээр ХЭРЭГЛЭХГҮЙ.
+4. **Migration/seed гараар хийх шаардлагагүй** — Dockerfile-ийн CMD нь сервер
+   асах бүрдээ эхлээд `npx prisma migrate deploy`, дараа нь `npm run seed`
+   ажиллуулдаг (Render-ийн Free төлөвлөгөө Shell/One-off Jobs өгдөггүй тул
+   гараар ажиллуулах боломжгүй байсныг шийдсэн хувилбар). Хоёул idempotent
+   (`migrate deploy` зөвхөн pending migration-уудыг хэрэглэнэ, seed нь
+   upsert-суурьтай) тул сервер restart болгонд дахин ажиллахад аюулгүй.
+   Shell-тэй plan/hosting дээр ажиллаж байгаа бол `npm run seed`-ийг
+   Dockerfile-ээс хасаад (эсвэл орхиод) demo дата биш бодит production дата
+   ашиглахыг хүсвэл өөрөө удирдаж болно.
 
 ## 4. Frontend hosting (Vercel / Netlify — static Vite build)
 
