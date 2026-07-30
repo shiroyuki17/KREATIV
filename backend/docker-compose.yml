@@ -1,0 +1,50 @@
+# Локал бүтэн стек: postgres + backend. Frontend үүнд ороогүй (тусад нь
+# `npm run dev` эсвэл Vercel/Netlify дээр static-аар ажиллана).
+#
+# Ашиглах:
+#   docker compose up --build -d
+#   docker compose exec backend npx prisma migrate deploy
+#   docker compose exec backend npm run seed
+#
+# JWT_ACCESS_SECRET / JWT_REFRESH_SECRET-ийг ажиллуулахаасаа өмнө export хийх
+# эсвэл энэ файлтай ижил хавтаст .env үүсгэж бичнэ (docker compose үүнийг
+# автоматаар уншина).
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: kreativ_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - kreativ_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "4100:4100"
+    environment:
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/kreativ_db
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET шаардлагатай}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET шаардлагатай}
+      PORT: "4100"
+      NODE_ENV: production
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5174}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  kreativ_pg_data:

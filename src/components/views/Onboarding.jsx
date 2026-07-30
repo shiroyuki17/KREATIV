@@ -1,0 +1,213 @@
+import { useState } from "react";
+import { ArrowLeft, ArrowRight, Check, Sparkles } from "lucide-react";
+import Magnet from "../fx/Magnet.jsx";
+import { FL_SKILLS, CL_CATEGORIES, CL_BUDGETS } from "../../data/appMock.js";
+import { useNav } from "../../nav.jsx";
+
+function Field({ label, ...props }) {
+  return (
+    <label className="block">
+      <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
+        {label}
+      </span>
+      <input
+        {...props}
+        className="mt-2 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[14px] outline-none transition-colors placeholder:text-white/25 focus:border-brand/50"
+      />
+    </label>
+  );
+}
+
+function Chip({ active, children, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className={
+        active
+          ? "rounded-full border border-brand/60 bg-brand/15 px-4 py-2 text-[12.5px] font-semibold text-brand-soft shadow-[0_0_16px_rgba(0,211,149,0.25)]"
+          : "rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12.5px] font-medium text-white/55 transition-colors hover:border-white/25 hover:text-white"
+      }
+    >
+      {children}
+    </button>
+  );
+}
+
+function Steps({ step }) {
+  return (
+    <div className="flex items-center gap-2">
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="flex flex-1 items-center gap-2 last:flex-none">
+          <span
+            className={
+              i < step
+                ? "flex h-8 w-8 items-center justify-center rounded-full bg-brand text-[12px] font-bold shadow-[0_0_16px_rgba(0,211,149,0.6)]"
+                : i === step
+                  ? "flex h-8 w-8 items-center justify-center rounded-full border-2 border-neon bg-neon/10 text-[12px] font-bold text-neon shadow-[0_0_18px_rgba(6,182,212,0.5)]"
+                  : "flex h-8 w-8 items-center justify-center rounded-full border border-white/15 text-[12px] font-semibold text-white/35"
+            }
+          >
+            {i < step ? <Check className="h-4 w-4" /> : i + 1}
+          </span>
+          {i < 2 && (
+            <div className="h-0.5 flex-1 overflow-hidden rounded-full bg-white/8">
+              <div
+                className="h-full bg-gradient-to-r from-brand to-neon transition-all duration-500"
+                style={{ width: i < step ? "100%" : "0%" }}
+              />
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function Onboarding() {
+  const { params, nav } = useNav();
+  const role = params?.role || "freelancer";
+  const isFl = role === "freelancer";
+
+  const [step, setStep] = useState(0);
+  const [picked, setPicked] = useState([]);
+  const [avail, setAvail] = useState(isFl ? "Full-time" : "$1k – $5k");
+
+  const toggle = (s) =>
+    setPicked((arr) => (arr.includes(s) ? arr.filter((x) => x !== s) : [...arr, s]));
+
+  const chips = isFl ? FL_SKILLS : CL_CATEGORIES;
+  const availOptions = isFl ? ["Full-time", "Part-time", "Weekends"] : CL_BUDGETS;
+  const doneTarget = isFl ? "freelancer-dashboard" : "client-dashboard";
+
+  return (
+    <div className="relative flex min-h-screen items-center justify-center px-6 py-28">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-1/2 top-1/4 h-[420px] w-[640px] -translate-x-1/2 rounded-full bg-brand/15 blur-[140px]"
+      />
+
+      <div className="relative w-full max-w-xl">
+        <p className="mb-2 text-center text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-soft">
+          {isFl ? "Freelancer setup" : "Client setup"} · Step {step + 1} of 3
+        </p>
+        <div className="mx-auto mb-8 max-w-xs">
+          <Steps step={step} />
+        </div>
+
+        <div className="glass rounded-3xl p-8">
+          {step === 0 && (
+            <div className="space-y-5">
+              <h1 className="font-display text-2xl font-bold tracking-tight">
+                {isFl ? "Tell us about you" : "Tell us about your company"}
+              </h1>
+              {isFl ? (
+                <>
+                  <Field label="Full name" placeholder="Daniel Kim" />
+                  <Field label="Professional title" placeholder="Full-Stack Developer" />
+                  <Field label="Hourly rate" placeholder="$95/hr" />
+                </>
+              ) : (
+                <>
+                  <Field label="Company name" placeholder="Nova Studio" />
+                  <Field label="Your role" placeholder="Head of Product" />
+                  <Field label="Team size" placeholder="11 – 50" />
+                </>
+              )}
+            </div>
+          )}
+
+          {step === 1 && (
+            <div>
+              <h1 className="font-display text-2xl font-bold tracking-tight">
+                {isFl ? "What are your superpowers?" : "What do you need built?"}
+              </h1>
+              <p className="mt-1.5 text-[13px] text-white/45">
+                {isFl
+                  ? "Pick your core skills — our AI matches briefs to them."
+                  : "Pick categories — our AI shortlists matching talent."}
+              </p>
+              <div className="mt-6 flex flex-wrap gap-2.5">
+                {chips.map((s) => (
+                  <Chip key={s} active={picked.includes(s)} onClick={() => toggle(s)}>
+                    {s}
+                  </Chip>
+                ))}
+              </div>
+              <p className="mt-7 text-[11px] font-semibold uppercase tracking-widest text-white/40">
+                {isFl ? "Availability" : "Typical budget"}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2.5">
+                {availOptions.map((o) => (
+                  <Chip key={o} active={avail === o} onClick={() => setAvail(o)}>
+                    {o}
+                  </Chip>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {step === 2 && (
+            <div className="text-center">
+              <span className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border-2 border-mint bg-mint/10 text-mint shadow-[0_0_44px_rgba(16,185,129,0.45)]">
+                <Check className="h-9 w-9" />
+              </span>
+              <h1 className="mt-6 font-display text-2xl font-bold tracking-tight">
+                You're in.
+              </h1>
+              <p className="mx-auto mt-2 max-w-sm text-[13.5px] leading-relaxed text-white/50">
+                {isFl
+                  ? "Your profile is live. Our AI is already scanning open briefs that match your skills."
+                  : "Your workspace is ready. Post your first brief and get AI-matched within hours."}
+              </p>
+              {picked.length > 0 && (
+                <div className="mt-5 flex flex-wrap justify-center gap-2">
+                  {picked.slice(0, 6).map((s) => (
+                    <span
+                      key={s}
+                      className="rounded-full border border-brand/25 bg-brand/8 px-3 py-1.5 text-[11.5px] font-medium text-brand-soft"
+                    >
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <p className="mt-5 inline-flex items-center gap-2 rounded-full border border-neon/25 bg-neon/8 px-4 py-2 text-[12px] font-medium text-neon">
+                <Sparkles className="h-3.5 w-3.5" />
+                {isFl ? "3 briefs already match your profile" : "12,400 freelancers ready to help"}
+              </p>
+            </div>
+          )}
+
+          <div className="mt-8 flex items-center justify-between border-t border-white/8 pt-6">
+            {step > 0 ? (
+              <button
+                onClick={() => setStep((s) => s - 1)}
+                className="inline-flex items-center gap-2 text-[13px] font-medium text-white/50 transition-colors hover:text-white"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back
+              </button>
+            ) : (
+              <button
+                onClick={() => nav("auth")}
+                className="inline-flex items-center gap-2 text-[13px] font-medium text-white/50 transition-colors hover:text-white"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Cancel
+              </button>
+            )}
+            <Magnet strength={0.15}>
+              <button
+                onClick={() => (step < 2 ? setStep((s) => s + 1) : nav(doneTarget))}
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand to-brand-soft px-6 py-3 text-[13.5px] font-semibold glow-brand transition-shadow hover:shadow-[0_0_44px_rgba(0,211,149,0.6)]"
+              >
+                {step < 2 ? "Continue" : "Go to dashboard"}
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </Magnet>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,236 @@
+import { useEffect, useRef, useState } from "react";
+import { User, Bell, Lock, Check, AlertCircle, Loader2 } from "lucide-react";
+import Magnet from "../fx/Magnet.jsx";
+import { fetchMe, uploadAvatar, avatarSrc, getAccessToken } from "../../lib/authApi.js";
+
+const TABS = [
+  { id: "profile", label: "Profile", Icon: User },
+  { id: "notifications", label: "Notifications", Icon: Bell },
+  { id: "security", label: "Security", Icon: Lock },
+];
+
+function Field({ label, ...props }) {
+  return (
+    <label className="block">
+      <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
+        {label}
+      </span>
+      <input
+        {...props}
+        className="mt-2 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[14px] outline-none transition-colors placeholder:text-white/25 focus:border-brand/50"
+      />
+    </label>
+  );
+}
+
+function Toggle({ label, desc, defaultOn = true }) {
+  const [on, setOn] = useState(defaultOn);
+  return (
+    <button
+      onClick={() => setOn(!on)}
+      className="flex w-full items-center justify-between gap-4 rounded-xl border border-white/8 bg-white/[0.03] p-4 text-left transition-colors hover:border-white/15"
+      role="switch"
+      aria-checked={on}
+    >
+      <span>
+        <span className="block text-[13.5px] font-semibold">{label}</span>
+        <span className="mt-0.5 block text-[11.5px] text-white/40">{desc}</span>
+      </span>
+      <span
+        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+          on ? "bg-brand glow-brand" : "bg-white/10"
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${
+            on ? "left-[22px]" : "left-0.5"
+          }`}
+        />
+      </span>
+    </button>
+  );
+}
+
+export default function Settings() {
+  const [tab, setTab] = useState("profile");
+  const [saved, setSaved] = useState(false);
+  const [me, setMe] = useState(null);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const [avatarError, setAvatarError] = useState("");
+  const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!token) return;
+    fetchMe(token).then(setMe).catch(() => {});
+  }, []);
+
+  const save = () => {
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2200);
+  };
+
+  const pickAvatar = () => {
+    setAvatarError("");
+    fileInputRef.current?.click();
+  };
+
+  const onAvatarSelected = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file later
+    if (!file) return;
+
+    if (!["image/png", "image/jpeg"].includes(file.type)) {
+      setAvatarError("Зөвхөн PNG эсвэл JPG зураг сонгоно уу");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setAvatarError("Файлын хэмжээ 2MB-с ихгүй байх ёстой");
+      return;
+    }
+    const token = getAccessToken();
+    if (!token) {
+      setAvatarError("Зураг солихын тулд эхлээд нэвтэрнэ үү");
+      return;
+    }
+
+    setAvatarError("");
+    setAvatarBusy(true);
+    try {
+      setMe(await uploadAvatar(file, token));
+    } catch (err) {
+      setAvatarError(err.message);
+    } finally {
+      setAvatarBusy(false);
+    }
+  };
+
+  const avatarUrl = avatarSrc(me?.avatarUrl);
+  const initials = me?.name
+    ? me.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()
+    : "AT";
+
+  return (
+    <div className="mx-auto max-w-4xl px-6 pb-24 pt-8">
+      <h1 className="font-display text-3xl font-bold tracking-tight">Settings</h1>
+
+      <div className="mt-7 flex flex-wrap gap-2">
+        {TABS.map(({ id, label, Icon }) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            className={
+              tab === id
+                ? "inline-flex items-center gap-2 rounded-xl bg-brand px-4.5 py-2.5 text-[13px] font-semibold glow-brand"
+                : "glass inline-flex items-center gap-2 rounded-xl px-4.5 py-2.5 text-[13px] font-medium text-white/55 transition-colors hover:text-white"
+            }
+          >
+            <Icon className="h-4 w-4" />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="glass mt-6 rounded-2xl p-7">
+        {tab === "profile" && (
+          <div className="space-y-5">
+            <div className="flex items-center gap-5">
+              <span className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-brand to-neon font-display text-lg font-bold">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  initials
+                )}
+                {avatarBusy && (
+                  <span className="absolute inset-0 flex items-center justify-center bg-black/50">
+                    <Loader2 className="h-5 w-5 animate-spin text-white" />
+                  </span>
+                )}
+              </span>
+              <div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg"
+                  onChange={onAvatarSelected}
+                  className="hidden"
+                />
+                <button
+                  onClick={pickAvatar}
+                  disabled={avatarBusy}
+                  className="glass rounded-lg px-4 py-2 text-[12px] font-semibold text-white/80 transition-colors hover:border-white/25 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {avatarBusy ? "Uploading…" : "Change avatar"}
+                </button>
+                <p className="mt-1.5 text-[11px] text-white/35">PNG or JPG, max 2MB</p>
+                {avatarError && (
+                  <p className="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-red-400">
+                    <AlertCircle className="h-3.5 w-3.5" /> {avatarError}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Field label="Full name" defaultValue="Ava Torres" />
+              <Field label="Professional title" defaultValue="Senior Product Designer" />
+              <Field label="Hourly rate" defaultValue="$85/hr" />
+              <Field label="Location" defaultValue="Barcelona, Spain" />
+            </div>
+            <label className="block">
+              <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
+                Bio
+              </span>
+              <textarea
+                rows={4}
+                defaultValue="Design systems specialist crafting coherent, scalable product languages for fintech and AI teams."
+                className="mt-2 w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[14px] outline-none transition-colors focus:border-brand/50"
+              />
+            </label>
+          </div>
+        )}
+
+        {tab === "notifications" && (
+          <div className="space-y-3">
+            <Toggle label="New project invites" desc="Get notified the moment a client invites you" />
+            <Toggle label="Milestone updates" desc="Escrow funding, approvals, and releases" />
+            <Toggle label="Messages" desc="Real-time alerts for new messages" />
+            <Toggle label="AI match digest" desc="A daily digest of briefs matched to your skills" defaultOn={false} />
+          </div>
+        )}
+
+        {tab === "security" && (
+          <div className="space-y-5">
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Field label="Current password" type="password" placeholder="••••••••" />
+              <Field label="New password" type="password" placeholder="Min. 12 characters" />
+            </div>
+            <Toggle label="Two-factor authentication" desc="Require a code from your authenticator app" />
+            <div className="rounded-xl border border-white/8 bg-white/[0.03] p-4">
+              <p className="text-[13px] font-semibold">Active sessions</p>
+              <p className="mt-1.5 text-[12px] text-white/45">
+                Windows · Chrome · Ulaanbaatar — <span className="text-mint">this device</span>
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-7 flex items-center gap-4 border-t border-white/8 pt-6">
+          <Magnet strength={0.15}>
+            <button
+              onClick={save}
+              className="rounded-xl bg-gradient-to-r from-brand to-brand-soft px-6 py-3 text-[13.5px] font-semibold glow-brand transition-shadow hover:shadow-[0_0_40px_rgba(0,211,149,0.6)]"
+            >
+              Save changes
+            </button>
+          </Magnet>
+          {saved && (
+            <span className="inline-flex animate-feed-in items-center gap-1.5 text-[13px] font-semibold text-mint">
+              <Check className="h-4 w-4" />
+              Saved
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

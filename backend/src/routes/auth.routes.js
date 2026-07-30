@@ -1,0 +1,202 @@
+import { Router } from 'express';
+import prisma from '../lib/prisma.js';
+import { config } from '../config/env.js';
+import { hashPassword, verifyPassword } from '../utils/password.js';
+import {
+  signAccessToken,
+  signRefreshToken,
+  verifyRefreshToken,
+  hashToken,
+} from '../utils/jwt.js';
+import { requireAuth } from '../middleware/auth.js';
+import { authLimiter } from '../middleware/rateLimit.js';
+import {
+  registerSchema,
+  loginSchema,
+  refreshSchema,
+} from '../validators/auth.schema.js';
+
+const router = Router();
+
+// Body-г zod-оор шалгах туслах
+function validate(schema, body) {
+  const result = schema.safeParse(body);
+  if (!result.success) {
+    return { error: result.error.issues.map((i) => i.message) };
+  }
+  return { data: result.data };
+}
+
+// Refresh token үүсгээд DB-д hash хадгалах
+async function issueRefreshToken(userId) {
+  const token = signRefreshToken({ sub: userId });
+  const expiresAt = new Date(
+    Date.now() + config.REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000
+  );
+  await prisma.refreshToken.create({
+    data: { tokenHash: hashToken(token), userId, expiresAt },
+  });
+  return token;
+}
+
+function publicUser(user) {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    phone: user.phone,
+    avatarUrl: user.avatarUrl,
+    role: user.role,
+  };
+}
+
+// ── POST /register ──
+router.post('/register', authLimiter, async (req, res, next) => {
+  try {
+    const { data, error } = validate(registerSchema, req.body);
+    if (error) return res.status(400).json({ error });
+
+    const emailTaken = await prisma.user.findUnique({ where: { email: data.email } });
+    if (emailTaken) {
+      return res.status(409).json({ error: 'Имэйл аль хэдийн бүртгэгдсэн' });
+    }
+    if (data.phone) {
+      const phoneTaken = await prisma.user.findUnique({ where: { phone: data.phone } });
+      if (phoneTaken) {
+        return res.status(409).json({ error: 'Утасны дугаар аль хэдийн бүртгэгдсэн' });
+      }
+    }
+
+    const user = await prisma.user.create({
+      data: {
+        email: data.email,
+        passwordHash: await hashPassword(data.password),
+        name: data.name,
+        phone: data.phone,
+      },
+    });
+
+    const accessToken = signAccessToken({ sub: user.id, role: user.role });
+    const refreshToken = await issueRefreshToken(user.id);
+
+    res.status(201).json({ user: publicUser(user), accessToken, refreshToken });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /login ──
+router.post('/login', authLimiter, async (req, res, next) => {
+  try {
+    const { data, error } = validate(loginSchema, req.body);
+    if (error) return res.status(400).json({ error });
+
+    const user = await prisma.user.findUnique({ where: { email: data.email } });
+    // Хэрэглэгч байхгүй эсвэл зөвхөн Google-ээр бүртгүүлсэн (нууц үггүй) ч
+    // ижил алдаа буцаана (account enumeration-аас сэргийлнэ)
+    if (!user || !user.isActive || !user.passwordHash) {
+      return res.status(401).json({ error: 'Имэйл эсвэл нууц үг буруу' });
+    }
+
+    const ok = await verifyPassword(data.password, user.passwordHash);
+    if (!ok) {
+      return res.status(401).json({ error: 'Имэйл эсвэл нууц үг буруу' });
+    }
+
+    const accessToken = signAccessToken({ sub: user.id, role: user.role });
+    const refreshToken = await issueRefreshToken(user.id);
+
+    res.json({ user: publicUser(user), accessToken, refreshToken });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /refresh ── (шинэ access token авах)
+router.post('/refresh', authLimiter, async (req, res, next) => {
+  try {
+    const { data, error } = validate(refreshSchema, req.body);
+    if (error) return res.status(400).json({ error });
+
+    let payload;
+    try {
+      payload = verifyRefreshToken(data.refreshToken);
+    } catch {
+      return res.status(401).json({ error: 'Refresh token хүчингүй' });
+    }
+
+    const tokenHash = hashToken(data.refreshToken);
+    const stored = await prisma.refreshToken.findUnique({ where: { tokenHash } });
+    if (!stored || stored.expiresAt < new Date()) {
+      return res.status(401).json({ error: 'Refresh token хүчингүй эсвэл дууссан' });
+    }
+    if (stored.revoked) {
+      // Аль хэдийн rotate хийгдсэн (нэг удаа хэрэглэгдсэн) token дахин ирвэл
+      // хулгайлагдсан байх магадлалтай — тухайн хэрэглэгчийн БҮХ session-ийг
+      // хүчингүй болгож, дахин нэвтрэхийг шаардана.
+      await prisma.refreshToken.updateMany({
+        where: { userId: stored.userId, revoked: false },
+        data: { revoked: true },
+      });
+      return res.status(401).json({ error: 'Session-д асуудал илэрсэн тул бүх төхөөрөмжөөс гарлаа. Дахин нэвтэрнэ үү.' });
+    }
+
+    // Token rotation: хуучныг хүчингүй болгож, шинийг өгнө
+    await prisma.refreshToken.update({
+      where: { id: stored.id },
+      data: { revoked: true },
+    });
+
+    const user = await prisma.user.findUnique({ where: { id: payload.sub } });
+    if (!user || !user.isActive) {
+      return res.status(401).json({ error: 'Хэрэглэгч идэвхгүй' });
+    }
+
+    const accessToken = signAccessToken({ sub: user.id, role: user.role });
+    const refreshToken = await issueRefreshToken(user.id);
+
+    res.json({ accessToken, refreshToken });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /logout ── (refresh token-ийг хүчингүй болгох)
+router.post('/logout', async (req, res, next) => {
+  try {
+    const { data, error } = validate(refreshSchema, req.body);
+    if (error) return res.status(400).json({ error });
+
+    await prisma.refreshToken.updateMany({
+      where: { tokenHash: hashToken(data.refreshToken) },
+      data: { revoked: true },
+    });
+    res.json({ message: 'Гарлаа' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /me ── (хамгаалагдсан route)
+router.get('/me', requireAuth, async (req, res, next) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        avatarUrl: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+    if (!user) return res.status(404).json({ error: 'Олдсонгүй' });
+    res.json(user);
+  } catch (err) {
+    next(err);
+  }
+});
+
+export default router;

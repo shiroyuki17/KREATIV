@@ -1,0 +1,25 @@
+node_modules/
+dist/
+dist-ssr/
+*.local
+*.zip
+.claude/
+
+# env files
+.env
+.env.*
+!.env.example
+
+# backend runtime data (also covered by backend/.gitignore, kept here too)
+backend/uploads/
+backend/src/generated/
+
+# logs
+*.log
+npm-debug.log*
+
+# editor / OS
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json

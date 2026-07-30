@@ -1,0 +1,140 @@
+// Prisma 7.8 — Rust-free `prisma-client` generator
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  // Анхаар: url ЭНД БАЙХГҮЙ. Prisma 7-д prisma.config.ts руу шилжсэн.
+}
+
+// ── Auth ──
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  // Google-ээр нэвтэрсэн хэрэглэгч нууц үг огт тохируулаагүй байж болно
+  passwordHash String?
+  name         String?
+  phone        String?  @unique
+  avatarUrl    String?
+  googleId     String?  @unique
+  role         Role     @default(USER)
+  isActive     Boolean  @default(true)
+
+  refreshTokens     RefreshToken[]
+  freelancerProfile FreelancerProfile?
+  clientProfile     ClientProfile?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  // Token-ийн hash-ийг хадгална (token-ийг шууд DB-д хадгалахгүй)
+  tokenHash String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+// ── Profiles ──
+// Нэг User account зэрэг Freelancer БА Client профайлтай байж болно
+// (хоёулаа заавал биш, optional 1:1 хамаарал).
+
+model FreelancerProfile {
+  id            String   @id @default(uuid())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String   @unique
+  headline      String?
+  bio           String?
+  skills        String[] @default([])
+  priceMin      Int?
+  priceMax      Int?
+  ratingAvg     Float    @default(0)
+  jobsCompleted Int      @default(0)
+
+  portfolio PortfolioItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ClientProfile {
+  id            String   @id @default(uuid())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String   @unique
+  orgName       String?
+  verifiedPayer Boolean  @default(false)
+  ratingAvg     Float    @default(0)
+  jobsPosted    Int      @default(0)
+
+  jobs Job[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PortfolioItem {
+  id           String            @id @default(uuid())
+  freelancer   FreelancerProfile @relation(fields: [freelancerId], references: [id], onDelete: Cascade)
+  freelancerId String
+  title        String
+  description  String?
+  images       String[]          @default([])
+  link         String?
+
+  createdAt DateTime @default(now())
+
+  @@index([freelancerId])
+}
+
+// ── Jobs ──
+// FR-2 (PRD): захиалагч ажлын зар нийтэлнэ. ClientProfile-той холбогдсон тул
+// зөвхөн client профайлтай хэрэглэгч л зар нийтэлж чадна (RBAC — Day 6).
+
+model Job {
+  id          String     @id @default(uuid())
+  client      ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId    String
+  title       String
+  description String
+  category    String
+  skills      String[]   @default([])
+  languages   String[]   @default([])
+  budgetType  BudgetType @default(FIXED)
+  budgetMin   Int?
+  budgetMax   Int?
+  status      JobStatus  @default(OPEN)
+  deadline    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([category])
+  @@index([clientId])
+}
+
+enum BudgetType {
+  FIXED
+  HOURLY
+}
+
+enum JobStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+  CANCELLED
+}

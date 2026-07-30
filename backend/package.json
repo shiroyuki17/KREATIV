@@ -1,0 +1,35 @@
+{
+  "name": "kreativ-backend",
+  "version": "1.0.0",
+  "description": "KREATIV marketplace backend — Express + Prisma (ESM, PostgreSQL, JWT)",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "seed": "node prisma/seed.js"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "7.9.1",
+    "@prisma/client": "7.9.1",
+    "bcryptjs": "^3.0.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.0.0",
+    "express": "^5.0.0",
+    "express-rate-limit": "^8.6.1",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.0",
+    "morgan": "^1.11.0",
+    "multer": "^2.2.0",
+    "pg": "^8.13.0",
+    "swagger-ui-express": "^5.0.1",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "prisma": "7.9.1"
+  }
+}
