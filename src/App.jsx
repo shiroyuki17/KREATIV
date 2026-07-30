@@ -63,21 +63,11 @@ const APP_PAGES = new Set([
   "tracker",
 ]);
 
-// Of those, these actually require a real login — "find-work"/"find-talent"/
-// "project"/"profile" stay publicly browsable (like Contra/Upwork's public
-// marketplace pages) even though they render inside the sidebar shell.
-const PROTECTED_PAGES = new Set([
-  "freelancer-dashboard",
-  "client-dashboard",
-  "post-job",
-  "my-projects",
-  "messages",
-  "payments",
-  "notifications",
-  "settings",
-  "admin",
-  "tracker",
-]);
+// Every sidebar-shell page requires a real login — including Find Work/
+// Find Talent/Job/Profile, which used to stay publicly browsable
+// (Contra/Upwork-style). Reversed on explicit request: browsing talent/jobs
+// without an account isn't wanted here.
+const PROTECTED_PAGES = APP_PAGES;
 
 function HomePage() {
   return (
