@@ -26,3 +26,13 @@ export async function createJob(data, accessToken) {
   if (!res.ok) throw new Error(errorMessage(json));
   return json;
 }
+
+// { jobs } — every job the logged-in client has posted, any status
+export async function fetchMyJobs(accessToken) {
+  const res = await fetch(`${API_BASE}/jobs/mine`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(errorMessage(json));
+  return json;
+}

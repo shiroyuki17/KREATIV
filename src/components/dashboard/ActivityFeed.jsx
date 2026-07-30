@@ -3,14 +3,19 @@ import {
   Upload,
   MessageSquare,
   CircleDollarSign,
+  Briefcase,
+  Bell,
 } from "lucide-react";
 
 const META = {
   commit: { Icon: GitCommitHorizontal, cls: "text-brand-soft border-brand/30 bg-brand/10" },
   upload: { Icon: Upload, cls: "text-neon border-neon/30 bg-neon/10" },
   comment: { Icon: MessageSquare, cls: "text-white/60 border-white/15 bg-white/[0.05]" },
+  message: { Icon: MessageSquare, cls: "text-neon border-neon/30 bg-neon/10" },
   payment: { Icon: CircleDollarSign, cls: "text-mint border-mint/30 bg-mint/10" },
+  job: { Icon: Briefcase, cls: "text-brand-soft border-brand/30 bg-brand/10" },
 };
+const FALLBACK_META = { Icon: Bell, cls: "text-white/60 border-white/15 bg-white/[0.05]" };
 
 /** Toast-style chronological feed with entrance animations. */
 export default function ActivityFeed({ feed }) {
@@ -27,8 +32,11 @@ export default function ActivityFeed({ feed }) {
       </div>
 
       <div className="mt-4 space-y-2.5 overflow-hidden [mask-image:linear-gradient(to_bottom,black_82%,transparent)]">
+        {feed.length === 0 && (
+          <p className="py-6 text-center text-[12px] text-white/35">No recent activity yet.</p>
+        )}
         {feed.map((e, i) => {
-          const { Icon, cls } = META[e.type];
+          const { Icon, cls } = META[e.type] || FALLBACK_META;
           return (
             <div
               key={`${e.text}-${i}`}

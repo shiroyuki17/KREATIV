@@ -30,3 +30,6 @@ export const createDeposit = (amount, accessToken) =>
 
 export const confirmDeposit = (id, accessToken) =>
   authedJson(`/payments/deposit/${id}/confirm`, { method: "POST", accessToken });
+
+export const withdraw = (amount, accessToken) =>
+  authedJson("/payments/withdraw", { method: "POST", body: { amount }, accessToken });

@@ -96,4 +96,40 @@ router.post('/deposit/:id/confirm', requireAuth, async (req, res, next) => {
   }
 });
 
+// ── POST /payments/withdraw ── (шууд COMPLETED болно — жинхэнэ банкны
+// шилжүүлэгт QPay/банкны API-ийн PENDING→confirm урсгал ижил хэрэгтэй болно)
+router.post('/withdraw', requireAuth, async (req, res, next) => {
+  try {
+    const amount = Number(req.body?.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return res.status(400).json({ error: 'Дүн буруу байна' });
+    }
+    const balance = await computeBalance(req.user.id);
+    if (amount > balance) {
+      return res.status(400).json({ error: 'Үлдэгдэл хүрэлцэхгүй байна' });
+    }
+
+    const tx = await prisma.transaction.create({
+      data: {
+        userId: req.user.id,
+        kind: 'WITHDRAWAL',
+        status: 'COMPLETED',
+        amount: Math.round(amount),
+        provider: 'qpay_demo',
+        completedAt: new Date(),
+      },
+    });
+
+    res.status(201).json({ transaction: tx, balance: await computeBalance(req.user.id) });
+    createNotification({
+      userId: req.user.id,
+      type: 'payment',
+      text: `$${tx.amount.toLocaleString('en-US')} гаргалт амжилттай хийгдлээ`,
+      link: 'payments',
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;
