@@ -1,7 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { User, Bell, Lock, Check, AlertCircle, Loader2 } from "lucide-react";
 import Magnet from "../fx/Magnet.jsx";
-import { fetchMe, uploadAvatar, avatarSrc, getAccessToken } from "../../lib/authApi.js";
+import {
+  fetchMe,
+  uploadAvatar,
+  avatarSrc,
+  getAccessToken,
+  fetchFreelancerProfile,
+  fetchClientProfile,
+  saveFreelancerProfile,
+  saveClientProfile,
+} from "../../lib/authApi.js";
 
 const TABS = [
   { id: "profile", label: "Profile", Icon: User },
@@ -9,15 +18,18 @@ const TABS = [
   { id: "security", label: "Security", Icon: Lock },
 ];
 
-function Field({ label, ...props }) {
+function Field({ label, disabled, ...props }) {
   return (
     <label className="block">
       <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
         {label}
       </span>
       <input
+        disabled={disabled}
         {...props}
-        className="mt-2 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[14px] outline-none transition-colors placeholder:text-white/25 focus:border-brand/50"
+        className={`mt-2 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[14px] outline-none transition-colors placeholder:text-white/25 focus:border-brand/50 ${
+          disabled ? "cursor-not-allowed text-white/50" : ""
+        }`}
       />
     </label>
   );
@@ -54,20 +66,71 @@ function Toggle({ label, desc, defaultOn = true }) {
 export default function Settings() {
   const [tab, setTab] = useState("profile");
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [me, setMe] = useState(null);
+  const [isFreelancer, setIsFreelancer] = useState(true); // which profile type this account has
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [avatarError, setAvatarError] = useState("");
   const fileInputRef = useRef(null);
 
+  // Editable fields — seeded from the real fetched profile once it loads
+  // (not hardcoded to a fake person), and this is what "Save changes"
+  // actually persists.
+  const [headline, setHeadline] = useState("");
+  const [rate, setRate] = useState("");
+  const [bio, setBio] = useState("");
+  const [orgName, setOrgName] = useState("");
+
   useEffect(() => {
     const token = getAccessToken();
     if (!token) return;
-    fetchMe(token).then(setMe).catch(() => {});
+    Promise.all([
+      fetchMe(token),
+      fetchFreelancerProfile(token),
+      fetchClientProfile(token),
+    ]).then(([user, freelancer, client]) => {
+      setMe(user);
+      // A user could in principle have both profiles — default to editing
+      // whichever one exists; freelancer wins if somehow both do.
+      setIsFreelancer(!!freelancer || !client);
+      if (freelancer) {
+        setHeadline(freelancer.headline || "");
+        setBio(freelancer.bio || "");
+        setRate(
+          freelancer.priceMin != null
+            ? freelancer.priceMax && freelancer.priceMax !== freelancer.priceMin
+              ? `${freelancer.priceMin}-${freelancer.priceMax}`
+              : `${freelancer.priceMin}`
+            : ""
+        );
+      }
+      if (client) setOrgName(client.orgName || "");
+    });
   }, []);
 
-  const save = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2200);
+  const save = async () => {
+    const token = getAccessToken();
+    if (!token) return;
+    setSaving(true);
+    setSaveError("");
+    try {
+      if (isFreelancer) {
+        const nums = rate.match(/\d+/g)?.map(Number) || [];
+        await saveFreelancerProfile(
+          { headline, bio, priceMin: nums[0], priceMax: nums[1] ?? nums[0] },
+          token
+        );
+      } else {
+        await saveClientProfile({ orgName }, token);
+      }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2200);
+    } catch (err) {
+      setSaveError(err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const pickAvatar = () => {
@@ -108,7 +171,7 @@ export default function Settings() {
   const avatarUrl = avatarSrc(me?.avatarUrl);
   const initials = me?.name
     ? me.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()
-    : "AT";
+    : "?";
 
   return (
     <div className="mx-auto max-w-4xl px-6 pb-24 pt-8">
@@ -171,21 +234,55 @@ export default function Settings() {
               </div>
             </div>
             <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="Full name" defaultValue="Ava Torres" />
-              <Field label="Professional title" defaultValue="Senior Product Designer" />
-              <Field label="Hourly rate" defaultValue="$85/hr" />
-              <Field label="Location" defaultValue="Barcelona, Spain" />
-            </div>
-            <label className="block">
-              <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
-                Bio
-              </span>
-              <textarea
-                rows={4}
-                defaultValue="Design systems specialist crafting coherent, scalable product languages for fintech and AI teams."
-                className="mt-2 w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[14px] outline-none transition-colors focus:border-brand/50"
+              <Field
+                label="Full name"
+                value={me?.name || ""}
+                disabled
+                title="Contact support to change your name"
               />
-            </label>
+              <Field
+                label="Email"
+                value={me?.email || ""}
+                disabled
+              />
+              {isFreelancer ? (
+                <>
+                  <Field
+                    label="Professional title"
+                    placeholder="e.g. Senior Product Designer"
+                    value={headline}
+                    onChange={(e) => setHeadline(e.target.value)}
+                  />
+                  <Field
+                    label="Hourly rate (USD)"
+                    placeholder="e.g. 85 or 70-90"
+                    value={rate}
+                    onChange={(e) => setRate(e.target.value)}
+                  />
+                </>
+              ) : (
+                <Field
+                  label="Organization name"
+                  placeholder="e.g. Nova Studio"
+                  value={orgName}
+                  onChange={(e) => setOrgName(e.target.value)}
+                />
+              )}
+            </div>
+            {isFreelancer && (
+              <label className="block">
+                <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
+                  Bio
+                </span>
+                <textarea
+                  rows={4}
+                  placeholder="Tell clients what you do best…"
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  className="mt-2 w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[14px] outline-none transition-colors placeholder:text-white/25 focus:border-brand/50"
+                />
+              </label>
+            )}
           </div>
         )}
 
@@ -214,19 +311,26 @@ export default function Settings() {
           </div>
         )}
 
-        <div className="mt-7 flex items-center gap-4 border-t border-white/8 pt-6">
+        <div className="mt-7 flex flex-wrap items-center gap-4 border-t border-white/8 pt-6">
           <Magnet strength={0.15}>
             <button
               onClick={save}
-              className="rounded-xl bg-gradient-to-r from-brand to-brand-soft px-6 py-3 text-[13.5px] font-semibold glow-brand transition-shadow hover:shadow-[0_0_40px_rgba(0,211,149,0.6)]"
+              disabled={saving}
+              className="rounded-xl bg-gradient-to-r from-brand to-brand-soft px-6 py-3 text-[13.5px] font-semibold glow-brand transition-shadow hover:shadow-[0_0_40px_rgba(0,211,149,0.6)] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Save changes
+              {saving ? "Saving…" : "Save changes"}
             </button>
           </Magnet>
           {saved && (
             <span className="inline-flex animate-feed-in items-center gap-1.5 text-[13px] font-semibold text-mint">
               <Check className="h-4 w-4" />
               Saved
+            </span>
+          )}
+          {saveError && (
+            <span className="inline-flex animate-feed-in items-center gap-1.5 text-[13px] font-semibold text-red-400">
+              <AlertCircle className="h-4 w-4" />
+              {saveError}
             </span>
           )}
         </div>

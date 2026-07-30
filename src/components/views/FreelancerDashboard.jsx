@@ -28,8 +28,9 @@ const MATCHES = [
 ];
 
 export default function FreelancerDashboard() {
-  const { nav } = useNav();
+  const { nav, user } = useNav();
   const max = Math.max(...EARNINGS.map((e) => e.v));
+  const firstName = user?.name?.split(" ")[0] || user?.email?.split("@")[0] || "there";
 
   return (
     <div className="mx-auto max-w-6xl px-6 pb-24 pt-8">
@@ -40,7 +41,7 @@ export default function FreelancerDashboard() {
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <h1 className="font-display text-3xl font-bold tracking-tight">
-              Welcome back, Daniel
+              Welcome back, {firstName}
             </h1>
             <span className="inline-flex items-center gap-1.5 rounded-full border border-neon/40 bg-neon/10 px-3.5 py-1.5 text-[10.5px] font-bold uppercase tracking-widest text-neon shadow-[0_0_18px_rgba(6,182,212,0.2)]">
               <Laptop className="h-3.5 w-3.5" />

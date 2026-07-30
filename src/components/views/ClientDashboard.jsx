@@ -13,7 +13,8 @@ const STAT_CARDS = [
 ];
 
 export default function ClientDashboard() {
-  const { nav } = useNav();
+  const { nav, user } = useNav();
+  const firstName = user?.name?.split(" ")[0] || user?.email?.split("@")[0] || "there";
 
   return (
     <div className="mx-auto max-w-6xl px-6 pb-24 pt-8">
@@ -24,7 +25,7 @@ export default function ClientDashboard() {
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <h1 className="font-display text-3xl font-bold tracking-tight">
-              Welcome back, Ava
+              Welcome back, {firstName}
             </h1>
             <span className="inline-flex items-center gap-1.5 rounded-full border border-brand/40 bg-brand/10 px-3.5 py-1.5 text-[10.5px] font-bold uppercase tracking-widest text-brand-soft shadow-[0_0_18px_rgba(0,211,149,0.2)]">
               <Briefcase className="h-3.5 w-3.5" />

@@ -102,6 +102,18 @@ export function saveClientProfile(data, accessToken) {
   return postJson("/profile/client", data, accessToken);
 }
 
+// Settings (Day 8/9): load the caller's own profile to edit — returns null
+// (not an error) when the user simply hasn't created that profile type yet.
+async function fetchOwnProfile(kind, accessToken) {
+  const res = await fetch(`${API_BASE}/profile/${kind}/me`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
+export const fetchFreelancerProfile = (accessToken) => fetchOwnProfile("freelancer", accessToken);
+export const fetchClientProfile = (accessToken) => fetchOwnProfile("client", accessToken);
+
 // { id, email, name, phone, avatarUrl, role }
 export async function uploadAvatar(file, accessToken) {
   const form = new FormData();
