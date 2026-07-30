@@ -1,6 +1,8 @@
+import { useEffect } from "react";
 import { MotionConfig } from "framer-motion";
 import { NavProvider, useNav } from "./nav.jsx";
 import { LiveProvider } from "./live.jsx";
+import { getAccessToken } from "./lib/authApi.js";
 import LiveToasts from "./components/LiveToasts.jsx";
 import Navbar from "./components/layout/Navbar.jsx";
 import Footer from "./components/layout/Footer.jsx";
@@ -61,6 +63,22 @@ const APP_PAGES = new Set([
   "tracker",
 ]);
 
+// Of those, these actually require a real login — "find-work"/"find-talent"/
+// "project"/"profile" stay publicly browsable (like Contra/Upwork's public
+// marketplace pages) even though they render inside the sidebar shell.
+const PROTECTED_PAGES = new Set([
+  "freelancer-dashboard",
+  "client-dashboard",
+  "post-job",
+  "my-projects",
+  "messages",
+  "payments",
+  "notifications",
+  "settings",
+  "admin",
+  "tracker",
+]);
+
 function HomePage() {
   return (
     <>
@@ -116,6 +134,16 @@ function View({ page }) {
   }
 }
 
+// Direct hash navigation (typing #/messages, a bookmark, …) bypasses any
+// sidebar link gating, so this is the one place that actually enforces it —
+// renders a blank frame (no protected content leaks) and bounces to /auth.
+function RequireAuth() {
+  const { nav } = useNav();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { nav("auth"); }, []);
+  return <div className="min-h-screen bg-ink" />;
+}
+
 function Shell() {
   const { page } = useNav();
 
@@ -137,6 +165,9 @@ function Shell() {
 
   // Logged-in app — sidebar shell
   if (APP_PAGES.has(page)) {
+    if (PROTECTED_PAGES.has(page) && !getAccessToken()) {
+      return <RequireAuth />;
+    }
     return (
       <AppShell>
         <div key={page} className="animate-page-in">

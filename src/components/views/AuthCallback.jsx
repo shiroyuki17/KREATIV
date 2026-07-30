@@ -4,7 +4,7 @@ import { useNav } from "../../nav.jsx";
 import { saveTokens, fetchMe } from "../../lib/authApi.js";
 
 export default function AuthCallback() {
-  const { nav, setRole } = useNav();
+  const { nav, setUser } = useNav();
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -26,12 +26,11 @@ export default function AuthCallback() {
     saveTokens(accessToken, refreshToken);
     fetchMe(accessToken)
       .then((user) => {
-        const isAdmin = user.role === "ADMIN";
-        setRole(isAdmin ? "admin" : "client");
-        nav(isAdmin ? "admin" : "client-dashboard");
+        setUser(user);
+        nav(user.role === "ADMIN" ? "admin" : "client-dashboard");
       })
       .catch(() => setError("Хэрэглэгчийн мэдээлэл татахад алдаа гарлаа."));
-  }, [nav, setRole]);
+  }, [nav, setUser]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-ink px-6 text-white">

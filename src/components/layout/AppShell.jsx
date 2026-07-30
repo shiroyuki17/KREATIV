@@ -13,6 +13,7 @@ import {
   Settings,
   Crown,
   LogOut,
+  LogIn,
   Menu,
   X,
   CircleDollarSign,
@@ -199,19 +200,56 @@ function NavList({ page, go, collapsed, role }) {
   );
 }
 
-function UserCard({ go, collapsed, role, setRole }) {
+function initialsOf(text) {
+  return (text || "?")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase();
+}
+
+function UserCard({ go, collapsed, user, setUser, authReady }) {
   const avatarRef = useRef(null);
   const [avatarHovered, setAvatarHovered] = useState(false);
   const logoutRef = useRef(null);
   const [logoutHovered, setLogoutHovered] = useState(false);
 
-  const isAdmin = role === "admin";
-  const initials = isAdmin ? "UL" : "AT";
-  const name = isAdmin ? "Ulaanaa" : "Ava Torres";
-  const subtitle = isAdmin ? "Superadmin" : "Client · Pro plan";
+  // Still resolving the initial /auth/me call — render neither the login
+  // prompt nor a persona so an already-logged-in user doesn't see a flash
+  // of "Log in" before their real name loads in.
+  if (!authReady) {
+    return <div className={`border-t border-white/8 ${collapsed ? "p-2" : "p-3"}`} />;
+  }
+
+  // Public pages (Find Work/Talent, job/profile detail) render inside this
+  // shell even for anonymous visitors — show a real "log in" prompt instead
+  // of a fake logged-in persona.
+  if (!user) {
+    return (
+      <div className={`border-t border-white/8 ${collapsed ? "p-2" : "p-3"}`}>
+        <button
+          onClick={() => go("auth")}
+          aria-label="Log in"
+          className={`flex w-full items-center rounded-xl text-[13px] font-semibold text-brand-soft transition-colors hover:bg-white/5 hover:text-white ${
+            collapsed ? "justify-center p-2.5" : "gap-2.5 p-2.5"
+          }`}
+        >
+          <LogIn className="h-4 w-4 shrink-0" />
+          {!collapsed && "Log in"}
+        </button>
+      </div>
+    );
+  }
+
+  const isAdmin = user.role === "ADMIN";
+  const initials = initialsOf(user.name || user.email);
+  const name = user.name || user.email;
+  const subtitle = isAdmin ? "Superadmin" : user.email;
   const logout = () => {
     logoutUser(); // best-effort: revokes refresh token server-side + clears local tokens
-    setRole(null);
+    setUser(null);
     go("home");
   };
 
@@ -392,7 +430,7 @@ function Brand({ go, collapsed }) {
 }
 
 export default function AppShell({ children }) {
-  const { page, nav, role, setRole } = useNav();
+  const { page, nav, role, user, setUser, authReady } = useNav();
   const { unread } = useLive();
   const [open, setOpen] = useState(false); // mobile drawer
   // Desktop rail: rests collapsed (icons only) and expands on hover/focus —
@@ -426,7 +464,7 @@ export default function AppShell({ children }) {
           <NotifBell collapsed={collapsed} badge={notifBadge} onViewAll={() => go("notifications")} />
         </div>
         <NavList page={page} go={go} collapsed={collapsed} role={role} />
-        <UserCard go={go} collapsed={collapsed} role={role} setRole={setRole} />
+        <UserCard go={go} collapsed={collapsed} user={user} setUser={setUser} authReady={authReady} />
       </aside>
 
       {/* Mobile top bar */}
@@ -463,7 +501,7 @@ export default function AppShell({ children }) {
               </button>
             </div>
             <NavList page={page} go={go} collapsed={false} role={role} />
-            <UserCard go={go} collapsed={false} role={role} setRole={setRole} />
+            <UserCard go={go} collapsed={false} user={user} setUser={setUser} authReady={authReady} />
           </aside>
         </>
       )}

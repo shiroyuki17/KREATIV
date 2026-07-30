@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { getAccessToken, fetchMe, clearTokens } from "./lib/authApi.js";
 
 const NavCtx = createContext(null);
 
@@ -17,18 +18,22 @@ function pageFromHash() {
 
 export function NavProvider({ children }) {
   const [route, setRoute] = useState(() => ({ page: pageFromHash(), params: null }));
-  // Demo-only session role (no backend). Gates admin-only UI.
-  const [role, setRoleState] = useState(() => {
-    try { return localStorage.getItem("kreativ:role") || null; } catch { return null; }
-  });
 
-  const setRole = (next) => {
-    setRoleState(next);
-    try {
-      if (next) localStorage.setItem("kreativ:role", next);
-      else localStorage.removeItem("kreativ:role");
-    } catch { /* ignore */ }
-  };
+  // Real logged-in user (hydrated from the JWT access token, not a fake
+  // localStorage flag) — null until the initial /auth/me call resolves, so
+  // route-gating can tell "not logged in" apart from "haven't checked yet".
+  const [user, setUser] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
+  const role = user ? (user.role === "ADMIN" ? "admin" : "client") : null;
+
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!token) { setAuthReady(true); return; }
+    fetchMe(token)
+      .then(setUser)
+      .catch(() => clearTokens())
+      .finally(() => setAuthReady(true));
+  }, []);
 
   const nav = (page, params = null) => {
     setRoute({ page, params });
@@ -51,7 +56,7 @@ export function NavProvider({ children }) {
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
-  return <NavCtx.Provider value={{ ...route, nav, role, setRole }}>{children}</NavCtx.Provider>;
+  return <NavCtx.Provider value={{ ...route, nav, user, setUser, role, authReady }}>{children}</NavCtx.Provider>;
 }
 
 export const useNav = () => useContext(NavCtx);

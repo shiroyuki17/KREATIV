@@ -1,17 +1,33 @@
 import { useEffect, useRef, useState } from "react";
 import { Sparkles, Send, X, ShieldCheck } from "lucide-react";
 import { useNav } from "../nav.jsx";
+import { API_BASE } from "../lib/authApi.js";
 
 const GREETING = {
   from: "bot",
-  text: "Hi! I'm KREATIV AI. I can find you talent, explain fees, or help if a payment issue comes up. What do you need?",
+  text: "Hi! I'm KREATIV AI. I can find you talent, explain fees, help if a payment issue comes up, or answer with live platform stats. What do you need?",
 };
 
 const QUICK = [
   "A client hasn't paid me",
   "How does escrow work?",
   "What are the fees?",
-  "Find me a React developer",
+  "How many freelancers do you have?",
+];
+
+// Rule-based (regex), not an LLM — but this one branch answers with a real,
+// live number pulled from the backend instead of canned text, so it's an
+// honest "yes" to "can it answer things actually on the site".
+const DYNAMIC_RULES = [
+  {
+    re: /(how many|stats|statistic|freelancer count|нийт хэд|хэдэн (freelancer|client|ажил|зар))/i,
+    run: async () => {
+      const res = await fetch(`${API_BASE}/analytics/public`);
+      if (!res.ok) throw new Error("stats unavailable");
+      const s = await res.json();
+      return `Right now, live from our database: ${s.freelancers} freelancers, ${s.clients} clients, ${s.jobs} jobs posted (${s.openJobs} currently open). Not a canned number — that's a real query.`;
+    },
+  },
 ];
 
 const RULES = [
@@ -41,10 +57,21 @@ const RULES = [
 ];
 
 const FALLBACK = {
-  text: "I can help with finding talent, escrow & payment protection, fees, or disputes. Try one of the quick questions below, or describe your project and I'll find matches!",
+  text: "I can help with finding talent, escrow & payment protection, fees, disputes, or live platform stats. Try one of the quick questions below, or describe your project and I'll find matches!",
 };
 
-function reply(input) {
+// Dynamic rules hit a real endpoint first (if it fails, we fall through to
+// the static keyword rules instead of showing an error).
+async function reply(input) {
+  for (const r of DYNAMIC_RULES) {
+    if (r.re.test(input)) {
+      try {
+        return { text: await r.run(input) };
+      } catch {
+        break;
+      }
+    }
+  }
   for (const r of RULES) if (r.re.test(input)) return r;
   return FALLBACK;
 }
@@ -75,12 +102,16 @@ export default function ChatWidget() {
     setAction(null);
     setMsgs((m) => [...m, { from: "user", text: t }]);
     setTyping(true);
-    setTimeout(() => {
-      const r = reply(t);
-      setMsgs((m) => [...m, { from: "bot", text: r.text }]);
-      if (r.action) setAction(r.action);
-      setTyping(false);
-    }, 900);
+    const askedAt = Date.now();
+    reply(t).then((r) => {
+      // Keep the natural "thinking" pause even when a live fetch resolves fast
+      const wait = Math.max(0, 900 - (Date.now() - askedAt));
+      setTimeout(() => {
+        setMsgs((m) => [...m, { from: "bot", text: r.text }]);
+        if (r.action) setAction(r.action);
+        setTyping(false);
+      }, wait);
+    });
   };
 
   return (

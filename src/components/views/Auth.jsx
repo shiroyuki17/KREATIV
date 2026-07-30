@@ -19,7 +19,7 @@ const ROLES = [
 const PHONE_RE = /^\d{8}$/;
 
 export default function Auth() {
-  const { nav, params, setRole: setSessionRole } = useNav();
+  const { nav, params, setUser } = useNav();
   const oauthError = params?.oauthError && (OAUTH_ERROR_MESSAGES[params.oauthError] || "Google-ээр нэвтрэхэд алдаа гарлаа.");
   const [mode, setMode] = useState(params?.mode === "login" ? "login" : "signup");
   const [role, setRole] = useState("client");
@@ -52,23 +52,22 @@ export default function Auth() {
     setSubmitting(true);
     try {
       if (mode === "signup") {
-        const { accessToken, refreshToken } = await registerUser({
+        const { user, accessToken, refreshToken } = await registerUser({
           email,
           password,
           name: `${firstName.trim()} ${lastName.trim()}`.trim(),
           phone,
         });
         saveTokens(accessToken, refreshToken);
-        setSessionRole(role);
+        setUser(user);
         nav("onboarding", { role, firstName, lastName, email, phone });
         return;
       }
 
       const { user, accessToken, refreshToken } = await loginUser({ email, password });
       saveTokens(accessToken, refreshToken);
-      const isAdmin = user.role === "ADMIN";
-      setSessionRole(isAdmin ? "admin" : "client");
-      nav(isAdmin ? "admin" : "client-dashboard");
+      setUser(user);
+      nav(user.role === "ADMIN" ? "admin" : "client-dashboard");
     } catch (err) {
       setFormError(err.message);
     } finally {
