@@ -1,14 +1,22 @@
 // Admin Panel (Day 10 continuation) — жинхэнэ дата дээр ажилладаг хэсэг:
 // хэрэглэгчийн удирдлага (isActive toggle нь ABAC-ийн requireActiveUser-тэй
-// шууд холбогддог), signups/role статистик, бүх Transaction-ийн харагдац.
-// Dispute/Escrow-per-job зэрэг бодит escrow-hire холбоос (Contract model)
-// одоогоор байхгүй тул тэдгээрийг зохиомлоор дүүргэхийн оронд огт ороогүй.
+// шууд холбогддог), signups/role статистик, бүх Transaction-ийн харагдац,
+// маргааны шийдвэрлэлт (FR-7).
 import { Router } from 'express';
 import prisma from '../lib/prisma.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
+import { disputeResolveSchema } from '../validators/contract.schema.js';
+import { releaseMilestonePayment, maybeCompleteContract } from './contract.routes.js';
+import { createNotification } from './notification.routes.js';
 
 const router = Router();
 router.use(requireAuth, requireRole('ADMIN'));
+
+function validate(schema, data) {
+  const result = schema.safeParse(data);
+  if (!result.success) return { error: result.error.issues.map((i) => i.message) };
+  return { data: result.data };
+}
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -133,6 +141,94 @@ router.get('/transactions', async (req, res, next) => {
     ]);
 
     res.json({ transactions, total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /admin/disputes ──
+router.get('/disputes', async (req, res, next) => {
+  try {
+    const disputes = await prisma.dispute.findMany({
+      include: {
+        openedBy: { select: { name: true, email: true } },
+        milestone: {
+          include: {
+            contract: {
+              include: {
+                job: { select: { title: true } },
+                client: { include: { user: { select: { name: true } } } },
+                freelancer: { include: { user: { select: { name: true } } } },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ disputes });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /admin/disputes/:id/resolve ──
+// FREELANCER — milestone-ийн бүтэн дүн (комисс хассан) freelancer рүү.
+// CLIENT — бүтэн дүн client-ийн балансад буцаана.
+// SPLIT — тэнцүү хуваана (freelancer-ийн хагаст л комисс хамаарна).
+router.post('/disputes/:id/resolve', async (req, res, next) => {
+  try {
+    const { data, error } = validate(disputeResolveSchema, req.body);
+    if (error) return res.status(400).json({ error });
+
+    const dispute = await prisma.dispute.findUnique({
+      where: { id: req.params.id },
+      include: { milestone: { include: { contract: true } } },
+    });
+    if (!dispute) return res.status(404).json({ error: 'Олдсонгүй' });
+    if (dispute.status === 'RESOLVED') return res.status(409).json({ error: 'Аль хэдийн шийдэгдсэн байна' });
+
+    const { milestone } = dispute;
+    const { contract } = milestone;
+    const [freelancerProfile, clientProfile] = await Promise.all([
+      prisma.freelancerProfile.findUnique({ where: { id: contract.freelancerId } }),
+      prisma.clientProfile.findUnique({ where: { id: contract.clientId } }),
+    ]);
+
+    if (data.resolution === 'FREELANCER') {
+      await releaseMilestonePayment(milestone);
+    } else if (data.resolution === 'CLIENT') {
+      await prisma.$transaction([
+        prisma.transaction.create({
+          data: { userId: clientProfile.userId, kind: 'DEPOSIT', status: 'COMPLETED', amount: milestone.amount, provider: 'dispute_refund', milestoneId: milestone.id, completedAt: new Date() },
+        }),
+        prisma.milestone.update({ where: { id: milestone.id }, data: { status: 'APPROVED', approvedAt: new Date() } }),
+      ]);
+      await maybeCompleteContract(milestone.contractId, freelancerProfile.id);
+    } else {
+      const freelancerShare = Math.round(milestone.amount / 2);
+      const clientShare = milestone.amount - freelancerShare;
+      const commission = Math.round((freelancerShare * contract.commissionPct) / 100);
+      await prisma.$transaction([
+        prisma.transaction.create({
+          data: { userId: freelancerProfile.userId, kind: 'ESCROW_RELEASE', status: 'COMPLETED', amount: freelancerShare - commission, provider: 'dispute_split', milestoneId: milestone.id, completedAt: new Date() },
+        }),
+        prisma.transaction.create({
+          data: { userId: clientProfile.userId, kind: 'DEPOSIT', status: 'COMPLETED', amount: clientShare, provider: 'dispute_split', milestoneId: milestone.id, completedAt: new Date() },
+        }),
+        prisma.milestone.update({ where: { id: milestone.id }, data: { status: 'APPROVED', approvedAt: new Date() } }),
+      ]);
+      await maybeCompleteContract(milestone.contractId, freelancerProfile.id);
+    }
+
+    const updated = await prisma.dispute.update({
+      where: { id: dispute.id },
+      data: { status: 'RESOLVED', resolution: data.resolution, resolvedAt: new Date() },
+    });
+
+    res.json(updated);
+    createNotification({ userId: freelancerProfile.userId, type: 'system', text: `"${milestone.title}" маргаан шийдэгдлээ (${data.resolution})`, link: 'my-projects' });
+    createNotification({ userId: clientProfile.userId, type: 'system', text: `"${milestone.title}" маргаан шийдэгдлээ (${data.resolution})`, link: 'my-projects' });
   } catch (err) {
     next(err);
   }

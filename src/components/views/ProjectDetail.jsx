@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, Star, BadgeCheck, ShieldCheck, Clock, Users, Check } from "lucide-react";
+import { ArrowLeft, Star, BadgeCheck, ShieldCheck, Clock, Users, Check, AlertCircle } from "lucide-react";
 import SpotlightCard from "../fx/SpotlightCard.jsx";
 import Magnet from "../fx/Magnet.jsx";
 import { JOBS, MILESTONES } from "../../data/mock.js";
 import { useNav } from "../../nav.jsx";
 import { fetchJobs } from "../../lib/jobsApi.js";
+import { submitProposal } from "../../lib/contractApi.js";
+import { getAccessToken } from "../../lib/authApi.js";
 
 function timeAgo(iso) {
   const hours = Math.floor((Date.now() - new Date(iso).getTime()) / 3_600_000);
@@ -41,8 +43,30 @@ export default function ProjectDetail() {
   const raw = params || JOBS[0];
   const job = normalize(raw);
   const [bid, setBid] = useState("");
+  const [coverLetter, setCoverLetter] = useState("");
   const [sent, setSent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [proposalError, setProposalError] = useState("");
   const [similar, setSimilar] = useState(job.isReal ? [] : JOBS.filter((j) => j.id !== raw.id && j.cat === raw.cat).slice(0, 2));
+
+  const sendProposal = async () => {
+    if (!job.isReal) { setSent(true); return; } // mock briefs stay decorative — no real job to attach a proposal to
+    const token = getAccessToken();
+    if (!token) { nav("auth"); return; }
+    const price = parseInt(bid.replace(/[^0-9]/g, ""), 10);
+    if (!price) { setProposalError("Үнийн саналаа тоогоор оруулна уу"); return; }
+    if (coverLetter.trim().length < 10) { setProposalError("Cover note дор хаяж 10 тэмдэгт байх ёстой"); return; }
+    setSubmitting(true);
+    setProposalError("");
+    try {
+      await submitProposal(raw.id, { price, coverLetter: coverLetter.trim() }, token);
+      setSent(true);
+    } catch (err) {
+      setProposalError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     if (!job.isReal) return;
@@ -123,28 +147,30 @@ export default function ProjectDetail() {
             </div>
           </div>
 
-          <div className="glass rounded-2xl p-7">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
-              Milestone plan
-            </p>
-            <div className="mt-4 divide-y divide-white/6">
-              {MILESTONES.map((m, i) => (
-                <div key={m.label} className="flex items-center justify-between py-3.5">
-                  <span className="flex items-center gap-3 text-[13.5px] text-white/75">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full border border-brand/40 bg-brand/10 text-[10.5px] font-bold text-brand-soft">
-                      {i + 1}
+          {!job.isReal && (
+            <div className="glass rounded-2xl p-7">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
+                Milestone plan
+              </p>
+              <div className="mt-4 divide-y divide-white/6">
+                {MILESTONES.map((m, i) => (
+                  <div key={m.label} className="flex items-center justify-between py-3.5">
+                    <span className="flex items-center gap-3 text-[13.5px] text-white/75">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full border border-brand/40 bg-brand/10 text-[10.5px] font-bold text-brand-soft">
+                        {i + 1}
+                      </span>
+                      {m.label}
                     </span>
-                    {m.label}
-                  </span>
-                  <span className="font-display text-[14px] font-bold">{m.amount}</span>
-                </div>
-              ))}
+                    <span className="font-display text-[14px] font-bold">{m.amount}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-4 inline-flex items-center gap-2 text-[11.5px] text-mint">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Funds locked in escrow before each milestone starts
+              </p>
             </div>
-            <p className="mt-4 inline-flex items-center gap-2 text-[11.5px] text-mint">
-              <ShieldCheck className="h-3.5 w-3.5" />
-              Funds locked in escrow before each milestone starts
-            </p>
-          </div>
+          )}
 
           {similar.length > 0 && (
             <div>
@@ -196,45 +222,55 @@ export default function ProjectDetail() {
             </div>
           </div>
 
-          <div className="glass rounded-2xl p-6">
-            <p className="font-display text-[15px] font-semibold">Submit a proposal</p>
-            {sent ? (
-              <div className="mt-4 rounded-xl border border-mint/30 bg-mint/10 p-4 text-[13px] font-medium text-mint">
-                <span className="inline-flex items-center gap-2">
-                  <Check className="h-4 w-4" />
-                  Proposal sent — {job.clientName} typically replies within a day.
-                </span>
-              </div>
-            ) : (
-              <>
-                <label className="mt-4 block text-[11px] font-semibold uppercase tracking-widest text-white/40">
-                  Your bid
-                </label>
-                <input
-                  value={bid}
-                  onChange={(e) => setBid(e.target.value)}
-                  placeholder={job.type === "Fixed" ? "$10,500" : "$90/hr"}
-                  className="mt-2 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[14px] outline-none transition-colors placeholder:text-white/25 focus:border-brand/50"
-                />
-                <label className="mt-4 block text-[11px] font-semibold uppercase tracking-widest text-white/40">
-                  Cover note
-                </label>
-                <textarea
-                  rows={4}
-                  placeholder="Why you're the right fit…"
-                  className="mt-2 w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[13.5px] outline-none transition-colors placeholder:text-white/25 focus:border-brand/50"
-                />
-                <Magnet strength={0.15} className="mt-4 w-full">
-                  <button
-                    onClick={() => setSent(true)}
-                    className="w-full rounded-xl bg-gradient-to-r from-brand to-brand-soft py-3 text-[13.5px] font-semibold glow-brand transition-shadow hover:shadow-[0_0_44px_rgba(0,211,149,0.6)]"
-                  >
-                    Send Proposal
-                  </button>
-                </Magnet>
-              </>
-            )}
-          </div>
+          {(!job.isReal || raw.status === "OPEN") && (
+            <div className="glass rounded-2xl p-6">
+              <p className="font-display text-[15px] font-semibold">Submit a proposal</p>
+              {sent ? (
+                <div className="mt-4 rounded-xl border border-mint/30 bg-mint/10 p-4 text-[13px] font-medium text-mint">
+                  <span className="inline-flex items-center gap-2">
+                    <Check className="h-4 w-4" />
+                    Proposal sent — {job.clientName} typically replies within a day.
+                  </span>
+                </div>
+              ) : (
+                <>
+                  <label className="mt-4 block text-[11px] font-semibold uppercase tracking-widest text-white/40">
+                    Your bid
+                  </label>
+                  <input
+                    value={bid}
+                    onChange={(e) => setBid(e.target.value)}
+                    placeholder={job.type === "Fixed" ? "$10,500" : "$90/hr"}
+                    className="mt-2 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[14px] outline-none transition-colors placeholder:text-white/25 focus:border-brand/50"
+                  />
+                  <label className="mt-4 block text-[11px] font-semibold uppercase tracking-widest text-white/40">
+                    Cover note
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={coverLetter}
+                    onChange={(e) => setCoverLetter(e.target.value)}
+                    placeholder="Why you're the right fit…"
+                    className="mt-2 w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[13.5px] outline-none transition-colors placeholder:text-white/25 focus:border-brand/50"
+                  />
+                  {proposalError && (
+                    <p className="mt-3 flex items-center gap-1.5 text-[12px] font-medium text-red-400">
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0" /> {proposalError}
+                    </p>
+                  )}
+                  <Magnet strength={0.15} className="mt-4 w-full">
+                    <button
+                      onClick={sendProposal}
+                      disabled={submitting}
+                      className="w-full rounded-xl bg-gradient-to-r from-brand to-brand-soft py-3 text-[13.5px] font-semibold glow-brand transition-shadow hover:shadow-[0_0_44px_rgba(0,211,149,0.6)] disabled:opacity-50"
+                    >
+                      {submitting ? "Илгээж байна…" : "Send Proposal"}
+                    </button>
+                  </Magnet>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -19,6 +19,9 @@ import paymentRoutes from './routes/payment.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
 import messageRoutes from './routes/message.routes.js';
 import adminRoutes from './routes/admin.routes.js';
+import contractRoutes from './routes/contract.routes.js';
+import disputeRoutes from './routes/dispute.routes.js';
+import reviewRoutes from './routes/review.routes.js';
 
 const app = express();
 // Railway/Render гэх мэт hosting нь reverse proxy ард ажилладаг тул
@@ -55,6 +58,9 @@ app.use('/payments', paymentRoutes);
 app.use('/notifications', notificationRoutes);
 app.use('/messages', messageRoutes);
 app.use('/admin', adminRoutes);
+app.use('/', contractRoutes);
+app.use('/disputes', disputeRoutes);
+app.use('/', reviewRoutes);
 
 // 404
 app.use((req, res) => {

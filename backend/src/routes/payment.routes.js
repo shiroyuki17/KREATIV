@@ -9,27 +9,18 @@ import { Router } from 'express';
 import prisma from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { createNotification } from './notification.routes.js';
+import { computeBalance, computeEscrowHeld } from '../lib/wallet.js';
 
 const router = Router();
-
-async function computeBalance(userId) {
-  const [deposits, withdrawals] = await Promise.all([
-    prisma.transaction.aggregate({
-      where: { userId, kind: 'DEPOSIT', status: 'COMPLETED' },
-      _sum: { amount: true },
-    }),
-    prisma.transaction.aggregate({
-      where: { userId, kind: 'WITHDRAWAL', status: 'COMPLETED' },
-      _sum: { amount: true },
-    }),
-  ]);
-  return (deposits._sum.amount || 0) - (withdrawals._sum.amount || 0);
-}
 
 // ── GET /payments/balance ──
 router.get('/balance', requireAuth, async (req, res, next) => {
   try {
-    res.json({ balance: await computeBalance(req.user.id) });
+    const [balance, escrowHeld] = await Promise.all([
+      computeBalance(req.user.id),
+      computeEscrowHeld(req.user.id),
+    ]);
+    res.json({ balance, escrowHeld });
   } catch (err) {
     next(err);
   }

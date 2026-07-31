@@ -15,7 +15,11 @@ COPY prisma ./prisma
 COPY prisma.config.ts ./
 # зөвхөн Prisma Client үүсгэхэд хэрэгтэй — бодит DB холболт шаардахгүй
 ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
-RUN npx prisma generate
+# `npx prisma` заримдаа локал node_modules-ийг олохгүй, npx-ийн өөрийн
+# кэшид тусад нь prisma татаж авчихдаг (тэр тохиолдолд prisma.config.ts-ийн
+# `dotenv/config`-ийг олохгүй байх шиг эвдрэл гарсан) — node_modules/.bin
+# доtorh binary-г шууд дуудаж энэ л асуудлаас бүрэн зайлсхийнэ.
+RUN node_modules/.bin/prisma generate
 COPY src ./src
 
 FROM node:24-alpine AS runner
@@ -33,4 +37,4 @@ EXPOSE 4100
 # өөрөө хийнэ. `migrate deploy` зөвхөн pending migration-ыг хэрэглэдэг тул
 # (schema аль хэдийн сингк бол юу ч хийхгүй) энэ бүрэн аюулгүй, давтагдах
 # боломжтой. Seed нь мөн upsert-суурьтай тул давхар ажиллахад асуудалгүй.
-CMD ["sh", "-c", "npx prisma migrate deploy && npm run seed && node src/index.js"]
+CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && npm run seed && node src/index.js"]

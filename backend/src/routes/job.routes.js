@@ -3,6 +3,7 @@ import prisma from '../lib/prisma.js';
 import { requireAuth, requireClientProfile } from '../middleware/auth.js';
 import { requireActiveUser, jobEditBlockReason, jobDeleteBlockReason } from '../middleware/abac.js';
 import { jobCreateSchema, jobUpdateSchema, jobQuerySchema } from '../validators/job.schema.js';
+import { proposalCreateSchema } from '../validators/contract.schema.js';
 import { sendMail } from '../lib/mailer.js';
 import { createNotification } from './notification.routes.js';
 
@@ -15,6 +16,27 @@ function validate(schema, data) {
 }
 
 const clientInclude = { client: { include: { user: { select: { name: true } } } } };
+
+function publicProposal(p) {
+  return {
+    id: p.id,
+    jobId: p.jobId,
+    price: p.price,
+    durationDays: p.durationDays,
+    coverLetter: p.coverLetter,
+    status: p.status,
+    createdAt: p.createdAt,
+    freelancer: p.freelancer && {
+      id: p.freelancer.id,
+      userId: p.freelancer.userId,
+      name: p.freelancer.user?.name,
+      avatarUrl: p.freelancer.user?.avatarUrl,
+      headline: p.freelancer.headline,
+      ratingAvg: p.freelancer.ratingAvg,
+      jobsCompleted: p.freelancer.jobsCompleted,
+    },
+  };
+}
 
 function publicJob(job) {
   return {
@@ -194,6 +216,66 @@ router.delete('/:id', requireAuth, requireClientProfile, async (req, res, next) 
 
     await prisma.job.delete({ where: { id: req.params.id } });
     res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── Proposals (PRD FR-3) ──
+
+// ── POST /jobs/:id/proposals ── (freelancer санал илгээнэ)
+router.post('/:id/proposals', requireAuth, requireActiveUser, async (req, res, next) => {
+  try {
+    const freelancerProfile = await prisma.freelancerProfile.findUnique({ where: { userId: req.user.id } });
+    if (!freelancerProfile) {
+      return res.status(403).json({ error: 'Санал илгээхийн тулд эхлээд freelancer профайлаа үүсгэнэ үү' });
+    }
+
+    const job = await prisma.job.findUnique({ where: { id: req.params.id } });
+    if (!job) return res.status(404).json({ error: 'Олдсонгүй' });
+    if (job.status !== 'OPEN') return res.status(409).json({ error: 'Энэ зар одоогоор санал хүлээж авахгүй байна' });
+
+    const { data, error } = validate(proposalCreateSchema, req.body);
+    if (error) return res.status(400).json({ error });
+
+    const existing = await prisma.proposal.findUnique({
+      where: { jobId_freelancerId: { jobId: job.id, freelancerId: freelancerProfile.id } },
+    });
+    if (existing) return res.status(409).json({ error: 'Та энэ зард аль хэдийн санал илгээсэн байна' });
+
+    const proposal = await prisma.proposal.create({
+      data: { jobId: job.id, freelancerId: freelancerProfile.id, ...data },
+    });
+
+    res.status(201).json(publicProposal({ ...proposal, freelancer: null }));
+
+    prisma.clientProfile.findUnique({ where: { id: job.clientId }, select: { userId: true } })
+      .then((client) => client && createNotification({
+        userId: client.userId,
+        type: 'job',
+        text: `Таны "${job.title}" зард шинэ санал ирлээ`,
+        link: 'my-projects',
+      }))
+      .catch(() => {});
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /jobs/:id/proposals ── (зөвхөн зарын эзэмшигч client)
+router.get('/:id/proposals', requireAuth, requireClientProfile, async (req, res, next) => {
+  try {
+    const job = await prisma.job.findUnique({ where: { id: req.params.id } });
+    if (!job) return res.status(404).json({ error: 'Олдсонгүй' });
+    if (job.clientId !== req.clientProfile.id) return res.status(403).json({ error: 'Хандах эрхгүй' });
+
+    const proposals = await prisma.proposal.findMany({
+      where: { jobId: job.id },
+      include: { freelancer: { include: { user: { select: { name: true, avatarUrl: true } } } } },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json({ proposals: proposals.map(publicProposal) });
   } catch (err) {
     next(err);
   }

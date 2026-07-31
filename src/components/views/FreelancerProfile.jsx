@@ -6,6 +6,7 @@ import { REVIEWS } from "../../data/appMock.js";
 import { useNav } from "../../nav.jsx";
 import { avatarSrc } from "../../lib/authApi.js";
 import { fetchFreelancerByUserId } from "../../lib/talentApi.js";
+import { fetchReviewsFor } from "../../lib/contractApi.js";
 
 function initialsOf(name) {
   return (name || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
@@ -44,6 +45,7 @@ function normalizeReal(profile, userId) {
 export default function FreelancerProfile() {
   const { params, nav } = useNav();
   const [real, setReal] = useState(null);
+  const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(!!params?.userId);
   const [error, setError] = useState("");
 
@@ -55,6 +57,7 @@ export default function FreelancerProfile() {
       .then(setReal)
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
+    fetchReviewsFor(params.userId).then((r) => setReviews(r.reviews)).catch(() => {});
   }, [params?.userId]);
 
   if (params?.userId) {
@@ -269,7 +272,35 @@ export default function FreelancerProfile() {
             )}
           </div>
 
-          {!isReal && (
+          {isReal ? (
+            <div>
+              <p className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-white/40">
+                Client reviews
+              </p>
+              {reviews.length > 0 ? (
+                <div className="space-y-4">
+                  {reviews.map((r) => (
+                    <div key={r.id} className="glass rounded-2xl p-6 transition-transform duration-300 hover:scale-[1.01]">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <p className="text-[13.5px] font-semibold">
+                          {r.reviewerName}
+                          {r.jobTitle && <span className="ml-2 font-normal text-white/40">· {r.jobTitle}</span>}
+                        </p>
+                        <span className="inline-flex items-center gap-1.5 text-[12.5px] font-bold text-amber-400">
+                          <Star className="h-3.5 w-3.5 fill-amber-400" />
+                          {r.stars.toFixed(1)}
+                        </span>
+                      </div>
+                      {r.comment && <p className="mt-3 text-[13.5px] leading-relaxed text-white/60">"{r.comment}"</p>}
+                      <p className="mt-3 text-[11px] text-white/30">{new Date(r.createdAt).toLocaleDateString()}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="glass rounded-2xl p-6 text-[13px] text-white/45">Одоогоор review алга.</p>
+              )}
+            </div>
+          ) : (
             <div>
               <p className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-white/40">
                 Client reviews

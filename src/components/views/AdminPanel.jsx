@@ -10,14 +10,23 @@ import {
   Activity,
   LayoutDashboard,
   AlertCircle,
+  Scale,
 } from "lucide-react";
 import { getAccessToken } from "../../lib/authApi.js";
-import { fetchAdminStats, fetchAdminUsers, setUserActive, fetchAdminTransactions } from "../../lib/adminApi.js";
+import {
+  fetchAdminStats,
+  fetchAdminUsers,
+  setUserActive,
+  fetchAdminTransactions,
+  fetchAdminDisputes,
+  resolveDispute,
+} from "../../lib/adminApi.js";
 
 const TABS = [
   { id: "overview", label: "Overview", Icon: LayoutDashboard },
   { id: "users", label: "Users & Roles", Icon: Users },
   { id: "transactions", label: "Transactions", Icon: Wallet },
+  { id: "disputes", label: "Disputes", Icon: Scale },
 ];
 
 const ROLE_BADGE = {
@@ -42,20 +51,28 @@ export default function AdminPanel() {
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
   const [transactions, setTransactions] = useState([]);
+  const [disputes, setDisputes] = useState([]);
   const [roleFilter, setRoleFilter] = useState("All");
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
+  const [resolving, setResolving] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     const token = getAccessToken();
     if (!token) return;
     setLoading(true);
-    Promise.all([fetchAdminStats(token), fetchAdminUsers({}, token), fetchAdminTransactions({ pageSize: 30 }, token)])
-      .then(([s, u, t]) => {
+    Promise.all([
+      fetchAdminStats(token),
+      fetchAdminUsers({}, token),
+      fetchAdminTransactions({ pageSize: 30 }, token),
+      fetchAdminDisputes(token),
+    ])
+      .then(([s, u, t, d]) => {
         setStats(s);
         setUsers(u.users);
         setTransactions(t.transactions);
+        setDisputes(d.disputes);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -68,6 +85,20 @@ export default function AdminPanel() {
       setUsers((arr) => arr.map((x) => (x.id === u.id ? { ...x, isActive: !x.isActive } : x)));
     } catch (err) {
       setError(err.message);
+    }
+  };
+
+  const handleResolve = async (disputeId, resolution) => {
+    const token = getAccessToken();
+    setResolving(true);
+    setError("");
+    try {
+      const updated = await resolveDispute(disputeId, resolution, token);
+      setDisputes((arr) => arr.map((d) => (d.id === disputeId ? { ...d, ...updated } : d)));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setResolving(false);
     }
   };
 
@@ -286,9 +317,12 @@ export default function AdminPanel() {
                     {tx.provider} · {new Date(tx.createdAt).toLocaleString()}
                   </p>
                 </div>
-                <p className={`font-display text-[15px] font-bold ${tx.kind === "DEPOSIT" ? "text-mint" : "text-white/70"}`}>
-                  {tx.kind === "DEPOSIT" ? "+" : "−"}${tx.amount.toLocaleString("en-US")}
+                <p className={`font-display text-[15px] font-bold ${["DEPOSIT", "ESCROW_RELEASE"].includes(tx.kind) ? "text-mint" : "text-white/70"}`}>
+                  {["DEPOSIT", "ESCROW_RELEASE"].includes(tx.kind) ? "+" : "−"}${tx.amount.toLocaleString("en-US")}
                 </p>
+                <span className="rounded-full border border-white/10 px-2.5 py-1 text-[9.5px] font-bold uppercase tracking-wider text-white/45">
+                  {tx.kind.replace("_", " ")}
+                </span>
                 <span
                   className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${
                     tx.status === "COMPLETED" ? "border-mint/30 bg-mint/10 text-mint" : "border-amber-400/30 bg-amber-400/10 text-amber-300"
@@ -302,6 +336,68 @@ export default function AdminPanel() {
               <p className="py-8 text-center text-[13px] text-white/35">No transactions yet.</p>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ================= DISPUTES ================= */}
+      {!loading && tab === "disputes" && (
+        <div className="mt-7 space-y-3">
+          {disputes.map((d) => {
+            const { milestone } = d;
+            const { contract } = milestone;
+            const resolved = d.status === "RESOLVED";
+            return (
+              <div key={d.id} className="glass rounded-2xl p-6">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-2.5 text-[14.5px] font-semibold">
+                      {contract.job?.title}
+                      <span className="text-[10.5px] font-bold text-white/30">{milestone.title}</span>
+                    </p>
+                    <p className="mt-1 text-[12px] text-white/40">
+                      {contract.client?.user?.name} ↔ {contract.freelancer?.user?.name} · ${milestone.amount.toLocaleString("en-US")} escrow-д · нээгдсэн {new Date(d.createdAt).toLocaleDateString()}
+                    </p>
+                    <p className="mt-2 text-[12.5px] text-white/60">"{d.reason}"</p>
+                  </div>
+                  <span
+                    className={`shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider ${
+                      resolved ? "border-mint/30 bg-mint/10 text-mint" : "border-amber-400/30 bg-amber-400/10 text-amber-300"
+                    }`}
+                  >
+                    {resolved ? `Resolved · ${d.resolution}` : "Open"}
+                  </span>
+                </div>
+                {!resolved && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      onClick={() => handleResolve(d.id, "FREELANCER")}
+                      disabled={resolving}
+                      className="rounded-lg border border-mint/40 bg-mint/10 px-3.5 py-2 text-[11.5px] font-bold text-mint transition-all hover:bg-mint hover:text-ink disabled:opacity-50"
+                    >
+                      Freelancer-д бүтнээр нь олгох
+                    </button>
+                    <button
+                      onClick={() => handleResolve(d.id, "SPLIT")}
+                      disabled={resolving}
+                      className="rounded-lg border border-neon/40 bg-neon/10 px-3.5 py-2 text-[11.5px] font-bold text-neon transition-all hover:bg-neon hover:text-ink disabled:opacity-50"
+                    >
+                      Тэнцүү хуваах
+                    </button>
+                    <button
+                      onClick={() => handleResolve(d.id, "CLIENT")}
+                      disabled={resolving}
+                      className="rounded-lg border border-brand/40 bg-brand/10 px-3.5 py-2 text-[11.5px] font-bold text-brand-soft transition-all hover:bg-brand hover:text-white disabled:opacity-50"
+                    >
+                      Client-д бүтнээр нь буцаах
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {disputes.length === 0 && (
+            <div className="glass rounded-2xl p-10 text-center text-[13px] text-white/40">Одоогоор маргаан алга.</div>
+          )}
         </div>
       )}
     </div>

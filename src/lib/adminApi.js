@@ -37,3 +37,8 @@ export const fetchAdminTransactions = (params, accessToken) => {
   ).toString();
   return authedJson(`/admin/transactions${query ? `?${query}` : ""}`, { accessToken });
 };
+
+export const fetchAdminDisputes = (accessToken) => authedJson("/admin/disputes", { accessToken });
+
+export const resolveDispute = (id, resolution, accessToken) =>
+  authedJson(`/admin/disputes/${id}/resolve`, { method: "POST", body: { resolution }, accessToken });
