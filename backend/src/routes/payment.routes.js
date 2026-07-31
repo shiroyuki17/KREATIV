@@ -9,18 +9,20 @@ import { Router } from 'express';
 import prisma from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { createNotification } from './notification.routes.js';
-import { computeBalance, computeEscrowHeld } from '../lib/wallet.js';
+import { computeBalance, computeEscrowHeld, computePendingBalance, MIN_WITHDRAWAL } from '../lib/wallet.js';
+import { logEvent } from '../lib/logger.js';
 
 const router = Router();
 
 // ── GET /payments/balance ──
 router.get('/balance', requireAuth, async (req, res, next) => {
   try {
-    const [balance, escrowHeld] = await Promise.all([
+    const [balance, escrowHeld, pending] = await Promise.all([
       computeBalance(req.user.id),
       computeEscrowHeld(req.user.id),
+      computePendingBalance(req.user.id),
     ]);
-    res.json({ balance, escrowHeld });
+    res.json({ balance, escrowHeld, pending, minWithdrawal: MIN_WITHDRAWAL });
   } catch (err) {
     next(err);
   }
@@ -87,13 +89,18 @@ router.post('/deposit/:id/confirm', requireAuth, async (req, res, next) => {
   }
 });
 
-// ── POST /payments/withdraw ── (шууд COMPLETED болно — жинхэнэ банкны
-// шилжүүлэгт QPay/банкны API-ийн PENDING→confirm урсгал ижил хэрэгтэй болно)
+// ── POST /payments/withdraw ── (FR-6.4: доод хэмжээ + PENDING болж админ
+// баталгаажуулах хүртэл хүлээнэ — жинхэнэ банкны шилжүүлэгт ойролцоо урсгал.
+// Хүсэлт гаргамагц дүн шууд "захиалагдана" (computeBalance-ийн available-аас
+// хасагдана), давхар татахаас сэргийлнэ).
 router.post('/withdraw', requireAuth, async (req, res, next) => {
   try {
     const amount = Number(req.body?.amount);
     if (!Number.isFinite(amount) || amount <= 0) {
       return res.status(400).json({ error: 'Дүн буруу байна' });
+    }
+    if (amount < MIN_WITHDRAWAL) {
+      return res.status(400).json({ error: `Доод татах дүн $${MIN_WITHDRAWAL}` });
     }
     const balance = await computeBalance(req.user.id);
     if (amount > balance) {
@@ -104,20 +111,45 @@ router.post('/withdraw', requireAuth, async (req, res, next) => {
       data: {
         userId: req.user.id,
         kind: 'WITHDRAWAL',
-        status: 'COMPLETED',
+        status: 'PENDING',
         amount: Math.round(amount),
         provider: 'qpay_demo',
-        completedAt: new Date(),
       },
     });
 
     res.status(201).json({ transaction: tx, balance: await computeBalance(req.user.id) });
+    logEvent('withdrawal_requested', { userId: req.user.id, amount: tx.amount });
     createNotification({
       userId: req.user.id,
       type: 'payment',
-      text: `$${tx.amount.toLocaleString('en-US')} гаргалт амжилттай хийгдлээ`,
+      text: `$${tx.amount.toLocaleString('en-US')} гаргалтын хүсэлт админд илгээгдлээ`,
       link: 'payments',
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /payments/export ── (FR-6.5: татварын тайланд зориулсан CSV)
+router.get('/export', requireAuth, async (req, res, next) => {
+  try {
+    const transactions = await prisma.transaction.findMany({
+      where: { userId: req.user.id, status: 'COMPLETED' },
+      orderBy: { createdAt: 'asc' },
+    });
+    const rows = [
+      ['Огноо', 'Төрөл', 'Дүн', 'Milestone ID', 'Provider'].join(','),
+      ...transactions.map((t) => [
+        t.completedAt?.toISOString() || t.createdAt.toISOString(),
+        t.kind,
+        t.amount,
+        t.milestoneId || '',
+        t.provider,
+      ].join(',')),
+    ];
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="kreativ-transactions.csv"');
+    res.send(rows.join('\n'));
   } catch (err) {
     next(err);
   }

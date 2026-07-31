@@ -114,6 +114,15 @@ async function fetchOwnProfile(kind, accessToken) {
 export const fetchFreelancerProfile = (accessToken) => fetchOwnProfile("freelancer", accessToken);
 export const fetchClientProfile = (accessToken) => fetchOwnProfile("client", accessToken);
 
+// FR-1.1: утасны OTP (демо горим — backend хариултад demoCode-ыг шууд
+// буцаадаг тул жинхэнэ SMS gateway ирэх хүртэл UI дээр шууд харуулж болно)
+export function requestPhoneOtp(phone, accessToken) {
+  return postJson("/auth/phone/request-otp", { phone }, accessToken);
+}
+export function verifyPhoneOtp(phone, code, accessToken) {
+  return postJson("/auth/phone/verify-otp", { phone, code }, accessToken);
+}
+
 // { id, email, name, phone, avatarUrl, role }
 export async function uploadAvatar(file, accessToken) {
   const form = new FormData();

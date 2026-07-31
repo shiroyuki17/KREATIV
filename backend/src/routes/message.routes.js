@@ -2,6 +2,8 @@ import { Router } from 'express';
 import prisma from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { createNotification } from './notification.routes.js';
+import { detectLeakage } from '../lib/leakage.js';
+import { emitToUser } from '../lib/socket.js';
 
 const router = Router();
 
@@ -112,14 +114,16 @@ router.post('/conversations/:id/messages', requireAuth, async (req, res, next) =
       return res.status(404).json({ error: 'Олдсонгүй' });
     }
 
+    const { flagged, reasons } = detectLeakage(text);
     const message = await prisma.message.create({
-      data: { conversationId: conversation.id, senderId: req.user.id, text },
+      data: { conversationId: conversation.id, senderId: req.user.id, text, flagged },
     });
     await prisma.conversation.update({ where: { id: conversation.id }, data: { updatedAt: new Date() } });
 
-    res.status(201).json(message);
+    res.status(201).json({ ...message, leakageWarning: flagged ? reasons : null });
 
     const recipientId = conversation.userAId === req.user.id ? conversation.userBId : conversation.userAId;
+    emitToUser(recipientId, 'message:new', { conversationId: conversation.id, message });
     prisma.user.findUnique({ where: { id: req.user.id }, select: { name: true } })
       .then((sender) => createNotification({
         userId: recipientId,

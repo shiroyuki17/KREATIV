@@ -11,6 +11,11 @@ import {
   LayoutDashboard,
   AlertCircle,
   Scale,
+  ShieldAlert,
+  Banknote,
+  ClipboardCheck,
+  Check,
+  X,
 } from "lucide-react";
 import { getAccessToken } from "../../lib/authApi.js";
 import {
@@ -20,6 +25,12 @@ import {
   fetchAdminTransactions,
   fetchAdminDisputes,
   resolveDispute,
+  fetchModerationQueue,
+  moderateJob,
+  fetchPayoutQueue,
+  approvePayout,
+  rejectPayout,
+  fetchReconciliation,
 } from "../../lib/adminApi.js";
 
 const TABS = [
@@ -27,6 +38,9 @@ const TABS = [
   { id: "users", label: "Users & Roles", Icon: Users },
   { id: "transactions", label: "Transactions", Icon: Wallet },
   { id: "disputes", label: "Disputes", Icon: Scale },
+  { id: "moderation", label: "Moderation", Icon: ShieldAlert },
+  { id: "payouts", label: "Payouts", Icon: Banknote },
+  { id: "ledger", label: "Ledger check", Icon: ClipboardCheck },
 ];
 
 const ROLE_BADGE = {
@@ -52,10 +66,15 @@ export default function AdminPanel() {
   const [users, setUsers] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [disputes, setDisputes] = useState([]);
+  const [moderationQueue, setModerationQueue] = useState([]);
+  const [payoutQueue, setPayoutQueue] = useState([]);
+  const [reconciliation, setReconciliation] = useState(null);
   const [roleFilter, setRoleFilter] = useState("All");
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
   const [resolving, setResolving] = useState(false);
+  const [moderating, setModerating] = useState(false);
+  const [payoutBusy, setPayoutBusy] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -67,16 +86,51 @@ export default function AdminPanel() {
       fetchAdminUsers({}, token),
       fetchAdminTransactions({ pageSize: 30 }, token),
       fetchAdminDisputes(token),
+      fetchModerationQueue(token),
+      fetchPayoutQueue(token),
+      fetchReconciliation(token),
     ])
-      .then(([s, u, t, d]) => {
+      .then(([s, u, t, d, mod, payouts, recon]) => {
         setStats(s);
         setUsers(u.users);
         setTransactions(t.transactions);
         setDisputes(d.disputes);
+        setModerationQueue(mod.jobs);
+        setPayoutQueue(payouts.payouts);
+        setReconciliation(recon);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
+
+  const handleModerate = async (jobId, action) => {
+    const token = getAccessToken();
+    setModerating(true);
+    setError("");
+    try {
+      await moderateJob(jobId, action, token);
+      setModerationQueue((arr) => arr.filter((j) => j.id !== jobId));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setModerating(false);
+    }
+  };
+
+  const handlePayout = async (txId, action) => {
+    const token = getAccessToken();
+    setPayoutBusy(true);
+    setError("");
+    try {
+      if (action === "approve") await approvePayout(txId, token);
+      else await rejectPayout(txId, token);
+      setPayoutQueue((arr) => arr.filter((p) => p.id !== txId));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setPayoutBusy(false);
+    }
+  };
 
   const toggleActive = async (u) => {
     const token = getAccessToken();
@@ -397,6 +451,115 @@ export default function AdminPanel() {
           })}
           {disputes.length === 0 && (
             <div className="glass rounded-2xl p-10 text-center text-[13px] text-white/40">Одоогоор маргаан алга.</div>
+          )}
+        </div>
+      )}
+
+      {/* ================= MODERATION (FR-2.3) ================= */}
+      {!loading && tab === "moderation" && (
+        <div className="mt-7 space-y-3">
+          <p className="text-[12px] text-white/45">
+            Гарчиг/тайлбарт утас, имэйл, гадаад мессенжер илэрсэн зарууд энд ирдэг — нийтлэгдэхийн өмнө админ шалгана (FR-2.3).
+          </p>
+          {moderationQueue.map((j) => (
+            <div key={j.id} className="glass rounded-2xl p-6">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-[14.5px] font-semibold">{j.title}</p>
+                  <p className="mt-1 text-[12px] text-white/40">
+                    {j.client?.user?.name || j.client?.orgName} · {new Date(j.createdAt).toLocaleDateString()}
+                  </p>
+                  <p className="mt-2 text-[12.5px] text-white/60">{j.description}</p>
+                  {j.moderationReason && (
+                    <p className="mt-2 inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-amber-300">
+                      <ShieldAlert className="h-3.5 w-3.5" /> {j.moderationReason}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  onClick={() => handleModerate(j.id, "APPROVE")}
+                  disabled={moderating}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-mint/40 bg-mint/10 px-3.5 py-2 text-[11.5px] font-bold text-mint transition-all hover:bg-mint hover:text-ink disabled:opacity-50"
+                >
+                  <Check className="h-3.5 w-3.5" /> Зөвшөөрөх
+                </button>
+                <button
+                  onClick={() => handleModerate(j.id, "REJECT")}
+                  disabled={moderating}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/40 bg-red-500/10 px-3.5 py-2 text-[11.5px] font-bold text-red-400 transition-all hover:bg-red-500 hover:text-white disabled:opacity-50"
+                >
+                  <X className="h-3.5 w-3.5" /> Татгалзах
+                </button>
+              </div>
+            </div>
+          ))}
+          {moderationQueue.length === 0 && (
+            <div className="glass rounded-2xl p-10 text-center text-[13px] text-white/40">Хяналт хүлээж буй зар алга.</div>
+          )}
+        </div>
+      )}
+
+      {/* ================= PAYOUTS (FR-6.4) ================= */}
+      {!loading && tab === "payouts" && (
+        <div className="mt-7 space-y-3">
+          <p className="text-[12px] text-white/45">
+            Хэрэглэгчийн гаргалтын хүсэлтүүд — баталгаажуулсны дараа л шилжинэ гэж тооцогдоно.
+          </p>
+          {payoutQueue.map((p) => (
+            <div key={p.id} className="glass flex flex-wrap items-center justify-between gap-4 rounded-2xl p-6">
+              <div>
+                <p className="text-[13.5px] font-semibold">{p.user?.name || p.user?.email}</p>
+                <p className="mt-1 text-[12px] text-white/40">{new Date(p.createdAt).toLocaleString()}</p>
+              </div>
+              <p className="font-display text-[18px] font-bold text-mint">${p.amount.toLocaleString("en-US")}</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handlePayout(p.id, "approve")}
+                  disabled={payoutBusy}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-mint/40 bg-mint/10 px-3.5 py-2 text-[11.5px] font-bold text-mint transition-all hover:bg-mint hover:text-ink disabled:opacity-50"
+                >
+                  <Check className="h-3.5 w-3.5" /> Баталгаажуулах
+                </button>
+                <button
+                  onClick={() => handlePayout(p.id, "reject")}
+                  disabled={payoutBusy}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/40 bg-red-500/10 px-3.5 py-2 text-[11.5px] font-bold text-red-400 transition-all hover:bg-red-500 hover:text-white disabled:opacity-50"
+                >
+                  <X className="h-3.5 w-3.5" /> Татгалзах
+                </button>
+              </div>
+            </div>
+          ))}
+          {payoutQueue.length === 0 && (
+            <div className="glass rounded-2xl p-10 text-center text-[13px] text-white/40">Хүлээгдэж буй гаргалт алга.</div>
+          )}
+        </div>
+      )}
+
+      {/* ================= LEDGER RECONCILIATION (NFR-1) ================= */}
+      {!loading && tab === "ledger" && reconciliation && (
+        <div className="mt-7 space-y-4">
+          <div className={`glass rounded-2xl p-6 ${reconciliation.ok ? "border-mint/30" : "border-red-500/30"}`}>
+            <p className={`inline-flex items-center gap-2 text-[14px] font-bold ${reconciliation.ok ? "text-mint" : "text-red-400"}`}>
+              <ClipboardCheck className="h-4.5 w-4.5" />
+              {reconciliation.ok ? "Ledger цэвэр — зөрүү илрээгүй" : `${reconciliation.issuesFound} зөрүү илэрлээ`}
+            </p>
+            <p className="mt-2 text-[12px] text-white/45">
+              {reconciliation.milestonesChecked} milestone, {reconciliation.usersChecked} хэрэглэгч шалгагдсан · {new Date(reconciliation.ranAt).toLocaleString()}
+            </p>
+          </div>
+          {reconciliation.issues.length > 0 && (
+            <div className="glass divide-y divide-white/6 rounded-2xl p-6">
+              {reconciliation.issues.map((iss, i) => (
+                <div key={i} className="py-3 text-[12.5px]">
+                  <span className="font-bold text-red-400">{iss.type}</span>
+                  <span className="ml-2 text-white/60">{iss.detail}</span>
+                  {iss.title && <span className="ml-2 text-white/35">· {iss.title}</span>}
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}

@@ -8,6 +8,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 import { disputeResolveSchema } from '../validators/contract.schema.js';
 import { releaseMilestonePayment, maybeCompleteContract } from './contract.routes.js';
 import { createNotification } from './notification.routes.js';
+import { runReconciliation } from '../lib/reconcile.js';
 
 const router = Router();
 router.use(requireAuth, requireRole('ADMIN'));
@@ -229,6 +230,107 @@ router.post('/disputes/:id/resolve', async (req, res, next) => {
     res.json(updated);
     createNotification({ userId: freelancerProfile.userId, type: 'system', text: `"${milestone.title}" маргаан шийдэгдлээ (${data.resolution})`, link: 'my-projects' });
     createNotification({ userId: clientProfile.userId, type: 'system', text: `"${milestone.title}" маргаан шийдэгдлээ (${data.resolution})`, link: 'my-projects' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── Job moderation queue (FR-2.3) ──
+
+// ── GET /admin/jobs/moderation ──
+router.get('/jobs/moderation', async (req, res, next) => {
+  try {
+    const jobs = await prisma.job.findMany({
+      where: { moderationStatus: 'PENDING' },
+      include: { client: { include: { user: { select: { name: true } } } } },
+      orderBy: { createdAt: 'asc' },
+    });
+    res.json({ jobs });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /admin/jobs/:id/moderate ── (body: { action: "APPROVE" | "REJECT" }) ──
+router.post('/jobs/:id/moderate', async (req, res, next) => {
+  try {
+    const action = req.body?.action;
+    if (!['APPROVE', 'REJECT'].includes(action)) return res.status(400).json({ error: 'action APPROVE эсвэл REJECT байх ёстой' });
+
+    const job = await prisma.job.findUnique({ where: { id: req.params.id }, include: { client: true } });
+    if (!job) return res.status(404).json({ error: 'Олдсонгүй' });
+
+    const updated = await prisma.job.update({
+      where: { id: req.params.id },
+      data: { moderationStatus: action === 'APPROVE' ? 'APPROVED' : 'REJECTED' },
+    });
+
+    res.json(updated);
+    createNotification({
+      userId: job.client.userId,
+      type: 'job',
+      text: action === 'APPROVE'
+        ? `Таны "${job.title}" зар шалгагдаж нийтлэгдлээ`
+        : `Таны "${job.title}" зар татгалзагдлаа${job.moderationReason ? `: ${job.moderationReason}` : ''}`,
+      link: 'my-projects',
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── Payout queue (FR-6.4) ──
+
+// ── GET /admin/payouts ──
+router.get('/payouts', async (req, res, next) => {
+  try {
+    const payouts = await prisma.transaction.findMany({
+      where: { kind: 'WITHDRAWAL', status: 'PENDING' },
+      include: { user: { select: { name: true, email: true } } },
+      orderBy: { createdAt: 'asc' },
+    });
+    res.json({ payouts });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /admin/payouts/:id/approve ──
+router.post('/payouts/:id/approve', async (req, res, next) => {
+  try {
+    const tx = await prisma.transaction.findUnique({ where: { id: req.params.id } });
+    if (!tx || tx.kind !== 'WITHDRAWAL' || tx.status !== 'PENDING') return res.status(404).json({ error: 'Олдсонгүй' });
+
+    const updated = await prisma.transaction.update({
+      where: { id: tx.id },
+      data: { status: 'COMPLETED', completedAt: new Date() },
+    });
+    res.json(updated);
+    createNotification({ userId: tx.userId, type: 'payment', text: `Таны $${tx.amount.toLocaleString('en-US')} гаргалт баталгаажиж шилжүүлэгдлээ`, link: 'payments' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /admin/payouts/:id/reject ──
+router.post('/payouts/:id/reject', async (req, res, next) => {
+  try {
+    const tx = await prisma.transaction.findUnique({ where: { id: req.params.id } });
+    if (!tx || tx.kind !== 'WITHDRAWAL' || tx.status !== 'PENDING') return res.status(404).json({ error: 'Олдсонгүй' });
+
+    const updated = await prisma.transaction.update({ where: { id: tx.id }, data: { status: 'FAILED' } });
+    res.json(updated);
+    createNotification({ userId: tx.userId, type: 'payment', text: `Таны $${tx.amount.toLocaleString('en-US')} гаргалтын хүсэлт татгалзагдаж, дүн балансад буцлаа`, link: 'payments' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /admin/reconciliation ── (NFR-1: Render free tier-д cron байхгүй тул on-demand)
+router.get('/reconciliation', async (req, res, next) => {
+  try {
+    const report = await runReconciliation();
+    res.json(report);
   } catch (err) {
     next(err);
   }

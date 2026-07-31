@@ -5,8 +5,9 @@ import { Router } from 'express';
 import prisma from '../lib/prisma.js';
 import { requireAuth, requireClientProfile } from '../middleware/auth.js';
 import { acceptProposalSchema, deliverMilestoneSchema } from '../validators/contract.schema.js';
-import { computeBalance } from '../lib/wallet.js';
+import { computeBalance, PENDING_HOLD_DAYS } from '../lib/wallet.js';
 import { createNotification } from './notification.routes.js';
+import { logEvent } from '../lib/logger.js';
 
 const router = Router();
 
@@ -36,9 +37,11 @@ function publicContract(c) {
     freelancer: c.freelancer?.user && { id: c.freelancer.userId, name: c.freelancer.user.name, headline: c.freelancer.headline },
     totalAmount: c.totalAmount,
     commissionPct: c.commissionPct,
+    revisionLimit: c.revisionLimit,
     status: c.status,
     milestones: c.milestones,
     createdAt: c.createdAt,
+    completedAt: c.completedAt,
   };
 }
 
@@ -61,9 +64,10 @@ async function autoApprovePastDue(contractId) {
 async function maybeCompleteContract(contractId, freelancerProfileId) {
   const remaining = await prisma.milestone.count({ where: { contractId, status: { not: 'APPROVED' } } });
   if (remaining > 0) return;
-  const done = await prisma.contract.update({ where: { id: contractId }, data: { status: 'COMPLETED' } });
+  const done = await prisma.contract.update({ where: { id: contractId }, data: { status: 'COMPLETED', completedAt: new Date() } });
   await prisma.freelancerProfile.update({ where: { id: freelancerProfileId }, data: { jobsCompleted: { increment: 1 } } });
   await prisma.job.update({ where: { id: done.jobId }, data: { status: 'CLOSED' } });
+  logEvent('contract_completed', { contractId });
 }
 
 // Milestone-ийн escrow-д түгжигдсэн дүнг комисс хасаад freelancer рүү шилжүүлж,
@@ -83,17 +87,19 @@ async function releaseMilestonePayment(milestone) {
         amount: payout,
         milestoneId: milestone.id,
         completedAt: new Date(),
+        availableAt: new Date(Date.now() + PENDING_HOLD_DAYS * 24 * 60 * 60 * 1000),
       },
     });
     return tx.milestone.update({ where: { id: milestone.id }, data: { status: 'APPROVED', approvedAt: new Date() } });
   });
 
   await maybeCompleteContract(milestone.contractId, freelancerProfile.id);
+  logEvent('milestone_approved', { milestoneId: milestone.id, payout, commission });
 
   createNotification({
     userId: freelancerProfile.userId,
     type: 'payment',
-    text: `"${milestone.title}" milestone батлагдаж $${payout.toLocaleString('en-US')} (${contract.commissionPct}% комисс хассан) таны балансад орлоо`,
+    text: `"${milestone.title}" milestone батлагдаж $${payout.toLocaleString('en-US')} (${contract.commissionPct}% комисс хассан) таны хүлээгдэж буй балансад орлоо — ${PENDING_HOLD_DAYS} хоногийн дараа татах боломжтой болно`,
     link: 'my-projects',
   });
 
@@ -163,6 +169,7 @@ router.post('/proposals/:id/accept', requireAuth, requireClientProfile, async (r
     });
 
     res.status(201).json(publicContract(contract));
+    logEvent('contract_created', { contractId: contract.id, jobId: proposal.jobId, totalAmount: proposal.price });
 
     const freelancerUser = await prisma.freelancerProfile.findUnique({ where: { id: proposal.freelancerId }, select: { userId: true } });
     if (freelancerUser) {
@@ -280,6 +287,7 @@ router.post('/milestones/:id/fund', requireAuth, requireClientProfile, async (re
     ]);
 
     res.json({ milestone: updated, balance: await computeBalance(req.user.id) });
+    logEvent('milestone_funded', { milestoneId: milestone.id, amount: milestone.amount });
 
     const freelancerUser = await prisma.freelancerProfile.findUnique({ where: { id: milestone.contract.freelancerId }, select: { userId: true } });
     if (freelancerUser) {
@@ -340,10 +348,15 @@ router.post('/milestones/:id/request-revision', requireAuth, requireClientProfil
     if (!milestone) return res.status(404).json({ error: 'Олдсонгүй' });
     if (milestone.contract.clientId !== req.clientProfile.id) return res.status(403).json({ error: 'Хандах эрхгүй' });
     if (milestone.status !== 'DELIVERED') return res.status(409).json({ error: 'Энэ milestone хараахан хүлээлгэн өгөгдөөгүй байна' });
+    // FR-4.4: гэрээнд заасан хязгаараас (default 2) илүү засвар хүсэх боломжгүй —
+    // үүнээс цаашид зөвхөн батлах эсвэл маргаан нээх сонголттой
+    if (milestone.revisionsUsed >= milestone.contract.revisionLimit) {
+      return res.status(409).json({ error: `Засвар хүсэх хязгаар (${milestone.contract.revisionLimit}) дүүрлээ — одоо зөвхөн батлах эсвэл маргаан нээх боломжтой` });
+    }
 
     const updated = await prisma.milestone.update({
       where: { id: milestone.id },
-      data: { status: 'FUNDED', deliveryNote: null, deliveryLink: null, deliveredAt: null, autoApproveAt: null },
+      data: { status: 'FUNDED', deliveryNote: null, deliveryLink: null, deliveredAt: null, autoApproveAt: null, revisionsUsed: { increment: 1 } },
     });
 
     res.json({ milestone: updated });

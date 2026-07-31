@@ -33,3 +33,21 @@ export const confirmDeposit = (id, accessToken) =>
 
 export const withdraw = (amount, accessToken) =>
   authedJson("/payments/withdraw", { method: "POST", body: { amount }, accessToken });
+
+// FR-6.5: татварын тайланд зориулсан CSV — auth header шаардлагатай тул
+// шууд <a href> линк биш, blob татаж хадгална.
+export async function downloadTransactionsCsv(accessToken) {
+  const res = await fetch(`${API_BASE}/payments/export`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) throw new Error("Экспорт хийхэд алдаа гарлаа");
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "kreativ-transactions.csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}

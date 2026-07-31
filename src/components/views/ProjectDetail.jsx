@@ -47,6 +47,7 @@ export default function ProjectDetail() {
   const [sent, setSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [proposalError, setProposalError] = useState("");
+  const [proposalWarning, setProposalWarning] = useState(null);
   const [similar, setSimilar] = useState(job.isReal ? [] : JOBS.filter((j) => j.id !== raw.id && j.cat === raw.cat).slice(0, 2));
 
   const sendProposal = async () => {
@@ -59,7 +60,8 @@ export default function ProjectDetail() {
     setSubmitting(true);
     setProposalError("");
     try {
-      await submitProposal(raw.id, { price, coverLetter: coverLetter.trim() }, token);
+      const res = await submitProposal(raw.id, { price, coverLetter: coverLetter.trim() }, token);
+      if (res.leakageWarning) setProposalWarning(res.leakageWarning);
       setSent(true);
     } catch (err) {
       setProposalError(err.message);
@@ -226,11 +228,18 @@ export default function ProjectDetail() {
             <div className="glass rounded-2xl p-6">
               <p className="font-display text-[15px] font-semibold">Submit a proposal</p>
               {sent ? (
-                <div className="mt-4 rounded-xl border border-mint/30 bg-mint/10 p-4 text-[13px] font-medium text-mint">
-                  <span className="inline-flex items-center gap-2">
-                    <Check className="h-4 w-4" />
-                    Proposal sent — {job.clientName} typically replies within a day.
-                  </span>
+                <div className="mt-4 space-y-2.5">
+                  <div className="rounded-xl border border-mint/30 bg-mint/10 p-4 text-[13px] font-medium text-mint">
+                    <span className="inline-flex items-center gap-2">
+                      <Check className="h-4 w-4" />
+                      Proposal sent — {job.clientName} typically replies within a day.
+                    </span>
+                  </div>
+                  {proposalWarning && (
+                    <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-[12px] font-medium text-amber-400">
+                      Таны cover note-д {proposalWarning.join(", ")} агуулагдаж байж болзошгүй — гэрээ байгуулагдахаас өмнө холбоо барих мэдээлэл солилцохгүй байхыг зөвлөж байна.
+                    </p>
+                  )}
                 </div>
               ) : (
                 <>

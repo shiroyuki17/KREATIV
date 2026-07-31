@@ -120,16 +120,20 @@ function ReviewForm({ onSubmit, busy, done }) {
   );
 }
 
-function MilestoneCard({ milestone: m, myRole, onFund, onDeliver, onApprove, onRequestRevision, onDispute, busy }) {
+function MilestoneCard({ milestone: m, myRole, revisionLimit, onFund, onDeliver, onApprove, onRequestRevision, onDispute, busy }) {
   const [showDeliver, setShowDeliver] = useState(false);
   const [showDispute, setShowDispute] = useState(false);
+  const revisionsLeft = revisionLimit - (m.revisionsUsed || 0);
 
   return (
     <div className="rounded-xl border border-white/8 bg-white/[0.02] p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-[13.5px] font-semibold">{m.title}</p>
-          <p className="mt-0.5 text-[11.5px] text-white/40">${m.amount.toLocaleString("en-US")}</p>
+          <p className="mt-0.5 text-[11.5px] text-white/40">
+            ${m.amount.toLocaleString("en-US")}
+            {m.revisionsUsed > 0 && ` · ${m.revisionsUsed}/${revisionLimit} засвар хэрэглэсэн`}
+          </p>
         </div>
         <span className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${MILESTONE_BADGE[m.status]}`}>
           {m.status.replace("_", " ")}
@@ -163,9 +167,15 @@ function MilestoneCard({ milestone: m, myRole, onFund, onDeliver, onApprove, onR
             <button onClick={() => onApprove(m.id)} disabled={busy} className="rounded-lg border border-mint/40 bg-mint/10 px-3.5 py-1.5 text-[11.5px] font-bold text-mint transition-all hover:bg-mint hover:text-ink disabled:opacity-50">
               Батлах
             </button>
-            <button onClick={() => onRequestRevision(m.id)} disabled={busy} className="rounded-lg border border-amber-400/40 bg-amber-400/10 px-3.5 py-1.5 text-[11.5px] font-bold text-amber-300 transition-all hover:bg-amber-400 hover:text-ink disabled:opacity-50">
-              Засвар хүсэх
-            </button>
+            {revisionsLeft > 0 ? (
+              <button onClick={() => onRequestRevision(m.id)} disabled={busy} className="rounded-lg border border-amber-400/40 bg-amber-400/10 px-3.5 py-1.5 text-[11.5px] font-bold text-amber-300 transition-all hover:bg-amber-400 hover:text-ink disabled:opacity-50">
+                Засвар хүсэх ({revisionsLeft} үлдсэн)
+              </button>
+            ) : (
+              <span className="rounded-lg border border-white/10 px-3.5 py-1.5 text-[11.5px] font-semibold text-white/35">
+                Засварын хязгаар дүүрсэн — батлах эсвэл маргаан нээх
+              </span>
+            )}
           </>
         )}
         {["FUNDED", "DELIVERED"].includes(m.status) && !showDispute && (
@@ -321,6 +331,7 @@ export default function MyProjects() {
                       key={m.id}
                       milestone={m}
                       myRole={myRole}
+                      revisionLimit={c.revisionLimit}
                       busy={busy}
                       onFund={handleFund}
                       onDeliver={handleDeliver}

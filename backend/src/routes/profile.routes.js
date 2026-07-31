@@ -63,6 +63,15 @@ function clientCompleteness(profile) {
   return profile.orgName ? 100 : 50;
 }
 
+// FR-7.4: маргааны хувь профайлд нөлөөлнө (маргаан ихтэй хэрэглэгч тодорно)
+async function freelancerDisputeRate(freelancerId) {
+  const [totalContracts, disputedContracts] = await Promise.all([
+    prisma.contract.count({ where: { freelancerId } }),
+    prisma.contract.count({ where: { freelancerId, milestones: { some: { dispute: { isNot: null } } } } }),
+  ]);
+  return totalContracts === 0 ? 0 : Math.round((disputedContracts / totalContracts) * 100);
+}
+
 // ── POST /profile/avatar ── (зураг оруулах — Day 7 File Upload)
 router.post('/avatar', requireAuth, (req, res, next) => {
   uploadAvatar(req, res, async (err) => {
@@ -168,7 +177,7 @@ router.get('/freelancer/me', requireAuth, async (req, res, next) => {
       include: { portfolio: true },
     });
     if (!profile) return res.status(404).json({ error: 'Freelancer профайл байхгүй байна' });
-    res.json({ ...profile, completeness: freelancerCompleteness(profile) });
+    res.json({ ...profile, completeness: freelancerCompleteness(profile), disputeRate: await freelancerDisputeRate(profile.id) });
   } catch (err) {
     next(err);
   }
@@ -185,7 +194,7 @@ router.get('/freelancer/:userId', async (req, res, next) => {
       },
     });
     if (!profile) return res.status(404).json({ error: 'Олдсонгүй' });
-    res.json({ ...profile, completeness: freelancerCompleteness(profile) });
+    res.json({ ...profile, completeness: freelancerCompleteness(profile), disputeRate: await freelancerDisputeRate(profile.id) });
   } catch (err) {
     next(err);
   }

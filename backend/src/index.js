@@ -1,3 +1,4 @@
+import http from 'node:http';
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -10,6 +11,8 @@ import { openapiSpec } from './docs/openapi.js';
 import { metricsMiddleware, metricsHandler } from './middleware/monitoring.js';
 import { apiLimiter } from './middleware/rateLimit.js';
 import { UPLOAD_ROOT } from './middleware/upload.js';
+import { logError } from './lib/logger.js';
+import { initSocket } from './lib/socket.js';
 import authRoutes from './routes/auth.routes.js';
 import googleOAuthRoutes from './routes/google-oauth.routes.js';
 import profileRoutes from './routes/profile.routes.js';
@@ -71,13 +74,16 @@ app.use((req, res) => {
 // body-parser-ийн буруу JSON → 400) — үгүй бол бүх зүйл 500 болж, /metrics-ийн
 // 5xx тоолуурыг гуйвуулна (client-ийн алдааг server-ийн алдаа мэт харуулна).
 app.use((err, req, res, next) => {
-  console.error(err);
   const status = err.status || err.statusCode || 500;
+  logError(err, { method: req.method, path: req.path, status });
   const message = status < 500 && err.expose ? err.message : 'Серверийн алдаа';
   res.status(status).json({ error: message });
 });
 
-const server = app.listen(config.PORT, () => {
+const httpServer = http.createServer(app);
+initSocket(httpServer, config.FRONTEND_URL);
+
+const server = httpServer.listen(config.PORT, () => {
   console.log(`🚀 Kreativ backend: http://localhost:${config.PORT}`);
 });
 

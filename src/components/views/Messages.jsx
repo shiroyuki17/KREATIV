@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Search, Send, Info, X, AlertCircle } from "lucide-react";
+import { Search, Send, Info, X, AlertCircle, ShieldAlert } from "lucide-react";
 import { useNav } from "../../nav.jsx";
 import { getAccessToken, avatarSrc } from "../../lib/authApi.js";
 import { fetchConversations, startConversation, fetchThread, sendMessage } from "../../lib/messagesApi.js";
+import { connectSocket } from "../../lib/socket.js";
 
 function initialsOf(name) {
   return (name || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
@@ -54,9 +55,28 @@ export default function Messages() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
+  const [leakageWarning, setLeakageWarning] = useState(null);
   const bottomRef = useRef(null);
+  const activeIdRef = useRef(null);
+  activeIdRef.current = activeId;
 
   const active = conversations.find((c) => c.id === activeId) || null;
+
+  // FR-5.1: socket.io — шинэ зурвас ирмэгц polling-ийг хүлээхгүйгээр шууд
+  // харуулна (polling-ийг доор аюулгүйн сүлжээ болгож хэвээр үлдээв).
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!token) return;
+    const socket = connectSocket(token);
+    const onMessage = ({ conversationId, message }) => {
+      if (conversationId === activeIdRef.current) {
+        setThread((t) => (t.some((m) => m.id === message.id) ? t : [...t, message]));
+      }
+      fetchConversations(token).then((res) => setConversations(res.conversations)).catch(() => {});
+    };
+    socket.on("message:new", onMessage);
+    return () => socket.off("message:new", onMessage);
+  }, []);
 
   // Initial load — if we arrived with a specific person to message
   // (Message button on a talent card/profile), get-or-create that
@@ -124,9 +144,11 @@ export default function Messages() {
     if (!text || !activeId || sending) return;
     setDraft("");
     setSending(true);
+    setLeakageWarning(null);
     try {
       const message = await sendMessage(activeId, text, getAccessToken());
       setThread((t) => [...t, message]);
+      if (message.leakageWarning) setLeakageWarning(message.leakageWarning);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -239,6 +261,12 @@ export default function Messages() {
                 <div ref={bottomRef} />
               </div>
 
+              {leakageWarning && (
+                <p className="mx-3.5 mb-2 flex items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2 text-[11.5px] font-medium text-amber-400">
+                  <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
+                  Таны зурвас {leakageWarning.join(", ")} агуулж байж болзошгүй. Гэрээ байгуулагдахаас өмнө холбоо барих мэдээлэл солилцохгүй байхыг зөвлөж байна.
+                </p>
+              )}
               <div className="flex items-center gap-2 border-t border-white/8 p-3.5">
                 <input
                   value={draft}

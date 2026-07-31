@@ -5,6 +5,12 @@ import prisma from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { reviewCreateSchema } from '../validators/contract.schema.js';
 import { createNotification } from './notification.routes.js';
+import { logEvent } from '../lib/logger.js';
+
+// FR-8.1: хоёр тал бие биенээ үнэлсний дараа ЭСВЭЛ гэрээ дууссанаас хойш
+// 14 хоногийн дараа review-ууд зэрэг нээгдэнэ (нэг тал нөгөөгийнхөө
+// сэтгэгдлийг харснаар өөрийн үнэлгээгээ өнгөөр нь бичихээс сэргийлнэ).
+const REVEAL_AFTER_DAYS = 14;
 
 const router = Router();
 
@@ -50,6 +56,7 @@ router.post('/contracts/:id/reviews', requireAuth, async (req, res, next) => {
     }
 
     res.status(201).json(review);
+    logEvent('review_submitted', { contractId: contract.id, reviewerId: req.user.id, stars: data.stars });
     createNotification({
       userId: revieweeId,
       type: 'review',
@@ -62,16 +69,33 @@ router.post('/contracts/:id/reviews', requireAuth, async (req, res, next) => {
 });
 
 // ── GET /reviews/for/:userId ── (нийтэд, тухайн хэрэглэгчийн хүлээн авсан үнэлгээ)
+// FR-8.1: хоёр талын review зэрэг ирснээс хойш ЭСВЭЛ гэрээ дууссанаас
+// 14 хоногийн дараа л харагдана (double-blind).
 router.get('/reviews/for/:userId', async (req, res, next) => {
   try {
     const reviews = await prisma.review.findMany({
       where: { revieweeId: req.params.userId },
-      include: { reviewer: { select: { name: true } }, contract: { include: { job: { select: { title: true } } } } },
+      include: {
+        reviewer: { select: { name: true } },
+        contract: { select: { id: true, completedAt: true, job: { select: { title: true } } } },
+      },
       orderBy: { createdAt: 'desc' },
       take: 50,
     });
+
+    const contractIds = [...new Set(reviews.map((r) => r.contract.id))];
+    const counts = await prisma.review.groupBy({ by: ['contractId'], where: { contractId: { in: contractIds } }, _count: true });
+    const countByContract = Object.fromEntries(counts.map((c) => [c.contractId, c._count]));
+
+    const now = Date.now();
+    const revealed = reviews.filter((r) => {
+      if (countByContract[r.contract.id] >= 2) return true;
+      const completedAt = r.contract.completedAt;
+      return completedAt && now - new Date(completedAt).getTime() >= REVEAL_AFTER_DAYS * 24 * 60 * 60 * 1000;
+    });
+
     res.json({
-      reviews: reviews.map((r) => ({
+      reviews: revealed.map((r) => ({
         id: r.id,
         stars: r.stars,
         comment: r.comment,
@@ -79,6 +103,7 @@ router.get('/reviews/for/:userId', async (req, res, next) => {
         reviewerName: r.reviewer?.name,
         jobTitle: r.contract?.job?.title,
       })),
+      pendingCount: reviews.length - revealed.length,
     });
   } catch (err) {
     next(err);

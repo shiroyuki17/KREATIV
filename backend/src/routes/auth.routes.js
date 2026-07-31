@@ -15,6 +15,8 @@ import {
   registerSchema,
   loginSchema,
   refreshSchema,
+  phoneOtpRequestSchema,
+  phoneOtpVerifySchema,
 } from '../validators/auth.schema.js';
 
 const router = Router();
@@ -46,10 +48,13 @@ function publicUser(user) {
     email: user.email,
     name: user.name,
     phone: user.phone,
+    phoneVerifiedAt: user.phoneVerifiedAt,
     avatarUrl: user.avatarUrl,
     role: user.role,
   };
 }
+
+const OTP_TTL_MINUTES = 10;
 
 // ── POST /register ──
 router.post('/register', authLimiter, async (req, res, next) => {
@@ -196,6 +201,7 @@ router.get('/me', requireAuth, async (req, res, next) => {
         email: true,
         name: true,
         phone: true,
+        phoneVerifiedAt: true,
         avatarUrl: true,
         role: true,
         createdAt: true,
@@ -203,6 +209,59 @@ router.get('/me', requireAuth, async (req, res, next) => {
     });
     if (!user) return res.status(404).json({ error: 'Олдсонгүй' });
     res.json(user);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /auth/phone/request-otp ── (FR-1.1, демо горим)
+router.post('/phone/request-otp', requireAuth, authLimiter, async (req, res, next) => {
+  try {
+    const { data, error } = validate(phoneOtpRequestSchema, req.body);
+    if (error) return res.status(400).json({ error });
+
+    const taken = await prisma.user.findFirst({ where: { phone: data.phone, id: { not: req.user.id } } });
+    if (taken) return res.status(409).json({ error: 'Утасны дугаар аль хэдийн бүртгэгдсэн' });
+
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: {
+        phone: data.phone,
+        phoneOtpHash: await hashPassword(code),
+        phoneOtpExpiresAt: new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000),
+      },
+    });
+
+    // Демо горим: жинхэнэ SMS gateway байхгүй тул console-руу "илгээгээд",
+    // хариултад буцаана (sendMail-ийн demo-mode загвартай ижил).
+    console.log(`[demo SMS] ${data.phone} → таны KREATIV баталгаажуулах код: ${code}`);
+
+    res.json({ message: 'Код илгээгдлээ', expiresInMinutes: OTP_TTL_MINUTES, demoCode: code });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /auth/phone/verify-otp ──
+router.post('/phone/verify-otp', requireAuth, authLimiter, async (req, res, next) => {
+  try {
+    const { data, error } = validate(phoneOtpVerifySchema, req.body);
+    if (error) return res.status(400).json({ error });
+
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+    if (!user.phoneOtpHash || !user.phoneOtpExpiresAt || user.phoneOtpExpiresAt < new Date() || user.phone !== data.phone) {
+      return res.status(400).json({ error: 'Код хүчингүй эсвэл хугацаа дууссан. Дахин хүснэ үү.' });
+    }
+    const ok = await verifyPassword(data.code, user.phoneOtpHash);
+    if (!ok) return res.status(400).json({ error: 'Код буруу байна' });
+
+    const updated = await prisma.user.update({
+      where: { id: req.user.id },
+      data: { phoneVerifiedAt: new Date(), phoneOtpHash: null, phoneOtpExpiresAt: null },
+    });
+
+    res.json(publicUser(updated));
   } catch (err) {
     next(err);
   }

@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useNav } from "../../nav.jsx";
 import { getAccessToken } from "../../lib/authApi.js";
-import { fetchBalance, fetchTransactions, createDeposit, confirmDeposit, withdraw } from "../../lib/paymentsApi.js";
+import { fetchBalance, fetchTransactions, createDeposit, confirmDeposit, withdraw, downloadTransactionsCsv } from "../../lib/paymentsApi.js";
 
 const ACCENT = {
   mint: "border-mint/30 bg-mint/10 text-mint",
@@ -117,7 +117,7 @@ function DepositModal({ onClose, onDeposited }) {
   );
 }
 
-function WithdrawModal({ balance, onClose, onWithdrawn }) {
+function WithdrawModal({ balance, minWithdrawal, onClose, onWithdrawn }) {
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -125,6 +125,7 @@ function WithdrawModal({ balance, onClose, onWithdrawn }) {
   const submit = async () => {
     const n = parseInt(amount, 10);
     if (!Number.isFinite(n) || n <= 0) { setError("Дүн буруу байна."); return; }
+    if (n < minWithdrawal) { setError(`Доод татах дүн $${minWithdrawal}`); return; }
     setBusy(true);
     setError("");
     try {
@@ -146,7 +147,8 @@ function WithdrawModal({ balance, onClose, onWithdrawn }) {
             <X className="h-4 w-4" />
           </button>
         </div>
-        <p className="mt-2 text-[12px] text-white/45">Available: ${balance.toLocaleString("en-US")}</p>
+        <p className="mt-2 text-[12px] text-white/45">Available: ${balance.toLocaleString("en-US")} · Доод дүн: ${minWithdrawal}</p>
+        <p className="mt-1 text-[11px] text-white/35">Хүсэлт админд илгээгдэж, баталгаажсаны дараа шилжинэ (FR-6.4).</p>
         <label className="mt-5 block text-[11px] font-semibold uppercase tracking-wider text-white/40">Дүн (USD)</label>
         <input
           value={amount}
@@ -163,34 +165,41 @@ function WithdrawModal({ balance, onClose, onWithdrawn }) {
           disabled={busy}
           className="mt-5 w-full rounded-xl bg-mint py-3 text-[13.5px] font-bold text-ink transition-shadow hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] disabled:opacity-50"
         >
-          {busy ? "Боловсруулж байна…" : "Withdraw now"}
+          {busy ? "Боловсруулж байна…" : "Гаргалт хүсэх"}
         </button>
       </div>
     </div>
   );
 }
 
+const TX_LABEL = { DEPOSIT: "Deposit", WITHDRAWAL: "Withdrawal", ESCROW_HOLD: "Escrow hold", ESCROW_RELEASE: "Escrow release" };
+const STATUS_BADGE = {
+  COMPLETED: ACCENT.mint,
+  PENDING: ACCENT.amber,
+  FAILED: "border-red-500/30 bg-red-500/10 text-red-400",
+};
+
 function TxRow({ tx }) {
-  const isDeposit = tx.kind === "DEPOSIT";
+  const isCredit = tx.kind === "DEPOSIT" || tx.kind === "ESCROW_RELEASE";
+  const isPendingHold = tx.kind === "ESCROW_RELEASE" && tx.availableAt && new Date(tx.availableAt) > new Date();
   return (
     <div className="flex items-center gap-4 py-4">
-      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${isDeposit ? ACCENT.mint : "border-white/15 bg-white/[0.05] text-white/60"}`}>
-        {isDeposit ? <ArrowDownLeft className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
+      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${isCredit ? ACCENT.mint : "border-white/15 bg-white/[0.05] text-white/60"}`}>
+        {isCredit ? <ArrowDownLeft className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[13.5px] font-semibold">{isDeposit ? "Deposit" : "Withdrawal"} · {tx.provider}</p>
+        <p className="truncate text-[13.5px] font-semibold">{TX_LABEL[tx.kind] || tx.kind} · {tx.provider}</p>
         <p className="mt-0.5 text-[11.5px] text-white/40">
           {new Date(tx.createdAt).toLocaleString()}
+          {isPendingHold && ` · ${new Date(tx.availableAt).toLocaleDateString()}-с татах боломжтой`}
         </p>
       </div>
       <div className="text-right">
-        <p className={`font-display text-[14.5px] font-bold ${isDeposit ? "text-mint" : "text-white/70"}`}>
-          {isDeposit ? "+" : "−"}${tx.amount.toLocaleString("en-US")}
+        <p className={`font-display text-[14.5px] font-bold ${isCredit ? "text-mint" : "text-white/70"}`}>
+          {isCredit ? "+" : "−"}${tx.amount.toLocaleString("en-US")}
         </p>
-        <span className={`mt-1 inline-block rounded-full border px-2.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wider ${
-          tx.status === "COMPLETED" ? ACCENT.mint : ACCENT.amber
-        }`}>
-          {tx.status === "COMPLETED" ? "Completed" : "Pending"}
+        <span className={`mt-1 inline-block rounded-full border px-2.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wider ${STATUS_BADGE[tx.status] || ACCENT.amber}`}>
+          {tx.status === "COMPLETED" ? (isPendingHold ? "Hold" : "Completed") : tx.status === "FAILED" ? "Rejected" : "Pending"}
         </span>
       </div>
     </div>
@@ -207,10 +216,13 @@ export default function Payments() {
   const { params } = useNav();
   const [tab, setTab] = useState(params?.tab || "overview");
   const [balance, setBalance] = useState(0);
+  const [pending, setPending] = useState(0);
+  const [minWithdrawal, setMinWithdrawal] = useState(50);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showDeposit, setShowDeposit] = useState(false);
   const [showWithdraw, setShowWithdraw] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     if (params?.tab) setTab(params.tab);
@@ -221,8 +233,22 @@ export default function Payments() {
     if (!token) { setLoading(false); return; }
     setLoading(true);
     Promise.all([fetchBalance(token), fetchTransactions(token)])
-      .then(([b, t]) => { setBalance(b.balance); setTransactions(t.transactions); })
+      .then(([b, t]) => {
+        setBalance(b.balance);
+        setPending(b.pending || 0);
+        setMinWithdrawal(b.minWithdrawal || 50);
+        setTransactions(t.transactions);
+      })
       .finally(() => setLoading(false));
+  };
+
+  const exportCsv = async () => {
+    setExporting(true);
+    try {
+      await downloadTransactionsCsv(getAccessToken());
+    } finally {
+      setExporting(false);
+    }
   };
 
   useEffect(loadWallet, []);
@@ -234,8 +260,19 @@ export default function Payments() {
 
   return (
     <div className="mx-auto max-w-6xl px-6 pb-24 pt-8">
-      <h1 className="font-display text-3xl font-bold tracking-tight">Payments</h1>
-      <p className="mt-1.5 text-[13px] text-white/45">Your real wallet balance and transaction history.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="font-display text-3xl font-bold tracking-tight">Payments</h1>
+          <p className="mt-1.5 text-[13px] text-white/45">Your real wallet balance and transaction history.</p>
+        </div>
+        <button
+          onClick={exportCsv}
+          disabled={exporting}
+          className="glass rounded-xl px-4 py-2.5 text-[12.5px] font-semibold text-white/70 transition-colors hover:text-white disabled:opacity-50"
+        >
+          {exporting ? "Экспортлож байна…" : "Export CSV (тайлан)"}
+        </button>
+      </div>
 
       <div className="mt-7 flex gap-2">
         {TABS.map(({ id, label, Icon }) => (
@@ -258,7 +295,7 @@ export default function Payments() {
 
       {!loading && tab === "overview" && (
         <>
-          <div className="mt-7 grid gap-4 md:grid-cols-3">
+          <div className="mt-7 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div className="glass rounded-2xl p-6">
               <div className="flex items-start justify-between">
                 <span className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border ${ACCENT.mint}`}>
@@ -282,6 +319,13 @@ export default function Payments() {
               </div>
               <p className="mt-5 font-display text-3xl font-bold">${balance.toLocaleString("en-US")}</p>
               <p className="mt-1 text-[11px] font-medium uppercase tracking-wider text-white/40">Available balance</p>
+            </div>
+            <div className="glass rounded-2xl p-6">
+              <span className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border ${ACCENT.amber}`}>
+                <TrendingUp className="h-4.5 w-4.5" />
+              </span>
+              <p className="mt-5 font-display text-3xl font-bold">${pending.toLocaleString("en-US")}</p>
+              <p className="mt-1 text-[11px] font-medium uppercase tracking-wider text-white/40">Pending (5-day hold)</p>
             </div>
             <div className="glass rounded-2xl p-6">
               <span className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border ${ACCENT.brand}`}>
@@ -374,6 +418,7 @@ export default function Payments() {
       {showWithdraw && (
         <WithdrawModal
           balance={balance}
+          minWithdrawal={minWithdrawal}
           onClose={() => setShowWithdraw(false)}
           onWithdrawn={(newBalance, tx) => {
             setBalance(newBalance);

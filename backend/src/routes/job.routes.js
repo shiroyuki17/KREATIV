@@ -6,6 +6,11 @@ import { jobCreateSchema, jobUpdateSchema, jobQuerySchema } from '../validators/
 import { proposalCreateSchema } from '../validators/contract.schema.js';
 import { sendMail } from '../lib/mailer.js';
 import { createNotification } from './notification.routes.js';
+import { detectLeakage } from '../lib/leakage.js';
+import { logEvent } from '../lib/logger.js';
+
+// FR-3.3: сард 5 үнэгүй санал (спам бууруулах + Ph.2 монетизацийн суурь)
+const FREE_PROPOSALS_PER_MONTH = 5;
 
 const router = Router();
 
@@ -51,6 +56,8 @@ function publicJob(job) {
     budgetMax: job.budgetMax,
     status: job.status,
     deadline: job.deadline,
+    moderationStatus: job.moderationStatus,
+    moderationReason: job.moderationReason,
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,
     client: job.client && {
@@ -69,8 +76,14 @@ router.post('/', requireAuth, requireActiveUser, requireClientProfile, async (re
     const { data, error } = validate(jobCreateSchema, req.body);
     if (error) return res.status(400).json({ error });
 
+    // FR-2.3: гарчиг/тайлбарт холбоо барих мэдээлэл илэрвэл нийтлэгдэхийн
+    // өмнө admin-ий хяналтад орно (бусад бүх зар шууд APPROVED).
+    const leak = detectLeakage(`${data.title} ${data.description}`);
+    const moderationStatus = leak.flagged ? 'PENDING' : 'APPROVED';
+    const moderationReason = leak.flagged ? `Илэрсэн: ${leak.reasons.join(', ')}` : null;
+
     const job = await prisma.job.create({
-      data: { ...data, clientId: req.clientProfile.id },
+      data: { ...data, clientId: req.clientProfile.id, moderationStatus, moderationReason },
       include: clientInclude,
     });
     await prisma.clientProfile.update({
@@ -79,6 +92,7 @@ router.post('/', requireAuth, requireActiveUser, requireClientProfile, async (re
     });
 
     res.status(201).json(publicJob(job));
+    logEvent('job_posted', { jobId: job.id, moderationStatus });
 
     prisma.user.findUnique({ where: { id: req.user.id }, select: { email: true, name: true } })
       .then((owner) => owner && sendMail({
@@ -90,9 +104,30 @@ router.post('/', requireAuth, requireActiveUser, requireClientProfile, async (re
     createNotification({
       userId: req.user.id,
       type: 'job',
-      text: `Таны "${job.title}" зар нийтлэгдлээ`,
+      text: moderationStatus === 'PENDING'
+        ? `Таны "${job.title}" зар админы хяналтад орлоо (холбоо барих мэдээлэл илэрсэн тул)`
+        : `Таны "${job.title}" зар нийтлэгдлээ`,
       link: 'my-projects',
     });
+
+    // FR-2.4: ур чадвар тохирсон freelancer-үүдэд мэдэгдэл (шууд нийтлэгдсэн үед л)
+    if (moderationStatus === 'APPROVED' && job.skills.length) {
+      prisma.freelancerProfile.findMany({
+        where: { skills: { hasSome: job.skills } },
+        select: { userId: true },
+        take: 50,
+      }).then((matches) => {
+        for (const m of matches) {
+          if (m.userId === req.user.id) continue;
+          createNotification({
+            userId: m.userId,
+            type: 'job',
+            text: `Таны ур чадварт тохирох шинэ зар: "${job.title}"`,
+            link: 'find-work',
+          });
+        }
+      }).catch(() => {});
+    }
   } catch (err) {
     next(err);
   }
@@ -118,7 +153,7 @@ router.get('/', async (req, res, next) => {
     const { data, error } = validate(jobQuerySchema, req.query);
     if (error) return res.status(400).json({ error });
 
-    const and = [{ status: data.status || 'OPEN' }];
+    const and = [{ status: data.status || 'OPEN' }, { moderationStatus: 'APPROVED' }];
     if (data.category) and.push({ category: data.category });
     if (data.type) and.push({ budgetType: data.type });
     if (data.skills) {
@@ -234,6 +269,7 @@ router.post('/:id/proposals', requireAuth, requireActiveUser, async (req, res, n
     const job = await prisma.job.findUnique({ where: { id: req.params.id } });
     if (!job) return res.status(404).json({ error: 'Олдсонгүй' });
     if (job.status !== 'OPEN') return res.status(409).json({ error: 'Энэ зар одоогоор санал хүлээж авахгүй байна' });
+    if (job.moderationStatus !== 'APPROVED') return res.status(409).json({ error: 'Энэ зар админы хяналтад байгаа тул санал хүлээж авахгүй байна' });
 
     const { data, error } = validate(proposalCreateSchema, req.body);
     if (error) return res.status(400).json({ error });
@@ -243,11 +279,30 @@ router.post('/:id/proposals', requireAuth, requireActiveUser, async (req, res, n
     });
     if (existing) return res.status(409).json({ error: 'Та энэ зард аль хэдийн санал илгээсэн байна' });
 
+    // FR-3.3: сарын үнэгүй саналын хязгаар (спам бууруулах)
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+    const usedThisMonth = await prisma.proposal.count({
+      where: { freelancerId: freelancerProfile.id, createdAt: { gte: monthStart } },
+    });
+    if (usedThisMonth >= FREE_PROPOSALS_PER_MONTH) {
+      return res.status(429).json({ error: `Энэ сарын үнэгүй саналын хязгаар (${FREE_PROPOSALS_PER_MONTH}) дүүрлээ. Дараа сар дахин оролдоно уу.` });
+    }
+
+    // FR-3.4: cover letter-т холбоо барих мэдээлэл илэрвэл анхааруулна (блоклохгүй)
+    const leak = detectLeakage(data.coverLetter);
+
     const proposal = await prisma.proposal.create({
       data: { jobId: job.id, freelancerId: freelancerProfile.id, ...data },
     });
 
-    res.status(201).json(publicProposal({ ...proposal, freelancer: null }));
+    res.status(201).json({
+      ...publicProposal({ ...proposal, freelancer: null }),
+      leakageWarning: leak.flagged ? leak.reasons : null,
+      proposalsRemainingThisMonth: FREE_PROPOSALS_PER_MONTH - usedThisMonth - 1,
+    });
+    logEvent('proposal_submitted', { jobId: job.id, freelancerId: freelancerProfile.id });
 
     prisma.clientProfile.findUnique({ where: { id: job.clientId }, select: { userId: true } })
       .then((client) => client && createNotification({

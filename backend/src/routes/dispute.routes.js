@@ -6,6 +6,7 @@ import prisma from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { disputeCreateSchema } from '../validators/contract.schema.js';
 import { createNotification } from './notification.routes.js';
+import { logEvent } from '../lib/logger.js';
 
 const router = Router();
 
@@ -43,6 +44,7 @@ router.post('/', requireAuth, async (req, res, next) => {
     ]);
 
     res.status(201).json(dispute);
+    logEvent('dispute_opened', { disputeId: dispute.id, milestoneId: milestone.id });
   } catch (err) {
     next(err);
   }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { User, Bell, Lock, Check, AlertCircle, Loader2 } from "lucide-react";
+import { User, Bell, Lock, Check, AlertCircle, Loader2, ShieldCheck, Smartphone } from "lucide-react";
 import Magnet from "../fx/Magnet.jsx";
 import {
   fetchMe,
@@ -10,7 +10,93 @@ import {
   fetchClientProfile,
   saveFreelancerProfile,
   saveClientProfile,
+  requestPhoneOtp,
+  verifyPhoneOtp,
 } from "../../lib/authApi.js";
+
+// FR-1.1 — жинхэнэ SMS gateway байхгүй тул демо горим: backend хариултад
+// demoCode-ыг шууд буцаадаг тул автоматаар талбарт бөглөж, ажиллаж байгааг
+// шууд харуулна (real gateway ирэхэд энэ мөрийг устгахаас өөр өөрчлөлт хэрэггүй).
+function PhoneVerify({ me, onVerified }) {
+  const [phone, setPhone] = useState(me?.phone || "");
+  const [code, setCode] = useState("");
+  const [stage, setStage] = useState("idle"); // idle | sent
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [demoHint, setDemoHint] = useState("");
+
+  if (me?.phoneVerifiedAt) {
+    return (
+      <p className="mt-2 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-mint">
+        <ShieldCheck className="h-4 w-4" /> Утас баталгаажсан ({me.phone})
+      </p>
+    );
+  }
+
+  const sendOtp = async () => {
+    if (!/^\d{8}$/.test(phone)) { setError("Утасны дугаар 8 орон байх ёстой"); return; }
+    setBusy(true);
+    setError("");
+    try {
+      const res = await requestPhoneOtp(phone, getAccessToken());
+      setStage("sent");
+      setDemoHint(res.demoCode ? `Демо горим — код: ${res.demoCode}` : "");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const verify = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const user = await verifyPhoneOtp(phone, code, getAccessToken());
+      onVerified(user);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mt-2 rounded-xl border border-white/8 bg-white/[0.03] p-4">
+      <p className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-white/70">
+        <Smartphone className="h-4 w-4" /> Утас баталгаажаагүй
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <input
+          value={phone}
+          onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ""))}
+          placeholder="99112233"
+          disabled={stage === "sent"}
+          className="w-40 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] outline-none focus:border-brand/50 disabled:opacity-50"
+        />
+        {stage === "idle" ? (
+          <button onClick={sendOtp} disabled={busy} className="rounded-lg bg-brand px-3.5 py-2 text-[11.5px] font-bold text-ink glow-brand disabled:opacity-50">
+            {busy ? "Илгээж байна…" : "Код авах"}
+          </button>
+        ) : (
+          <>
+            <input
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, ""))}
+              placeholder="6 оронтой код"
+              className="w-32 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] outline-none focus:border-brand/50"
+            />
+            <button onClick={verify} disabled={busy || code.length !== 6} className="rounded-lg bg-mint px-3.5 py-2 text-[11.5px] font-bold text-ink disabled:opacity-50">
+              {busy ? "Шалгаж байна…" : "Баталгаажуулах"}
+            </button>
+          </>
+        )}
+      </div>
+      {demoHint && <p className="mt-2 text-[11px] text-amber-300">{demoHint}</p>}
+      {error && <p className="mt-2 text-[11.5px] font-medium text-red-400">{error}</p>}
+    </div>
+  );
+}
 
 const TABS = [
   { id: "profile", label: "Profile", Icon: User },
@@ -297,6 +383,12 @@ export default function Settings() {
 
         {tab === "security" && (
           <div className="space-y-5">
+            <div>
+              <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
+                Утасны баталгаажуулалт
+              </span>
+              <PhoneVerify me={me} onVerified={(user) => setMe(user)} />
+            </div>
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label="Current password" type="password" placeholder="••••••••" />
               <Field label="New password" type="password" placeholder="Min. 12 characters" />

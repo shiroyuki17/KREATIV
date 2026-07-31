@@ -87,6 +87,7 @@ export default function PostJob() {
   const [timeline, setTimeline] = useState("2–4 weeks");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [moderationStatus, setModerationStatus] = useState(null);
 
   const toggleSkill = (s) =>
     setSkills((a) => (a.includes(s) ? a.filter((x) => x !== s) : [...a, s]));
@@ -105,7 +106,7 @@ export default function PostJob() {
     setError("");
     try {
       const amount = parseInt(budget.replace(/[^0-9]/g, ""), 10) || undefined;
-      await createJob(
+      const job = await createJob(
         {
           title,
           description: desc,
@@ -117,6 +118,7 @@ export default function PostJob() {
         },
         token
       );
+      setModerationStatus(job.moderationStatus);
       setPublished(true);
     } catch (err) {
       setError(err.message);
@@ -126,28 +128,39 @@ export default function PostJob() {
   }
 
   if (published) {
+    const pendingReview = moderationStatus === "PENDING";
     return (
       <div className="mx-auto flex min-h-screen max-w-xl items-center px-6 py-28">
         <div className="glass w-full rounded-3xl p-10 text-center">
-          <span className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border-2 border-mint bg-mint/10 text-mint shadow-[0_0_44px_rgba(16,185,129,0.45)]">
+          <span className={`mx-auto flex h-20 w-20 items-center justify-center rounded-full border-2 ${pendingReview ? "border-amber-400 bg-amber-400/10 text-amber-300 shadow-[0_0_44px_rgba(251,191,36,0.35)]" : "border-mint bg-mint/10 text-mint shadow-[0_0_44px_rgba(16,185,129,0.45)]"}`}>
             <Check className="h-9 w-9" />
           </span>
           <h1 className="mt-6 font-display text-2xl font-bold tracking-tight">
-            Your brief is live!
+            {pendingReview ? "Submitted for review" : "Your brief is live!"}
           </h1>
           <p className="mx-auto mt-2 max-w-sm text-[13.5px] leading-relaxed text-white/50">
-            “{title}” is now visible to vetted specialists. Our AI is already
-            matching it to the best fits.
+            {pendingReview
+              ? `“${title}” contains what looks like contact info, so it needs a quick admin check before it goes live (FR-2.3 — spam/leakage protection).`
+              : `“${title}” is now visible to vetted specialists. Our AI is already matching it to the best fits.`}
           </p>
           <div className="mt-6 flex items-center justify-center gap-3">
-            <span className="inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand/10 px-4 py-2 text-[12px] font-semibold text-brand-soft">
-              <Sparkles className="h-3.5 w-3.5" />
-              7 strong matches found
-            </span>
-            <span className="inline-flex items-center gap-2 rounded-full border border-mint/30 bg-mint/10 px-4 py-2 text-[12px] font-semibold text-mint">
-              <ShieldCheck className="h-3.5 w-3.5" />
-              Escrow ready
-            </span>
+            {pendingReview ? (
+              <span className="inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-4 py-2 text-[12px] font-semibold text-amber-300">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Awaiting admin approval
+              </span>
+            ) : (
+              <>
+                <span className="inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand/10 px-4 py-2 text-[12px] font-semibold text-brand-soft">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  7 strong matches found
+                </span>
+                <span className="inline-flex items-center gap-2 rounded-full border border-mint/30 bg-mint/10 px-4 py-2 text-[12px] font-semibold text-mint">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  Escrow ready
+                </span>
+              </>
+            )}
           </div>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <button

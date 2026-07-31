@@ -23,6 +23,12 @@ model User {
   role         Role     @default(USER)
   isActive     Boolean  @default(true)
 
+  // FR-1.1: утасны OTP баталгаажуулалт — жинхэнэ SMS gateway байхгүй тул демо
+  // горимоор ажиллана (kod-ыг sendMail-ийн адил "илгээгээд" хариултад буцаана).
+  phoneOtpHash      String?
+  phoneOtpExpiresAt DateTime?
+  phoneVerifiedAt   DateTime?
+
   refreshTokens     RefreshToken[]
   freelancerProfile FreelancerProfile?
   clientProfile     ClientProfile?
@@ -132,6 +138,11 @@ model Job {
   budgetMax   Int?
   status      JobStatus  @default(OPEN)
   deadline    DateTime?
+  // FR-2.3: нийтлэгдэхийн өмнөх автомат шүүлт + админ хяналт. Утас/холбоо
+  // барих мэдээлэл илэрсэн зар л PENDING болж, бусад бүгд шууд APPROVED
+  // (публик /jobs жагсаалт зөвхөн APPROVED-г харуулна).
+  moderationStatus ModerationStatus @default(APPROVED)
+  moderationReason String?
 
   proposals Proposal[]
   contract  Contract?
@@ -156,6 +167,12 @@ enum JobStatus {
   CANCELLED
 }
 
+enum ModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 // ── Payments ──
 // Day 9 (PRD): QPay-тэй жинхэнэ мерчант данс/key байхгүй тул демо горимоор
 // ажиллана — deposit нь бодит банкны төлбөрийн оронд гараар "confirm"
@@ -174,6 +191,10 @@ model Transaction {
   milestoneId String?
   createdAt   DateTime          @default(now())
   completedAt DateTime?
+  // FR-6.3: batlagdsan milestone-ийн ESCROW_RELEASE нь шууд татах боломжтой
+  // биш — 5 хоногийн "маргааны цонх" өнгөрсний дараа л available болно.
+  // Бусад бүх kind-д null == шууд available (энэ талбар зөвхөн ESCROW_RELEASE-д хэрэглэгдэнэ).
+  availableAt DateTime?
 
   @@index([userId])
   @@index([milestoneId])
@@ -189,6 +210,7 @@ enum TransactionKind {
 enum TransactionStatus {
   PENDING
   COMPLETED
+  FAILED
 }
 
 // ── Proposals, Contracts, Milestones (PRD FR-3/FR-4 — "гол flow") ──
@@ -231,7 +253,12 @@ model Contract {
   freelancerId  String
   totalAmount   Int
   commissionPct Int            @default(10)
+  // FR-4.4: батлахаас өмнө хэдэн удаа засвар хүсэж болохыг хязгаарлана
+  revisionLimit Int            @default(2)
   status        ContractStatus @default(ACTIVE)
+  // FR-8.1: хоёулаа review өгөх/14 хоног хүртэл review-ууд "далд" байна —
+  // энэ огноог lazy тооцоолохын оронд гэрээ дуусах мөчид тодорхой тэмдэглэнэ.
+  completedAt   DateTime?
 
   milestones Milestone[]
   reviews    Review[]
@@ -266,6 +293,8 @@ model Milestone {
   // автоматаар батлагдана (FR-4.5) — cron biш, унших мөчид шалгаж
   // "lazy" байдлаар шилждэг (serverless/free-tier hosting-д ч ажиллана).
   autoApproveAt DateTime?
+  // FR-4.4: contract.revisionLimit хүрвэл цаашид зөвхөн batlah/dispute нээх боломжтой
+  revisionsUsed Int       @default(0)
 
   transactions Transaction[]
   dispute      Dispute?
@@ -364,6 +393,10 @@ model Message {
   senderId       String
   text           String
   readAt         DateTime?
+  // NFR-3 / FR-5.2: гэрээний өмнөх чатад утас/имэйл мэдээлэл илэрвэл
+  // true — зурвасыг хаадаггүй (чат түүх маргааны нотолгоо тул устгагдахгүй),
+  // зөвхөн frontend анхааруулга харуулахад хэрэглэнэ.
+  flagged        Boolean      @default(false)
   createdAt      DateTime     @default(now())
 
   @@index([conversationId])

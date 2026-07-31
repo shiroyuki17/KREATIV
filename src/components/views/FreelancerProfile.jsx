@@ -39,6 +39,7 @@ function normalizeReal(profile, userId) {
     skills: profile.skills || [],
     tagline: profile.bio,
     portfolio: profile.portfolio || [],
+    disputeRate: profile.disputeRate || 0,
   };
 }
 
@@ -184,7 +185,12 @@ export default function FreelancerProfile() {
 
             <div className="mt-5 space-y-2.5 border-t border-white/8 pt-5 text-[12px] text-white/50">
               {isReal ? (
-                <p className="flex justify-between"><span>Jobs completed</span><b className="text-white/80">{f.hired}</b></p>
+                <>
+                  <p className="flex justify-between"><span>Jobs completed</span><b className="text-white/80">{f.hired}</b></p>
+                  {f.disputeRate > 0 && (
+                    <p className="flex justify-between"><span>Dispute rate</span><b className={f.disputeRate > 20 ? "text-red-400" : "text-amber-300"}>{f.disputeRate}%</b></p>
+                  )}
+                </>
               ) : (
                 <>
                   <p className="flex justify-between"><span>Response time</span><b className="text-white/80">~1.4 hours</b></p>

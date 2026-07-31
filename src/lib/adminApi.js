@@ -42,3 +42,21 @@ export const fetchAdminDisputes = (accessToken) => authedJson("/admin/disputes",
 
 export const resolveDispute = (id, resolution, accessToken) =>
   authedJson(`/admin/disputes/${id}/resolve`, { method: "POST", body: { resolution }, accessToken });
+
+// FR-2.3: job moderation queue
+export const fetchModerationQueue = (accessToken) => authedJson("/admin/jobs/moderation", { accessToken });
+
+export const moderateJob = (id, action, accessToken) =>
+  authedJson(`/admin/jobs/${id}/moderate`, { method: "POST", body: { action }, accessToken });
+
+// FR-6.4: payout queue
+export const fetchPayoutQueue = (accessToken) => authedJson("/admin/payouts", { accessToken });
+
+export const approvePayout = (id, accessToken) =>
+  authedJson(`/admin/payouts/${id}/approve`, { method: "POST", accessToken });
+
+export const rejectPayout = (id, accessToken) =>
+  authedJson(`/admin/payouts/${id}/reject`, { method: "POST", accessToken });
+
+// NFR-1: ledger reconciliation
+export const fetchReconciliation = (accessToken) => authedJson("/admin/reconciliation", { accessToken });
