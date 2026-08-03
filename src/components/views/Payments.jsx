@@ -95,10 +95,16 @@ function DepositModal({ onClose, onDeposited }) {
         ) : (
           <>
             <div className="mt-4 flex flex-col items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-6 text-center">
-              <QrCode className="h-16 w-16 text-brand-soft" />
-              <p className="font-mono text-[11px] text-white/50">{invoice.qpayInvoiceNo}</p>
+              {invoice.qrImage ? (
+                <img src={`data:image/png;base64,${invoice.qrImage}`} alt="QPay QR" className="h-40 w-40 rounded-lg bg-white p-2" />
+              ) : (
+                <QrCode className="h-16 w-16 text-brand-soft" />
+              )}
+              <p className="font-mono text-[11px] text-white/50">{invoice.qpayInvoiceNo || invoice.transaction?.id}</p>
               <p className="font-display text-2xl font-bold">${Number(amount).toLocaleString("en-US")}</p>
-              <p className="text-[11px] text-white/40">QPay апп-аар уг QR-ийг уншуулна (демо горим)</p>
+              <p className="text-[11px] text-white/40">
+                {invoice.qrImage ? "QPay апп-аараа уг QR-ийг уншуулж төлнө үү" : "QPay апп-аар уг QR-ийг уншуулна (демо горим)"}
+              </p>
             </div>
             {error && (
               <p className="mt-3 flex items-center gap-1.5 text-[12px] font-medium text-red-400">
@@ -110,7 +116,7 @@ function DepositModal({ onClose, onDeposited }) {
               disabled={busy}
               className="mt-5 w-full rounded-xl bg-gradient-to-r from-brand to-brand-soft py-3 text-[13.5px] font-bold text-ink glow-brand transition-shadow hover:shadow-[0_0_30px_rgba(0,211,149,0.5)] disabled:opacity-50"
             >
-              {busy ? "Баталгаажуулж байна…" : "Би төлсөн"}
+              {busy ? "Баталгаажуулж байна…" : invoice.qrImage ? "Төлбөр шалгах" : "Би төлсөн"}
             </button>
           </>
         )}

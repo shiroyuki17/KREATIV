@@ -44,6 +44,18 @@ services:
         sync: false
       - key: GOOGLE_REDIRECT_URI
         sync: false
+      # Жинхэнэ QPay мерчант эрх ирвэл эдгээрийг бөглөнө — байхгүй үед
+      # payment.routes.js демо горим руугаа автоматаар унана (доогуур харна уу).
+      - key: QPAY_BASE_URL
+        sync: false
+      - key: QPAY_USERNAME
+        sync: false
+      - key: QPAY_PASSWORD
+        sync: false
+      - key: QPAY_INVOICE_CODE
+        sync: false
+      - key: QPAY_CALLBACK_URL
+        sync: false
 
   - type: web
     name: kreativ-frontend

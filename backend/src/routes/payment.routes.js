@@ -10,7 +10,8 @@ import prisma from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { createNotification } from './notification.routes.js';
 import { computeBalance, computeEscrowHeld, computePendingBalance, MIN_WITHDRAWAL } from '../lib/wallet.js';
-import { logEvent } from '../lib/logger.js';
+import { logEvent, logError } from '../lib/logger.js';
+import * as qpay from '../lib/qpay.js';
 
 const router = Router();
 
@@ -42,18 +43,38 @@ router.get('/transactions', requireAuth, async (req, res, next) => {
   }
 });
 
-// ── POST /payments/deposit ── (QPay invoice/create-ийн демо хувилбар)
+// ── POST /payments/deposit ── (QPay холбогдсон бол бодит invoice/create,
+// эс бөгөөс демо горим)
 router.post('/deposit', requireAuth, async (req, res, next) => {
   try {
     const amount = Number(req.body?.amount);
     if (!Number.isFinite(amount) || amount <= 0 || amount > 10_000_000) {
       return res.status(400).json({ error: 'Дүн буруу байна' });
     }
+    const roundedAmount = Math.round(amount);
+
+    if (qpay.isConfigured()) {
+      const tx = await prisma.transaction.create({
+        data: { userId: req.user.id, kind: 'DEPOSIT', amount: roundedAmount, provider: 'qpay' },
+      });
+      try {
+        const invoice = await qpay.createInvoice({
+          amount: roundedAmount,
+          senderInvoiceNo: tx.id,
+          description: `KREATIV escrow deposit — ${req.user.id}`,
+        });
+        await prisma.transaction.update({ where: { id: tx.id }, data: { qpayInvoiceId: invoice.invoiceId } });
+        return res.status(201).json({ transaction: tx, qrText: invoice.qrText, qrImage: invoice.qrImage, urls: invoice.urls });
+      } catch (qpayErr) {
+        // Invoice амжилтгүй бол хагас дутуу PENDING transaction үлдэхгүй
+        await prisma.transaction.delete({ where: { id: tx.id } });
+        throw qpayErr;
+      }
+    }
 
     const tx = await prisma.transaction.create({
-      data: { userId: req.user.id, kind: 'DEPOSIT', amount: Math.round(amount), provider: 'qpay_demo' },
+      data: { userId: req.user.id, kind: 'DEPOSIT', amount: roundedAmount, provider: 'qpay_demo' },
     });
-
     res.status(201).json({
       transaction: tx,
       // Демо QR/invoice утга — жинхэнэ QPay API-ийн invoice/create хариултын оронд
@@ -65,26 +86,58 @@ router.post('/deposit', requireAuth, async (req, res, next) => {
   }
 });
 
-// ── POST /payments/deposit/:id/confirm ── (webhook-ийн демо орлуулагч)
+async function completeDeposit(tx) {
+  const updated = await prisma.transaction.update({
+    where: { id: tx.id },
+    data: { status: 'COMPLETED', completedAt: new Date() },
+  });
+  createNotification({
+    userId: tx.userId,
+    type: 'payment',
+    text: `$${updated.amount.toLocaleString('en-US')} үлдэгдэлд амжилттай нэмэгдлээ`,
+    link: 'payments',
+  });
+  return updated;
+}
+
+// ── POST /payments/deposit/:id/confirm ── (демо горимд "Би төлсөн" товч;
+// QPay холбогдсон үед энэ endpoint POLL хийж, webhook-оос яг адилхан
+// checkPayment-ээр баталгаажуулна — хэрэглэгч UI дээрээ хүлээж болно)
 router.post('/deposit/:id/confirm', requireAuth, async (req, res, next) => {
   try {
     const tx = await prisma.transaction.findUnique({ where: { id: req.params.id } });
     if (!tx || tx.userId !== req.user.id) return res.status(404).json({ error: 'Олдсонгүй' });
     if (tx.status === 'COMPLETED') return res.json({ transaction: tx, balance: await computeBalance(req.user.id) });
 
-    const updated = await prisma.transaction.update({
-      where: { id: tx.id },
-      data: { status: 'COMPLETED', completedAt: new Date() },
-    });
+    if (qpay.isConfigured() && tx.qpayInvoiceId) {
+      const { paid } = await qpay.checkPayment(tx.qpayInvoiceId);
+      if (!paid) return res.status(409).json({ error: 'QPay төлбөр хараахан баталгаажаагүй байна' });
+    }
 
+    const updated = await completeDeposit(tx);
     res.json({ transaction: updated, balance: await computeBalance(req.user.id) });
-    createNotification({
-      userId: req.user.id,
-      type: 'payment',
-      text: `$${updated.amount.toLocaleString('en-US')} үлдэгдэлд амжилттай нэмэгдлээ`,
-      link: 'payments',
-    });
   } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /payments/qpay/callback ── (QPay webhook — auth шаардахгүй,
+// public. Payload-д итгэхгүй, QPay-ийн зөвлөсний дагуу checkPayment-ээр
+// дахин баталгаажуулна.)
+router.post('/qpay/callback', async (req, res, next) => {
+  try {
+    const invoiceId = req.query.invoice_id || req.body?.invoice_id || req.body?.object_id;
+    if (!invoiceId) return res.status(400).json({ error: 'invoice_id байхгүй' });
+
+    const tx = await prisma.transaction.findUnique({ where: { qpayInvoiceId: invoiceId } });
+    if (!tx) return res.status(404).json({ error: 'Тохирох transaction олдсонгүй' });
+    if (tx.status === 'COMPLETED') return res.json({ ok: true });
+
+    const { paid } = await qpay.checkPayment(invoiceId);
+    if (paid) await completeDeposit(tx);
+    res.json({ ok: true });
+  } catch (err) {
+    logError(err, { route: 'qpay/callback' });
     next(err);
   }
 });

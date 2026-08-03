@@ -195,6 +195,9 @@ model Transaction {
   // биш — 5 хоногийн "маргааны цонх" өнгөрсний дараа л available болно.
   // Бусад бүх kind-д null == шууд available (энэ талбар зөвхөн ESCROW_RELEASE-д хэрэглэгдэнэ).
   availableAt DateTime?
+  // Жинхэнэ QPay холбогдсон үед invoice/create-ийн буцаасан invoice_id —
+  // webhook callback ирэхэд тухайн Transaction-ыг олоход хэрэглэнэ.
+  qpayInvoiceId String? @unique
 
   @@index([userId])
   @@index([milestoneId])
