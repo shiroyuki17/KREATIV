@@ -1,4 +1,9 @@
 import rateLimit from 'express-rate-limit';
+import { config } from '../config/env.js';
+
+// Integration тест (Vitest) секундэд арваад auth хүсэлт хийдэг тул
+// бодит хэрэглэгчид зориулсан хязгаар тестийг хиймэл 429-ээр эвдэнэ.
+const skip = () => config.NODE_ENV === 'test';
 
 // Brute-force/credential-stuffing хамгаалалт — register/login/refresh дээр.
 export const authLimiter = rateLimit({
@@ -6,6 +11,7 @@ export const authLimiter = rateLimit({
   limit: 20,
   standardHeaders: true,
   legacyHeaders: false,
+  skip,
   message: { error: 'Хэт олон оролдлого хийлээ. 15 минутын дараа дахин оролдоно уу.' },
 });
 
@@ -15,5 +21,6 @@ export const apiLimiter = rateLimit({
   limit: 600,
   standardHeaders: true,
   legacyHeaders: false,
+  skip,
   message: { error: 'Хэт олон хүсэлт. Түр хүлээгээд дахин оролдоно уу.' },
 });

@@ -42,6 +42,8 @@ import HowItWorks from "./components/views/HowItWorks.jsx";
 import HelpCenter from "./components/views/HelpCenter.jsx";
 import Contact from "./components/views/Contact.jsx";
 import Reviews from "./components/views/Reviews.jsx";
+import Terms from "./components/views/Terms.jsx";
+import DisputePolicy from "./components/views/DisputePolicy.jsx";
 import NotFound from "./components/views/NotFound.jsx";
 import Testimonials from "./components/sections/Testimonials.jsx";
 
@@ -92,7 +94,7 @@ const KNOWN = new Set([
   "home", "trust", "how", "help", "contact", "reviews", "auth", "auth-callback", "onboarding",
   "project", "profile", "client-dashboard", "freelancer-dashboard", "my-projects",
   "messages", "payments", "settings", "notifications", "admin", "post-job",
-  "find-talent", "find-work", "tracker",
+  "find-talent", "find-work", "tracker", "terms", "dispute-policy",
 ]);
 
 function View({ page }) {
@@ -103,6 +105,8 @@ function View({ page }) {
     case "help": return <HelpCenter />;
     case "contact": return <Contact />;
     case "reviews": return <Reviews />;
+    case "terms": return <Terms />;
+    case "dispute-policy": return <DisputePolicy />;
     case "auth": return <Auth />;
     case "auth-callback": return <AuthCallback />;
     case "onboarding": return <Onboarding />;

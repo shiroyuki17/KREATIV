@@ -9,6 +9,7 @@ import { disputeResolveSchema } from '../validators/contract.schema.js';
 import { releaseMilestonePayment, maybeCompleteContract } from './contract.routes.js';
 import { createNotification } from './notification.routes.js';
 import { runReconciliation } from '../lib/reconcile.js';
+import { PENDING_HOLD_DAYS } from '../lib/wallet.js';
 
 const router = Router();
 router.use(requireAuth, requireRole('ADMIN'));
@@ -212,7 +213,11 @@ router.post('/disputes/:id/resolve', async (req, res, next) => {
       const commission = Math.round((freelancerShare * contract.commissionPct) / 100);
       await prisma.$transaction([
         prisma.transaction.create({
-          data: { userId: freelancerProfile.userId, kind: 'ESCROW_RELEASE', status: 'COMPLETED', amount: freelancerShare - commission, provider: 'dispute_split', milestoneId: milestone.id, completedAt: new Date() },
+          data: {
+            userId: freelancerProfile.userId, kind: 'ESCROW_RELEASE', status: 'COMPLETED',
+            amount: freelancerShare - commission, provider: 'dispute_split', milestoneId: milestone.id,
+            completedAt: new Date(), availableAt: new Date(Date.now() + PENDING_HOLD_DAYS * 24 * 60 * 60 * 1000),
+          },
         }),
         prisma.transaction.create({
           data: { userId: clientProfile.userId, kind: 'DEPOSIT', status: 'COMPLETED', amount: clientShare, provider: 'dispute_split', milestoneId: milestone.id, completedAt: new Date() },

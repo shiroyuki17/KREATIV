@@ -1,84 +1,8 @@
 import http from 'node:http';
-import express from 'express';
-import cors from 'cors';
-import cookieParser from 'cookie-parser';
-import morgan from 'morgan';
-import helmet from 'helmet';
-import swaggerUi from 'swagger-ui-express';
+import { app } from './app.js';
 import { config } from './config/env.js';
 import prisma from './lib/prisma.js';
-import { openapiSpec } from './docs/openapi.js';
-import { metricsMiddleware, metricsHandler } from './middleware/monitoring.js';
-import { apiLimiter } from './middleware/rateLimit.js';
-import { UPLOAD_ROOT } from './middleware/upload.js';
-import { logError } from './lib/logger.js';
 import { initSocket } from './lib/socket.js';
-import authRoutes from './routes/auth.routes.js';
-import googleOAuthRoutes from './routes/google-oauth.routes.js';
-import profileRoutes from './routes/profile.routes.js';
-import jobRoutes from './routes/job.routes.js';
-import analyticsRoutes from './routes/analytics.routes.js';
-import paymentRoutes from './routes/payment.routes.js';
-import notificationRoutes from './routes/notification.routes.js';
-import messageRoutes from './routes/message.routes.js';
-import adminRoutes from './routes/admin.routes.js';
-import contractRoutes from './routes/contract.routes.js';
-import disputeRoutes from './routes/dispute.routes.js';
-import reviewRoutes from './routes/review.routes.js';
-
-const app = express();
-// Railway/Render гэх мэт hosting нь reverse proxy ард ажилладаг тул
-// req.ip (rate limiting-ийн key) зөв тодорхойлогдохын тулд шаардлагатай.
-app.set('trust proxy', 1);
-app.disable('x-powered-by');
-app.use(helmet({
-  // API сервер тул HTML CSP шаардлагагүй, disable хийхгүй бол Swagger UI-г эвдэнэ
-  contentSecurityPolicy: false,
-  // frontend өөр origin/port-оос fetch хийдэг тул JSON хариултыг блоклохгүйн тулд
-  crossOriginResourcePolicy: { policy: 'cross-origin' },
-}));
-app.use(cors({ origin: config.FRONTEND_URL }));
-app.use(express.json({ limit: '100kb' }));
-app.use(cookieParser());
-app.use(morgan(config.NODE_ENV === 'production' ? 'combined' : 'dev'));
-app.use(metricsMiddleware);
-app.use(apiLimiter);
-
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', service: 'kreativ-backend' });
-});
-app.get('/metrics', metricsHandler);
-app.use('/docs', swaggerUi.serve, swaggerUi.setup(openapiSpec, { customSiteTitle: 'Kreativ API Docs' }));
-app.get('/openapi.json', (req, res) => res.json(openapiSpec));
-app.use('/uploads', express.static(UPLOAD_ROOT));
-
-app.use('/auth', authRoutes);
-app.use('/auth', googleOAuthRoutes);
-app.use('/profile', profileRoutes);
-app.use('/jobs', jobRoutes);
-app.use('/analytics', analyticsRoutes);
-app.use('/payments', paymentRoutes);
-app.use('/notifications', notificationRoutes);
-app.use('/messages', messageRoutes);
-app.use('/admin', adminRoutes);
-app.use('/', contractRoutes);
-app.use('/disputes', disputeRoutes);
-app.use('/', reviewRoutes);
-
-// 404
-app.use((req, res) => {
-  res.status(404).json({ error: 'Олдсонгүй' });
-});
-
-// Алдааны төв handler. err.status/statusCode-ийг хүндэтгэнэ (жишээ:
-// body-parser-ийн буруу JSON → 400) — үгүй бол бүх зүйл 500 болж, /metrics-ийн
-// 5xx тоолуурыг гуйвуулна (client-ийн алдааг server-ийн алдаа мэт харуулна).
-app.use((err, req, res, next) => {
-  const status = err.status || err.statusCode || 500;
-  logError(err, { method: req.method, path: req.path, status });
-  const message = status < 500 && err.expose ? err.message : 'Серверийн алдаа';
-  res.status(status).json({ error: message });
-});
 
 const httpServer = http.createServer(app);
 initSocket(httpServer, config.FRONTEND_URL);

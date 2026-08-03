@@ -37,9 +37,9 @@ const COLS = [
     links: [
       { label: "Help center", page: "help" },
       { label: "FAQ", page: "help" },
-      { label: "Dispute resolution", page: "trust" },
+      { label: "Dispute resolution", page: "dispute-policy" },
       { label: "Privacy policy", page: "help" },
-      { label: "Terms of service", page: "help" },
+      { label: "Terms of service", page: "terms" },
     ],
   },
 ];
