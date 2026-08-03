@@ -10,6 +10,8 @@ import {
   X,
   QrCode,
   AlertCircle,
+  Loader2,
+  Check,
 } from "lucide-react";
 import { useNav } from "../../nav.jsx";
 import { getAccessToken } from "../../lib/authApi.js";
@@ -27,6 +29,7 @@ function DepositModal({ onClose, onDeposited }) {
   const [amount, setAmount] = useState("100");
   const [invoice, setInvoice] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [settled, setSettled] = useState(false);
   const [error, setError] = useState("");
   useEscapeKey(onClose);
 
@@ -45,18 +48,30 @@ function DepositModal({ onClose, onDeposited }) {
     }
   };
 
-  const confirm = async () => {
-    setBusy(true);
-    setError("");
-    try {
-      const res = await confirmDeposit(invoice.transaction.id, getAccessToken());
-      onDeposited(res.balance, res.transaction);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusy(false);
-    }
-  };
+  // Хэрэглэгч өөрөө "Би төлсөн" гэж мэдэгдэх шаардлагагүй — QR гарсны дараа
+  // систем өөрөө (демо горимд бага зэрэг хугацааны дараа, жинхэнэ QPay
+  // холбогдсон бол payment/check-ээр) төлбөрийг илрүүлдэг мэт автоматаар
+  // poll хийнэ. "settled: false" нь алдаа биш — зүгээр л "хараахан ирээгүй".
+  useEffect(() => {
+    if (!invoice || settled) return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const res = await confirmDeposit(invoice.transaction.id, getAccessToken());
+        if (cancelled) return;
+        if (res.settled) {
+          setSettled(true);
+          // Хэрэглэгчид "амжилттай" гэдгийг нэг мөч харуулаад, тэгээд л цонхыг хаана
+          setTimeout(() => { if (!cancelled) onDeposited(res.balance, res.transaction); }, 900);
+        }
+      } catch (err) {
+        if (!cancelled) setError(err.message);
+      }
+    };
+    const t = setInterval(poll, 1200);
+    return () => { cancelled = true; clearInterval(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invoice, settled]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
@@ -95,15 +110,23 @@ function DepositModal({ onClose, onDeposited }) {
         ) : (
           <>
             <div className="mt-4 flex flex-col items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-6 text-center">
-              {invoice.qrImage ? (
+              {settled ? (
+                <span className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-mint bg-mint/10 text-mint shadow-[0_0_30px_rgba(16,185,129,0.4)]">
+                  <Check className="h-8 w-8" />
+                </span>
+              ) : invoice.qrImage ? (
                 <img src={`data:image/png;base64,${invoice.qrImage}`} alt="QPay QR" className="h-40 w-40 rounded-lg bg-white p-2" />
               ) : (
                 <QrCode className="h-16 w-16 text-brand-soft" />
               )}
               <p className="font-mono text-[11px] text-white/50">{invoice.qpayInvoiceNo || invoice.transaction?.id}</p>
               <p className="font-display text-2xl font-bold">${Number(amount).toLocaleString("en-US")}</p>
-              <p className="text-[11px] text-white/40">
-                {invoice.qrImage ? "QPay апп-аараа уг QR-ийг уншуулж төлнө үү" : "QPay апп-аар уг QR-ийг уншуулна (демо горим)"}
+              <p className={`text-[11px] ${settled ? "font-semibold text-mint" : "text-white/40"}`}>
+                {settled
+                  ? "Төлбөр амжилттай — балансад орлоо!"
+                  : invoice.qrImage
+                    ? "QPay апп-аараа уг QR-ийг уншуулж төлнө үү"
+                    : "QPay апп-аар уг QR-ийг уншуулна (демо горим)"}
               </p>
             </div>
             {error && (
@@ -111,13 +134,12 @@ function DepositModal({ onClose, onDeposited }) {
                 <AlertCircle className="h-3.5 w-3.5 shrink-0" /> {error}
               </p>
             )}
-            <button
-              onClick={confirm}
-              disabled={busy}
-              className="mt-5 w-full rounded-xl bg-gradient-to-r from-brand to-brand-soft py-3 text-[13.5px] font-bold text-ink glow-brand transition-shadow hover:shadow-[0_0_30px_rgba(0,211,149,0.5)] disabled:opacity-50"
-            >
-              {busy ? "Баталгаажуулж байна…" : invoice.qrImage ? "Төлбөр шалгах" : "Би төлсөн"}
-            </button>
+            {!settled && (
+              <p className="mt-5 flex items-center justify-center gap-2 text-[12.5px] font-medium text-white/50">
+                <Loader2 className="h-4 w-4 animate-spin text-brand-soft" />
+                Төлбөрийг хүлээж байна…
+              </p>
+            )}
           </>
         )}
       </div>

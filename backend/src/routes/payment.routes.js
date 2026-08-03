@@ -12,6 +12,7 @@ import { createNotification } from './notification.routes.js';
 import { computeBalance, computeEscrowHeld, computePendingBalance, MIN_WITHDRAWAL } from '../lib/wallet.js';
 import { logEvent, logError } from '../lib/logger.js';
 import * as qpay from '../lib/qpay.js';
+import { config } from '../config/env.js';
 
 const router = Router();
 
@@ -100,22 +101,33 @@ async function completeDeposit(tx) {
   return updated;
 }
 
-// ── POST /payments/deposit/:id/confirm ── (демо горимд "Би төлсөн" товч;
-// QPay холбогдсон үед энэ endpoint POLL хийж, webhook-оос яг адилхан
-// checkPayment-ээр баталгаажуулна — хэрэглэгч UI дээрээ хүлээж болно)
+// Демо горимд хэрэглэгч өөрөө "төлсөн" гэж мэдэгдэх (self-attestation)
+// шаардлагагүй байхын тулд — жинхэнэ банкны апп шиг бага зэрэг хугацаа
+// өнгөрсний дараа "систем төлбөрийг илрүүлсэн" мэт lazy-статусаар шийднэ
+// (autoApprovePastDue-тэй ижил зарчим — цаг хугацаанд тулгуурласан шалгалт).
+// Integration тест хиймэл хугацаа хүлээж чадахгүй тул NODE_ENV=test-д шууд шийднэ
+const DEMO_AUTO_COMPLETE_MS = config.NODE_ENV === 'test' ? 0 : 4000;
+
+// ── POST /payments/deposit/:id/confirm ── (frontend-ээс автоматаар poll
+// хийгддэг — "settled: false" нь "хараахан ирээгүй", алдаа биш)
 router.post('/deposit/:id/confirm', requireAuth, async (req, res, next) => {
   try {
     const tx = await prisma.transaction.findUnique({ where: { id: req.params.id } });
     if (!tx || tx.userId !== req.user.id) return res.status(404).json({ error: 'Олдсонгүй' });
-    if (tx.status === 'COMPLETED') return res.json({ transaction: tx, balance: await computeBalance(req.user.id) });
+    if (tx.status === 'COMPLETED') {
+      return res.json({ transaction: tx, balance: await computeBalance(req.user.id), settled: true });
+    }
 
     if (qpay.isConfigured() && tx.qpayInvoiceId) {
       const { paid } = await qpay.checkPayment(tx.qpayInvoiceId);
-      if (!paid) return res.status(409).json({ error: 'QPay төлбөр хараахан баталгаажаагүй байна' });
+      if (!paid) return res.json({ transaction: tx, settled: false });
+    } else {
+      const elapsed = Date.now() - new Date(tx.createdAt).getTime();
+      if (elapsed < DEMO_AUTO_COMPLETE_MS) return res.json({ transaction: tx, settled: false });
     }
 
     const updated = await completeDeposit(tx);
-    res.json({ transaction: updated, balance: await computeBalance(req.user.id) });
+    res.json({ transaction: updated, balance: await computeBalance(req.user.id), settled: true });
   } catch (err) {
     next(err);
   }
