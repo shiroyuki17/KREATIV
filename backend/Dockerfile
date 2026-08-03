@@ -5,17 +5,19 @@
 FROM node:24-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --registry=https://registry.npmjs.org/
 
 FROM node:24-alpine AS build
 WORKDIR /app
-# Cache-bust: зарим CI (Render) орчинд package.json өөрчлөгдсөн ч npm ci
-# давхцсан stale cache layer-ээс буцаж, хуучин (@6-7 сарын өмнөх) dependency
-# tree-г дахин суулгадаг эвдрэл ажиглагдсан — ARG нь COPY-с хойшхи бүх
-# давхаргыг хугацаа бүрд шинэчлэхийг баталгаажуулна.
+# Зарим CI орчинд (Render дээр ажиглагдсан) npm ci нь package.json/lock.json
+# зөв атал огт хамааралгүй, хэдэн сарын өмнөх (одоо байхгүй "wrench" зэрэг
+# dependency агуулсан) дутуу tree суулгадаг эвдрэл гарсан — Docker layer
+# cache-ийн асуудал биш (ARG-аар cache-bust хийсэн ч давтагдсан) харин
+# орчны npm registry/mirror stale байсан бололтой тул --registry-ийг тодорхой
+# зааж, environment/.npmrc-ээс үл хамааран албан ёсны registry ашиглуулна.
 ARG CACHE_BUST=2026-08-03-1
 COPY package.json package-lock.json* ./
-RUN npm ci && test -f node_modules/.bin/prisma || (echo "FATAL: npm ci did not install prisma — dependency tree is likely stale/incomplete" && ls node_modules | wc -l && exit 1)
+RUN npm ci --registry=https://registry.npmjs.org/ && test -f node_modules/.bin/prisma || (echo "FATAL: npm ci did not install prisma — dependency tree is likely stale/incomplete" && ls node_modules | wc -l && exit 1)
 COPY prisma ./prisma
 COPY prisma.config.ts ./
 # зөвхөн Prisma Client үүсгэхэд хэрэгтэй — бодит DB холболт шаардахгүй
