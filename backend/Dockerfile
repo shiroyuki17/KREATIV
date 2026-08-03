@@ -15,8 +15,16 @@ WORKDIR /app
 # cache-ийн асуудал биш (ARG-аар cache-bust хийсэн ч давтагдсан) харин
 # орчны npm registry/mirror stale байсан бололтой тул --registry-ийг тодорхой
 # зааж, environment/.npmrc-ээс үл хамааран албан ёсны registry ашиглуулна.
-ARG CACHE_BUST=2026-08-03-1
+ARG CACHE_BUST=2026-08-03-2
 COPY package.json package-lock.json* ./
+# ВРЕМЕННО diagnostic — Render дээр яг ямар файл checkout хийгдэж байгааг
+# нарийн харахын тулд (wc/md5/grep) — асуудал олдсоны дараа устгана.
+RUN echo "=== DIAGNOSTIC ===" \
+  && wc -l package.json package-lock.json \
+  && md5sum package.json package-lock.json \
+  && (grep -c '"prisma"' package.json || echo "prisma NOT in package.json") \
+  && (grep -c wrench package-lock.json || echo "wrench NOT in package-lock.json (good)") \
+  && echo "=== END DIAGNOSTIC ==="
 RUN npm ci --registry=https://registry.npmjs.org/ && test -f node_modules/.bin/prisma || (echo "FATAL: npm ci did not install prisma — dependency tree is likely stale/incomplete" && ls node_modules | wc -l && exit 1)
 COPY prisma ./prisma
 COPY prisma.config.ts ./
