@@ -22,7 +22,7 @@ export default function Categories() {
   const goCat = (label) => nav("find-talent", { query: label.split(/ [&/]|&/)[0].trim() });
 
   return (
-    <section id="categories" className="relative py-24">
+    <section id="categories" className="relative py-12 md:py-24">
       <div className="mx-auto max-w-6xl px-6">
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-soft">
           — Browse categories

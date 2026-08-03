@@ -30,7 +30,7 @@ export default function ProjectProgressDashboard() {
   const completed = stage >= MILESTONES.length - 1;
 
   return (
-    <section id="dashboard" className="relative py-24">
+    <section id="dashboard" className="relative py-12 md:py-24">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute left-[-140px] top-1/3 h-[420px] w-[420px] rounded-full bg-neon/8 blur-[130px]"

@@ -36,7 +36,14 @@ app.use(helmet({
   // frontend өөр origin/port-оос fetch хийдэг тул JSON хариултыг блоклохгүйн тулд
   crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
-app.use(cors({ origin: config.FRONTEND_URL }));
+// Dev орчинд Vite хүссэн portoo (5173/5174/...) авдаг тул FRONTEND_URL нэг
+// утгаар түгждэггүй, localhost-ийн ямар ч порт зөвшөөрнө (prod-д яг таг
+// нэг domain-аар хязгаарлана — CORS сулраагүй, зөвхөн local dev-ийн эмзэг
+// цэгийг шийднэ).
+const corsOrigin = config.NODE_ENV === 'production'
+  ? config.FRONTEND_URL
+  : [config.FRONTEND_URL, /^http:\/\/localhost:\d+$/];
+app.use(cors({ origin: corsOrigin }));
 app.use(express.json({ limit: '100kb' }));
 app.use(cookieParser());
 if (config.NODE_ENV !== 'test') app.use(morgan(config.NODE_ENV === 'production' ? 'combined' : 'dev'));

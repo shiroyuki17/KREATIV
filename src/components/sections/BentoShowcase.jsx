@@ -13,7 +13,7 @@ export default function BentoShowcase() {
   const { nav } = useNav();
   const { openBriefs } = useLive();
   return (
-    <section id="showcase" className="relative py-24">
+    <section id="showcase" className="relative py-12 md:py-24">
       <div className="mx-auto max-w-6xl px-6">
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-soft">
           — Live on KREATIV

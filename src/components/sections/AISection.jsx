@@ -13,7 +13,7 @@ export default function AISection() {
   const openChat = () => window.dispatchEvent(new Event("open-kreativ-chat"));
 
   return (
-    <section id="ai" className="relative py-24">
+    <section id="ai" className="relative py-12 md:py-24">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute right-[-140px] top-1/4 h-[400px] w-[400px] rounded-full bg-brand/12 blur-[130px]"

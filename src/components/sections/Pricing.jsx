@@ -63,7 +63,7 @@ export default function Pricing() {
   const [yearly, setYearly] = useState(true);
 
   return (
-    <section id="pricing" className="relative py-24">
+    <section id="pricing" className="relative py-12 md:py-24">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute left-1/2 top-24 h-[360px] w-[680px] -translate-x-1/2 rounded-full bg-brand/10 blur-[130px]"

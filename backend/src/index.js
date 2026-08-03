@@ -5,7 +5,10 @@ import prisma from './lib/prisma.js';
 import { initSocket } from './lib/socket.js';
 
 const httpServer = http.createServer(app);
-initSocket(httpServer, config.FRONTEND_URL);
+const socketCorsOrigin = config.NODE_ENV === 'production'
+  ? config.FRONTEND_URL
+  : [config.FRONTEND_URL, /^http:\/\/localhost:\d+$/];
+initSocket(httpServer, socketCorsOrigin);
 
 const server = httpServer.listen(config.PORT, () => {
   console.log(`🚀 Kreativ backend: http://localhost:${config.PORT}`);

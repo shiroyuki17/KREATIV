@@ -98,7 +98,7 @@ export default function Hero() {
     nav("find-talent", val && val.trim() ? { query: val } : null);
 
   return (
-    <section id="top" className="relative overflow-hidden pb-20 pt-36">
+    <section id="top" className="relative overflow-hidden pb-12 pt-32 md:pb-20 md:pt-36">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -top-40 left-1/2 h-[520px] w-[820px] -translate-x-1/2 rounded-full bg-brand/20 blur-[140px]"

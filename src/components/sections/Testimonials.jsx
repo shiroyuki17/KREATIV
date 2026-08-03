@@ -7,7 +7,7 @@ import { useNav } from "../../nav.jsx";
 export default function Testimonials() {
   const { nav } = useNav();
   return (
-    <section id="stories" className="relative py-24">
+    <section id="stories" className="relative py-12 md:py-24">
       <div className="mx-auto max-w-6xl px-6">
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>

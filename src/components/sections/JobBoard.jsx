@@ -16,7 +16,7 @@ export default function JobBoard() {
   const jobs = matching.slice(0, PREVIEW_COUNT); // landing shows a taste, not the whole board
 
   return (
-    <section id="jobs" className="relative py-24">
+    <section id="jobs" className="relative py-12 md:py-24">
       <div className="mx-auto max-w-6xl px-6">
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>

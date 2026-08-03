@@ -22,7 +22,7 @@ export default function LiveBriefs() {
   const { nav } = useNav();
 
   return (
-    <section className="relative py-16">
+    <section className="relative py-10 md:py-16">
       <div className="mx-auto max-w-6xl px-6">
         <Reveal className="flex flex-wrap items-end justify-between gap-3">
           <div>
