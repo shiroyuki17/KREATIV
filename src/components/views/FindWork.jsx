@@ -3,6 +3,7 @@ import { Search, Star, BadgeCheck, ChevronLeft, ChevronRight as ChevronRightIcon
 import SpotlightCard from "../fx/SpotlightCard.jsx";
 import { useNav } from "../../nav.jsx";
 import { fetchJobs } from "../../lib/jobsApi.js";
+import { useEscapeKey } from "../../hooks/useEscapeKey.js";
 
 const CATS = ["All", "Design", "Dev", "AI", "Motion", "Writing", "Marketing"];
 const TYPES = ["Any", "Fixed", "Hourly"];
@@ -121,6 +122,7 @@ export default function FindWork() {
   const [langs, setLangs] = useState([]);
   const [sort, setSort] = useState("relevant");
   const [showFilters, setShowFilters] = useState(false);
+  useEscapeKey(() => setShowFilters(false), showFilters);
   const [page, setPage] = useState(1);
 
   const [jobs, setJobs] = useState([]);

@@ -4,6 +4,7 @@ import { useNav } from "../../nav.jsx";
 import { getAccessToken, avatarSrc } from "../../lib/authApi.js";
 import { fetchConversations, startConversation, fetchThread, sendMessage } from "../../lib/messagesApi.js";
 import { connectSocket } from "../../lib/socket.js";
+import { useEscapeKey } from "../../hooks/useEscapeKey.js";
 
 function initialsOf(name) {
   return (name || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
@@ -61,6 +62,8 @@ export default function Messages() {
   activeIdRef.current = activeId;
 
   const active = conversations.find((c) => c.id === activeId) || null;
+
+  useEscapeKey(() => setShowDetails(false), showDetails);
 
   // FR-5.1: socket.io — шинэ зурвас ирмэгц polling-ийг хүлээхгүйгээр шууд
   // харуулна (polling-ийг доор аюулгүйн сүлжээ болгож хэвээр үлдээв).

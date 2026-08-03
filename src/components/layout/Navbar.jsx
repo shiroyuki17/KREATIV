@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Menu, X, ShieldCheck, Search, Users } from "lucide-react";
 import { useNav } from "../../nav.jsx";
+import { useEscapeKey } from "../../hooks/useEscapeKey.js";
 
 export default function Navbar() {
   const { page, nav } = useNav();
@@ -11,6 +12,8 @@ export default function Navbar() {
     document.body.style.overflow = mobile ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [mobile]);
+
+  useEscapeKey(() => setMobile(false), mobile);
 
   const go = (p, params) => { setMobile(false); nav(p, params); };
 

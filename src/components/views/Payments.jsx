@@ -14,6 +14,7 @@ import {
 import { useNav } from "../../nav.jsx";
 import { getAccessToken } from "../../lib/authApi.js";
 import { fetchBalance, fetchTransactions, createDeposit, confirmDeposit, withdraw, downloadTransactionsCsv } from "../../lib/paymentsApi.js";
+import { useEscapeKey } from "../../hooks/useEscapeKey.js";
 
 const ACCENT = {
   mint: "border-mint/30 bg-mint/10 text-mint",
@@ -27,6 +28,7 @@ function DepositModal({ onClose, onDeposited }) {
   const [invoice, setInvoice] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  useEscapeKey(onClose);
 
   const createInvoice = async () => {
     const token = getAccessToken();
@@ -58,9 +60,9 @@ function DepositModal({ onClose, onDeposited }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="glass w-full max-w-sm rounded-2xl p-6" onClick={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-labelledby="deposit-modal-title" className="glass w-full max-w-sm rounded-2xl p-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
-          <p className="text-[15px] font-bold">Add funds · Demo QPay</p>
+          <p id="deposit-modal-title" className="text-[15px] font-bold">Add funds · Demo QPay</p>
           <button onClick={onClose} aria-label="Close" className="rounded-lg p-1.5 text-white/50 hover:text-white">
             <X className="h-4 w-4" />
           </button>
@@ -121,6 +123,7 @@ function WithdrawModal({ balance, minWithdrawal, onClose, onWithdrawn }) {
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  useEscapeKey(onClose);
 
   const submit = async () => {
     const n = parseInt(amount, 10);
@@ -140,9 +143,9 @@ function WithdrawModal({ balance, minWithdrawal, onClose, onWithdrawn }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="glass w-full max-w-sm rounded-2xl p-6" onClick={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-labelledby="withdraw-modal-title" className="glass w-full max-w-sm rounded-2xl p-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
-          <p className="text-[15px] font-bold">Withdraw</p>
+          <p id="withdraw-modal-title" className="text-[15px] font-bold">Withdraw</p>
           <button onClick={onClose} aria-label="Close" className="rounded-lg p-1.5 text-white/50 hover:text-white">
             <X className="h-4 w-4" />
           </button>
