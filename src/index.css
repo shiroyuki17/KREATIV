@@ -66,6 +66,12 @@
 
 html { scroll-behavior: smooth; }
 
+/* Navbar нь fixed (~70px өндөр) тул anchor-scroll (#pricing г.м) хийхэд
+   scroll-margin-top байхгүй бол тухайн section-ий гарчиг яг navbar-ын
+   ард/дундуур гарч ирдэг байсан (Navbar.jsx-ийн glass ил тод дэвсгэрээр
+   доорх текст бүрэн харагддаг тул давхцал нүдэнд ил харагддаг). */
+section[id] { scroll-margin-top: 110px; }
+
 /* Visible keyboard focus (mouse clicks stay clean via :focus-visible) */
 :where(a, button, input, textarea, select, [tabindex]):focus-visible {
   outline: 2px solid rgba(0, 211, 149, 0.75);
