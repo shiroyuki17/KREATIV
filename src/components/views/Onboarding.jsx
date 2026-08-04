@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Sparkles, AlertCircle } from "lucide-react";
 import Magnet from "../fx/Magnet.jsx";
 import { FL_SKILLS, FL_CATEGORIES, CL_CATEGORIES, CL_BUDGETS } from "../../data/appMock.js";
 import { useNav } from "../../nav.jsx";
 import { getAccessToken, saveFreelancerProfile, saveClientProfile } from "../../lib/authApi.js";
+import { fetchJobs } from "../../lib/jobsApi.js";
+import { fetchFreelancers } from "../../lib/talentApi.js";
 
 function Field({ label, ...props }) {
   return (
@@ -81,9 +83,22 @@ export default function Onboarding() {
   const [teamSize, setTeamSize] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [liveStat, setLiveStat] = useState(null);
 
   const toggle = (s) =>
     setPicked((arr) => (arr.includes(s) ? arr.filter((x) => x !== s) : [...arr, s]));
+
+  // Зохиомол тоо ("3 briefs match", "12,400 freelancers") биш, бодит тоог
+  // харуулна — эцсийн алхамд хүрэхэд л асуулт явуулна.
+  useEffect(() => {
+    if (step !== 2) return;
+    if (isFl) {
+      fetchJobs({ category, pageSize: 1 }).then((res) => setLiveStat(res.total)).catch(() => {});
+    } else {
+      fetchFreelancers({ pageSize: 1 }).then((res) => setLiveStat(res.total)).catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
   const chips = isFl ? FL_SKILLS : CL_CATEGORIES;
   const availOptions = isFl ? ["Full-time", "Part-time", "Weekends"] : CL_BUDGETS;
@@ -222,10 +237,16 @@ export default function Onboarding() {
                   ))}
                 </div>
               )}
-              <p className="mt-5 inline-flex items-center gap-2 rounded-full border border-neon/25 bg-neon/8 px-4 py-2 text-[12px] font-medium text-neon">
-                <Sparkles className="h-3.5 w-3.5" />
-                {isFl ? "3 briefs already match your profile" : "12,400 freelancers ready to help"}
-              </p>
+              {liveStat != null && (
+                <p className="mt-5 inline-flex items-center gap-2 rounded-full border border-neon/25 bg-neon/8 px-4 py-2 text-[12px] font-medium text-neon">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  {isFl
+                    ? liveStat > 0
+                      ? `${liveStat} open brief${liveStat === 1 ? "" : "s"} in ${category} right now`
+                      : `No open briefs in ${category} right now — check back soon`
+                    : `${liveStat.toLocaleString("en-US")} freelancer${liveStat === 1 ? "" : "s"} ready to help`}
+                </p>
+              )}
             </div>
           )}
 

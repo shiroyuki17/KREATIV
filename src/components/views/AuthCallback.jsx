@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { AlertCircle } from "lucide-react";
 import { useNav } from "../../nav.jsx";
-import { saveTokens, fetchMe } from "../../lib/authApi.js";
+import { saveTokens, fetchMe, resolveHomeRoute } from "../../lib/authApi.js";
 
 export default function AuthCallback() {
   const { nav, setUser } = useNav();
@@ -25,9 +25,10 @@ export default function AuthCallback() {
 
     saveTokens(accessToken, refreshToken);
     fetchMe(accessToken)
-      .then((user) => {
+      .then(async (user) => {
         setUser(user);
-        nav(user.role === "ADMIN" ? "admin" : "client-dashboard");
+        const { page, params: routeParams } = await resolveHomeRoute(user, accessToken);
+        nav(page, routeParams);
       })
       .catch(() => setError("Хэрэглэгчийн мэдээлэл татахад алдаа гарлаа."));
   }, [nav, setUser]);

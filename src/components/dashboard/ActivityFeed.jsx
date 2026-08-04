@@ -5,7 +5,9 @@ import {
   CircleDollarSign,
   Briefcase,
   Bell,
+  Radio,
 } from "lucide-react";
+import EmptyState from "../ui/EmptyState.jsx";
 
 const META = {
   commit: { Icon: GitCommitHorizontal, cls: "text-brand-soft border-brand/30 bg-brand/10" },
@@ -33,7 +35,12 @@ export default function ActivityFeed({ feed }) {
 
       <div className="mt-4 space-y-2.5 overflow-hidden [mask-image:linear-gradient(to_bottom,black_82%,transparent)]">
         {feed.length === 0 && (
-          <p className="py-6 text-center text-[12px] text-white/35">No recent activity yet.</p>
+          <EmptyState
+            Icon={Radio}
+            title="It's quiet in here"
+            desc="Job posts, proposals, and payments will show up here the moment something happens."
+            compact
+          />
         )}
         {feed.map((e, i) => {
           const { Icon, cls } = META[e.type] || FALLBACK_META;

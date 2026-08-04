@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -13,6 +13,7 @@ import { FL_SKILLS } from "../../data/appMock.js";
 import { useNav } from "../../nav.jsx";
 import { getAccessToken } from "../../lib/authApi.js";
 import { createJob } from "../../lib/jobsApi.js";
+import { fetchFreelancers } from "../../lib/talentApi.js";
 
 const STEPS = ["Basics", "Details", "Review"];
 
@@ -88,12 +89,21 @@ export default function PostJob() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [moderationStatus, setModerationStatus] = useState(null);
+  const [matchCount, setMatchCount] = useState(null);
 
   const toggleSkill = (s) =>
     setSkills((a) => (a.includes(s) ? a.filter((x) => x !== s) : [...a, s]));
 
   const canNext =
     step === 0 ? title.trim() && cat : step === 1 ? desc.trim() && budget.trim() : true;
+
+  // Зохиомол "7 strong matches" биш — сонгосон ур чадвартай тохирох
+  // freelancer-үүдийн бодит тоог review алхамд хүрэхэд татна.
+  useEffect(() => {
+    if (step !== 2 || skills.length === 0) return;
+    fetchFreelancers({ skills: skills.join(","), pageSize: 1 }).then((res) => setMatchCount(res.total)).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
   async function publish() {
     const token = getAccessToken();
@@ -151,10 +161,12 @@ export default function PostJob() {
               </span>
             ) : (
               <>
-                <span className="inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand/10 px-4 py-2 text-[12px] font-semibold text-brand-soft">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  7 strong matches found
-                </span>
+                {matchCount != null && (
+                  <span className="inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand/10 px-4 py-2 text-[12px] font-semibold text-brand-soft">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    {matchCount > 0 ? `${matchCount} matching specialist${matchCount === 1 ? "" : "s"} found` : "No matches yet — check back soon"}
+                  </span>
+                )}
                 <span className="inline-flex items-center gap-2 rounded-full border border-mint/30 bg-mint/10 px-4 py-2 text-[12px] font-semibold text-mint">
                   <ShieldCheck className="h-3.5 w-3.5" />
                   Escrow ready
@@ -351,8 +363,14 @@ export default function PostJob() {
             <div className="flex items-center gap-3 rounded-xl border border-brand/20 bg-brand/[0.06] p-4">
               <Users className="h-5 w-5 shrink-0 text-brand-soft" />
               <p className="text-[12.5px] leading-relaxed text-white/60">
-                Based on your brief, ~<b className="text-white">7 specialists</b>{" "}
-                are an instant match. Expect proposals within hours.
+                {matchCount != null ? (
+                  <>
+                    <b className="text-white">{matchCount} specialist{matchCount === 1 ? "" : "s"}</b>{" "}
+                    match{matchCount === 1 ? "es" : ""} the skills you picked. Expect proposals within hours.
+                  </>
+                ) : (
+                  "Your brief will be matched to specialists with the skills you picked."
+                )}
               </p>
             </div>
           </div>

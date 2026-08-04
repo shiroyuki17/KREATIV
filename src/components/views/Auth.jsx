@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Briefcase, Laptop, ArrowLeft, Check, AlertCircle } from "lucide-react";
 import Magnet from "../fx/Magnet.jsx";
 import { useNav } from "../../nav.jsx";
-import { googleLoginUrl, registerUser, loginUser, saveTokens } from "../../lib/authApi.js";
+import { googleLoginUrl, registerUser, loginUser, saveTokens, resolveHomeRoute } from "../../lib/authApi.js";
 
 const OAUTH_ERROR_MESSAGES = {
   invalid_state: "Google холболт хугацаа дууссан байна. Дахин оролдоно уу.",
@@ -67,7 +67,8 @@ export default function Auth() {
       const { user, accessToken, refreshToken } = await loginUser({ email, password });
       saveTokens(accessToken, refreshToken);
       setUser(user);
-      nav(user.role === "ADMIN" ? "admin" : "client-dashboard");
+      const { page, params: routeParams } = await resolveHomeRoute(user, accessToken);
+      nav(page, routeParams);
     } catch (err) {
       setFormError(err.message);
     } finally {

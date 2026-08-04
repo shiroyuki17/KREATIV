@@ -7,8 +7,10 @@ import {
   ArrowRight,
   Wallet,
   Laptop,
+  UserRoundPlus,
 } from "lucide-react";
 import Magnet from "../fx/Magnet.jsx";
+import EmptyState from "../ui/EmptyState.jsx";
 import { useNav } from "../../nav.jsx";
 import { getAccessToken, fetchFreelancerProfile } from "../../lib/authApi.js";
 import { fetchBalance, fetchTransactions } from "../../lib/paymentsApi.js";
@@ -94,12 +96,19 @@ export default function FreelancerDashboard() {
       </div>
 
       {!loading && !profile && (
-        <div className="mt-7 glass rounded-2xl p-6 text-[13px] text-white/60">
-          You don't have a freelancer profile yet —{" "}
-          <button onClick={() => nav("settings")} className="font-semibold text-brand-soft hover:text-white">
-            set one up in Settings
-          </button>{" "}
-          to show up in Find Talent and get matched to briefs.
+        <div className="mt-7 flex flex-wrap items-center gap-4 rounded-2xl border border-brand/25 bg-brand/[0.06] p-5">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-brand/30 bg-brand/10 text-brand-soft">
+            <UserRoundPlus className="h-5 w-5" />
+          </span>
+          <p className="min-w-0 flex-1 text-[13px] leading-relaxed text-white/70">
+            <b className="text-white">Set up your freelancer profile</b> to appear in Find Talent and get matched to briefs in your category.
+          </p>
+          <button
+            onClick={() => nav("settings")}
+            className="shrink-0 rounded-lg bg-gradient-to-r from-brand to-brand-soft px-4 py-2.5 text-[12.5px] font-bold text-ink glow-brand transition-shadow hover:shadow-[0_0_30px_rgba(0,211,149,0.5)]"
+          >
+            Set up profile
+          </button>
         </div>
       )}
 
@@ -156,9 +165,14 @@ export default function FreelancerDashboard() {
                 </div>
               ))}
               {!loading && matches.length === 0 && (
-                <p className="py-6 text-center text-[13px] text-white/35">
-                  {profile ? "No open briefs in your category right now." : "Set up your profile to see matched briefs."}
-                </p>
+                <EmptyState
+                  Icon={Sparkles}
+                  compact
+                  title={profile ? "No open briefs in your category right now" : "No matches yet"}
+                  desc={profile ? "Check back soon, or browse everything that's open." : "Set up your profile to start seeing briefs matched to your skills."}
+                  actionLabel={profile ? "Browse all briefs" : undefined}
+                  onAction={() => nav("find-work")}
+                />
               )}
             </div>
           </div>

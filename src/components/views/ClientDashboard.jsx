@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Briefcase, Wallet, Star, MessageSquare, Plus, Search } from "lucide-react";
+import { Briefcase, Wallet, Star, MessageSquare, Plus, Search, FolderOpen } from "lucide-react";
 import ActivityFeed from "../dashboard/ActivityFeed.jsx";
+import EmptyState from "../ui/EmptyState.jsx";
 import { useNav } from "../../nav.jsx";
 import { useLive } from "../../live.jsx";
 import { getAccessToken, fetchClientProfile } from "../../lib/authApi.js";
@@ -146,12 +147,13 @@ export default function ClientDashboard() {
                 </div>
               ))}
               {!loading && jobs.length === 0 && (
-                <div className="py-8 text-center">
-                  <p className="text-[13px] text-white/40">You haven't posted any jobs yet.</p>
-                  <button onClick={() => nav("post-job")} className="mt-3 text-[12.5px] font-semibold text-brand-soft hover:text-white">
-                    Post your first job →
-                  </button>
-                </div>
+                <EmptyState
+                  Icon={FolderOpen}
+                  title="No jobs posted yet"
+                  desc="Post a brief and start receiving proposals from vetted specialists within hours."
+                  actionLabel="Post your first job"
+                  onAction={() => nav("post-job")}
+                />
               )}
             </div>
           </div>

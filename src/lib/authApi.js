@@ -114,6 +114,22 @@ async function fetchOwnProfile(kind, accessToken) {
 export const fetchFreelancerProfile = (accessToken) => fetchOwnProfile("freelancer", accessToken);
 export const fetchClientProfile = (accessToken) => fetchOwnProfile("client", accessToken);
 
+// Нэвтэрсний дараа хаашаа явахыг тодорхойлно — `user.role` нь зөвхөн
+// USER/ADMIN ялгаж өгдөг тул (freelancer/client профайлтай холбоогүй)
+// хуучин код бүх хэрэглэгчийг client-dashboard руу чиглүүлдэг байсан bug-ыг
+// засав. Хоёул профайлтай бол freelancer-ийг өгөгдмөлөөр, аль нь ч байхгүй
+// бол (onboarding дуусгаагүй хуучин акаунт) onboarding руу шилжүүлнэ.
+export async function resolveHomeRoute(user, accessToken) {
+  if (user.role === "ADMIN") return { page: "admin" };
+  const [freelancer, client] = await Promise.all([
+    fetchFreelancerProfile(accessToken),
+    fetchClientProfile(accessToken),
+  ]);
+  if (freelancer) return { page: "freelancer-dashboard" };
+  if (client) return { page: "client-dashboard" };
+  return { page: "onboarding", params: { role: "freelancer" } };
+}
+
 // FR-1.1: утасны OTP (демо горим — backend хариултад demoCode-ыг шууд
 // буцаадаг тул жинхэнэ SMS gateway ирэх хүртэл UI дээр шууд харуулж болно)
 export function requestPhoneOtp(phone, accessToken) {
