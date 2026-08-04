@@ -95,21 +95,41 @@ export default function ClientDashboard() {
         </div>
       </div>
 
-      <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {[
-          { label: "Jobs posted", value: jobs.length, Icon: Briefcase, cls: "text-brand-soft border-brand/30 bg-brand/10" },
-          { label: "Open jobs", value: openJobsCount, Icon: Briefcase, cls: "text-mint border-mint/30 bg-mint/10" },
-          { label: "Wallet balance", value: `$${balance.toLocaleString("en-US")}`, Icon: Wallet, cls: "text-amber-400 border-amber-400/30 bg-amber-400/10" },
-          { label: "Unread messages", value: unread.messages, Icon: MessageSquare, cls: "text-neon border-neon/30 bg-neon/10" },
-        ].map(({ label, value, Icon, cls }) => (
-          <div key={label} className="glass rounded-2xl p-5">
-            <span className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border ${cls}`}>
-              <Icon className="h-4 w-4" />
-            </span>
-            <p className="mt-4 font-display text-2xl font-bold">{value}</p>
-            <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wider text-white/40">{label}</p>
-          </div>
-        ))}
+      <div className="mt-8 grid gap-4 lg:grid-cols-3">
+        {/* Hero metric — wallet balance is the number a client actually
+            cares about on return visits, so it gets the visual weight
+            (bigger type, gradient, its own CTA) instead of competing
+            equally with three secondary counts. */}
+        <div className="glass relative overflow-hidden rounded-2xl p-6 lg:col-span-1">
+          <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-amber-400/10 blur-2xl" aria-hidden="true" />
+          <span className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-amber-400/30 bg-amber-400/10 text-amber-400">
+            <Wallet className="h-4.5 w-4.5" />
+          </span>
+          <p className="relative mt-5 font-display text-4xl font-bold">${balance.toLocaleString("en-US")}</p>
+          <p className="relative mt-1 text-[11px] font-medium uppercase tracking-wider text-white/40">Wallet balance</p>
+          <button
+            onClick={() => nav("payments")}
+            className="relative mt-4 text-[12px] font-semibold text-amber-400 hover:text-amber-300"
+          >
+            Manage funds →
+          </button>
+        </div>
+
+        <div className="grid grid-cols-3 gap-4 lg:col-span-2">
+          {[
+            { label: "Jobs posted", value: jobs.length, Icon: Briefcase, cls: "text-brand-soft border-brand/30 bg-brand/10" },
+            { label: "Open jobs", value: openJobsCount, Icon: Briefcase, cls: "text-mint border-mint/30 bg-mint/10" },
+            { label: "Unread messages", value: unread.messages, Icon: MessageSquare, cls: "text-neon border-neon/30 bg-neon/10" },
+          ].map(({ label, value, Icon, cls }) => (
+            <div key={label} className="glass rounded-2xl p-4">
+              <span className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border ${cls}`}>
+                <Icon className="h-3.5 w-3.5" />
+              </span>
+              <p className="mt-3 font-display text-xl font-bold">{value}</p>
+              <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-white/40">{label}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="mt-6 grid gap-5 lg:grid-cols-3">

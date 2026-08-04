@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import {
-  TrendingUp,
   Briefcase,
   Star,
   Sparkles,
@@ -112,22 +111,40 @@ export default function FreelancerDashboard() {
         </div>
       )}
 
-      <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {[
-          { label: "Available balance", value: `$${balance.toLocaleString("en-US")}`, sub: "in your wallet", Icon: Wallet, cls: "text-mint border-mint/30 bg-mint/10" },
-          { label: "Jobs completed", value: profile?.jobsCompleted ?? 0, sub: "all time", Icon: Briefcase, cls: "text-brand-soft border-brand/30 bg-brand/10" },
-          { label: "Rating", value: profile?.ratingAvg ? profile.ratingAvg.toFixed(1) : "—", sub: profile?.ratingAvg ? "average" : "no reviews yet", Icon: Star, cls: "text-amber-400 border-amber-400/30 bg-amber-400/10" },
-          { label: "Live matches", value: matches.length, sub: `in ${profile?.category || "your"} category`, Icon: Sparkles, cls: "text-neon border-neon/30 bg-neon/10" },
-        ].map(({ label, value, sub, Icon, cls }) => (
-          <div key={label} className="glass rounded-2xl p-5">
-            <span className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border ${cls}`}>
-              <Icon className="h-4 w-4" />
-            </span>
-            <p className="mt-4 font-display text-2xl font-bold">{value}</p>
-            <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wider text-white/40">{label}</p>
-            <p className="mt-1 text-[11px] text-white/30">{sub}</p>
-          </div>
-        ))}
+      <div className="mt-8 grid gap-4 lg:grid-cols-3">
+        {/* Hero metric — the balance is the number a freelancer opens this
+            page to check, so it gets the visual weight instead of tying
+            with three secondary counts for attention. */}
+        <div className="glass relative overflow-hidden rounded-2xl p-6 lg:col-span-1">
+          <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-mint/10 blur-2xl" aria-hidden="true" />
+          <span className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-mint/30 bg-mint/10 text-mint">
+            <Wallet className="h-4.5 w-4.5" />
+          </span>
+          <p className="relative mt-5 font-display text-4xl font-bold">${balance.toLocaleString("en-US")}</p>
+          <p className="relative mt-1 text-[11px] font-medium uppercase tracking-wider text-white/40">Available balance</p>
+          <button
+            onClick={() => nav("payments")}
+            className="relative mt-4 text-[12px] font-semibold text-mint hover:text-brand-soft"
+          >
+            Manage payments →
+          </button>
+        </div>
+
+        <div className="grid grid-cols-3 gap-4 lg:col-span-2">
+          {[
+            { label: "Jobs completed", value: profile?.jobsCompleted ?? 0, Icon: Briefcase, cls: "text-brand-soft border-brand/30 bg-brand/10" },
+            { label: "Rating", value: profile?.ratingAvg ? profile.ratingAvg.toFixed(1) : "—", Icon: Star, cls: "text-amber-400 border-amber-400/30 bg-amber-400/10" },
+            { label: "Live matches", value: matches.length, Icon: Sparkles, cls: "text-neon border-neon/30 bg-neon/10" },
+          ].map(({ label, value, Icon, cls }) => (
+            <div key={label} className="glass rounded-2xl p-4">
+              <span className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border ${cls}`}>
+                <Icon className="h-3.5 w-3.5" />
+              </span>
+              <p className="mt-3 font-display text-xl font-bold">{value}</p>
+              <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-white/40">{label}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="mt-6 grid gap-5 lg:grid-cols-3">
@@ -207,21 +224,6 @@ export default function FreelancerDashboard() {
             <p className="mt-4 border-t border-white/8 pt-4 text-[12px] text-white/45">
               Total: <b className="text-white">${monthTotal.toLocaleString("en-US")}</b>
             </p>
-          </div>
-
-          <div className="glass rounded-2xl p-6">
-            <p className="inline-flex items-center gap-2 text-[12.5px] font-semibold text-white/75">
-              <TrendingUp className="h-4 w-4 text-mint" />
-              Wallet
-            </p>
-            <p className="mt-3 font-display text-2xl font-bold text-mint">${balance.toLocaleString("en-US")}</p>
-            <p className="mt-1 text-[11.5px] text-white/40">Available to withdraw</p>
-            <button
-              onClick={() => nav("payments")}
-              className="glass mt-4 w-full rounded-xl py-2.5 text-[12.5px] font-semibold text-white/75 transition-colors hover:border-white/25"
-            >
-              Manage payments
-            </button>
           </div>
 
           <div className="glass rounded-2xl p-6">
