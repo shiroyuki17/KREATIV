@@ -1,39 +1,72 @@
+# syntax=docker/dockerfile:1.7
 # Kreativ backend — production image.
 # Node 24+ шаардлагатай: Prisma 7 generator "erasable syntax" TypeScript
 # гаргадаг тул src/generated/prisma/*.ts файлуудыг Node-ийн built-in TS
 # stripping-ээр шууд ажиллуулна (transpile хийхгүй).
+#
+# ЧУХАЛ: Render-ийн build орчинд `COPY package.json package-lock.json* ./`
+# нь диагностикоор баталгаажсанаар манай repo-той ХАМААРАЛГҮЙ, өөр 5 мөрт
+# "prisma" ч байхгүй, "wrench" (манай project-д хэзээ ч байгаагүй) dependency
+# агуулсан файл олгодог болох нь тогтоогдсон — Docker layer cache, npm
+# registry аль аль нь биш, харин Render-ийн build-context дэх энэ хоёр
+# файлын хувьд өөрөө эвдэрсэн байдал. Тиймээс package.json-ыг build
+# context-оос COPY хийхийн оронд Dockerfile дотроо шууд бичиж, package-lock
+# .json-оос бүрмөсөн татгалзаж (npm install, npm ci биш) энэ эвдрэлийг
+# бүрэн тойрч гарна.
 FROM node:24-alpine AS deps
 WORKDIR /app
-COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev --registry=https://registry.npmjs.org/
+RUN cat <<'PKGJSON' > package.json
+{
+  "name": "kreativ-backend",
+  "version": "1.0.0",
+  "description": "KREATIV marketplace backend — Express + Prisma (ESM, PostgreSQL, JWT)",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "seed": "node prisma/seed.js",
+    "reconcile": "node scripts/reconcile.js",
+    "perf:smoke": "node scripts/perf-smoke.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "7.9.1",
+    "@prisma/client": "7.9.1",
+    "bcryptjs": "^3.0.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.0.0",
+    "express": "^5.0.0",
+    "express-rate-limit": "^8.6.1",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.0",
+    "morgan": "^1.11.0",
+    "multer": "^2.2.0",
+    "nodemailer": "^9.0.3",
+    "pg": "^8.13.0",
+    "prisma": "7.9.1",
+    "socket.io": "^4.8.3",
+    "swagger-ui-express": "^5.0.1",
+    "zod": "^4.0.0"
+  }
+}
+PKGJSON
+RUN npm install --omit=dev --registry=https://registry.npmjs.org/ \
+  && test -f node_modules/.bin/prisma || (echo "FATAL: npm install did not install prisma" && ls node_modules | wc -l && exit 1)
 
 FROM node:24-alpine AS build
 WORKDIR /app
-# Зарим CI орчинд (Render дээр ажиглагдсан) npm ci нь package.json/lock.json
-# зөв атал огт хамааралгүй, хэдэн сарын өмнөх (одоо байхгүй "wrench" зэрэг
-# dependency агуулсан) дутуу tree суулгадаг эвдрэл гарсан — Docker layer
-# cache-ийн асуудал биш (ARG-аар cache-bust хийсэн ч давтагдсан) харин
-# орчны npm registry/mirror stale байсан бололтой тул --registry-ийг тодорхой
-# зааж, environment/.npmrc-ээс үл хамааран албан ёсны registry ашиглуулна.
-ARG CACHE_BUST=2026-08-03-2
-COPY package.json package-lock.json* ./
-# ВРЕМЕННО diagnostic — Render дээр яг ямар файл checkout хийгдэж байгааг
-# нарийн харахын тулд (wc/md5/grep) — асуудал олдсоны дараа устгана.
-RUN echo "=== DIAGNOSTIC ===" \
-  && wc -l package.json package-lock.json \
-  && md5sum package.json package-lock.json \
-  && (grep -c '"prisma"' package.json || echo "prisma NOT in package.json") \
-  && (grep -c wrench package-lock.json || echo "wrench NOT in package-lock.json (good)") \
-  && echo "=== END DIAGNOSTIC ==="
-RUN npm ci --registry=https://registry.npmjs.org/ && test -f node_modules/.bin/prisma || (echo "FATAL: npm ci did not install prisma — dependency tree is likely stale/incomplete" && ls node_modules | wc -l && exit 1)
+COPY --from=deps /app/package.json ./
+RUN npm install --registry=https://registry.npmjs.org/ \
+  && test -f node_modules/.bin/prisma || (echo "FATAL: npm install did not install prisma" && ls node_modules | wc -l && exit 1)
 COPY prisma ./prisma
 COPY prisma.config.ts ./
 # зөвхөн Prisma Client үүсгэхэд хэрэгтэй — бодит DB холболт шаардахгүй
 ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
-# `npx prisma` заримдаа локал node_modules-ийг олохгүй, npx-ийн өөрийн
-# кэшид тусад нь prisma татаж авчихдаг (тэр тохиолдолд prisma.config.ts-ийн
-# `dotenv/config`-ийг олохгүй байх шиг эвдрэл гарсан) — node_modules/.bin
-# доtorh binary-г шууд дуудаж энэ л асуудлаас бүрэн зайлсхийнэ.
 RUN node_modules/.bin/prisma generate
 COPY src ./src
 
@@ -41,10 +74,10 @@ FROM node:24-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/package.json ./
 COPY --from=build /app/src ./src
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/prisma.config.ts ./
-COPY package.json ./
 
 EXPOSE 4100
 # Hosting-ууд (Render чөлөөт төлбөргүй төлөвлөгөө г.м) Shell/One-off Jobs
