@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { Check } from "lucide-react";
+import { Check, Feather, Rocket, Building2 } from "lucide-react";
 import StarBorder from "../fx/StarBorder.jsx";
 import Magnet from "../fx/Magnet.jsx";
 import BlurText from "../fx/BlurText.jsx";
 import { PLANS } from "../../data/mock.js";
+
+const PLAN_ICON = { Starter: Feather, Pro: Rocket, Enterprise: Building2 };
 
 function Price({ plan, yearly }) {
   if (plan.monthly === null)
@@ -20,16 +22,26 @@ function Price({ plan, yearly }) {
 }
 
 function PlanCard({ plan, yearly }) {
+  const Icon = PLAN_ICON[plan.name] || Feather;
   return (
     <div className="flex h-full flex-col p-7">
-      <div className="flex items-center justify-between">
-        <p className="font-display text-lg font-semibold">{plan.name}</p>
+      <div className="flex items-start justify-between">
+        <span
+          className={
+            plan.popular
+              ? "flex h-11 w-11 items-center justify-center rounded-xl border border-brand/40 bg-brand/10 text-brand-soft"
+              : "flex h-11 w-11 items-center justify-center rounded-xl border border-white/12 bg-white/[0.03] text-white/60"
+          }
+        >
+          <Icon className="h-5 w-5" />
+        </span>
         {plan.popular && (
           <span className="rounded-full bg-brand/15 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-brand-soft">
             Most popular
           </span>
         )}
       </div>
+      <p className="mt-4 font-display text-lg font-semibold">{plan.name}</p>
       <p className="mt-1 text-[12.5px] text-white/45">{plan.tagline}</p>
       <div className="mt-6">
         <Price plan={plan} yearly={yearly} />
