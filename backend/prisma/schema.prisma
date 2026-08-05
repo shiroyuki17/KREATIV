@@ -421,7 +421,13 @@ model Message {
   conversationId String
   sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
   senderId       String
-  text           String
+  text           String       @default("")
+  // FR-2.1: файл хавсаргасан зурвас (текстгүй байж болно). fileType нь
+  // frontend-д зураг/PDF/zip-г ялгаж харуулахад ашиглагдана.
+  fileUrl        String?
+  fileName       String?
+  fileType       String?
+  fileSize       Int?
   readAt         DateTime?
   // NFR-3 / FR-5.2: гэрээний өмнөх чатад утас/имэйл мэдээлэл илэрвэл
   // true — зурвасыг хаадаггүй (чат түүх маргааны нотолгоо тул устгагдахгүй),

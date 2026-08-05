@@ -37,5 +37,20 @@ export const sendMessage = (conversationId, text, accessToken) =>
     accessToken,
   });
 
+// FR-2.1: файл хавсаргах — multipart тул authedJson-ийг ашиглахгүй
+// (Content-Type-ийг browser өөрөө boundary-тай тохируулах ёстой).
+export async function sendFile(conversationId, file, accessToken) {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${API_BASE}/messages/conversations/${conversationId}/attachments`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: form,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(errorMessage(data));
+  return data;
+}
+
 export const fetchMessageUnreadCount = (accessToken) =>
   authedJson("/messages/unread-count", { accessToken });

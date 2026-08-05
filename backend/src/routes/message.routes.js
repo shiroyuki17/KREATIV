@@ -4,6 +4,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { createNotification } from './notification.routes.js';
 import { detectLeakage } from '../lib/leakage.js';
 import { emitToUser } from '../lib/socket.js';
+import { uploadChatFile } from '../middleware/upload.js';
 
 const router = Router();
 
@@ -19,6 +20,19 @@ function otherParticipant(conversation, myId) {
 
 function publicUser(user) {
   return { id: user.id, name: user.name, avatarUrl: user.avatarUrl };
+}
+
+function notifyNewMessage(conversation, senderId, message) {
+  const recipientId = conversation.userAId === senderId ? conversation.userBId : conversation.userAId;
+  emitToUser(recipientId, 'message:new', { conversationId: conversation.id, message });
+  prisma.user.findUnique({ where: { id: senderId }, select: { name: true } })
+    .then((sender) => createNotification({
+      userId: recipientId,
+      type: 'message',
+      text: `${sender?.name || 'Хэрэглэгч'} танд шинэ зурвас илгээлээ`,
+      link: 'messages',
+    }))
+    .catch(() => {});
 }
 
 // ── GET /messages/conversations ── (миний бүх харилцан яриа, сүүлийн зурвасаар эрэмбэлсэн)
@@ -121,20 +135,48 @@ router.post('/conversations/:id/messages', requireAuth, async (req, res, next) =
     await prisma.conversation.update({ where: { id: conversation.id }, data: { updatedAt: new Date() } });
 
     res.status(201).json({ ...message, leakageWarning: flagged ? reasons : null });
-
-    const recipientId = conversation.userAId === req.user.id ? conversation.userBId : conversation.userAId;
-    emitToUser(recipientId, 'message:new', { conversationId: conversation.id, message });
-    prisma.user.findUnique({ where: { id: req.user.id }, select: { name: true } })
-      .then((sender) => createNotification({
-        userId: recipientId,
-        type: 'message',
-        text: `${sender?.name || 'Хэрэглэгч'} танд шинэ зурвас илгээлээ`,
-        link: 'messages',
-      }))
-      .catch(() => {});
+    notifyNewMessage(conversation, req.user.id, message);
   } catch (err) {
     next(err);
   }
+});
+
+// ── POST /messages/conversations/:id/attachments ── (FR-2.1 — файл хавсаргах)
+router.post('/conversations/:id/attachments', requireAuth, (req, res, next) => {
+  uploadChatFile(req, res, async (err) => {
+    if (err) {
+      const message = err.code === 'LIMIT_FILE_SIZE'
+        ? 'Файлын хэмжээ 15MB-с ихгүй байх ёстой'
+        : err.message || 'Файл хавсаргахад алдаа гарлаа';
+      return res.status(400).json({ error: message });
+    }
+    if (!req.file) return res.status(400).json({ error: 'Файл сонгогдоогүй байна' });
+
+    try {
+      const conversation = await prisma.conversation.findUnique({ where: { id: req.params.id } });
+      if (!conversation || (conversation.userAId !== req.user.id && conversation.userBId !== req.user.id)) {
+        return res.status(404).json({ error: 'Олдсонгүй' });
+      }
+
+      const message = await prisma.message.create({
+        data: {
+          conversationId: conversation.id,
+          senderId: req.user.id,
+          text: '',
+          fileUrl: `/uploads/chat/${req.file.filename}`,
+          fileName: req.file.originalname,
+          fileType: req.file.mimetype,
+          fileSize: req.file.size,
+        },
+      });
+      await prisma.conversation.update({ where: { id: conversation.id }, data: { updatedAt: new Date() } });
+
+      res.status(201).json(message);
+      notifyNewMessage(conversation, req.user.id, message);
+    } catch (e) {
+      next(e);
+    }
+  });
 });
 
 // ── GET /messages/unread-count ── (sidebar badge)
