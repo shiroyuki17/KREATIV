@@ -9,7 +9,7 @@ import swaggerUi from 'swagger-ui-express';
 import { config } from './config/env.js';
 import { openapiSpec } from './docs/openapi.js';
 import { metricsMiddleware, metricsHandler } from './middleware/monitoring.js';
-import { apiLimiter } from './middleware/rateLimit.js';
+import { apiLimiter, aiLimiter } from './middleware/rateLimit.js';
 import { UPLOAD_ROOT } from './middleware/upload.js';
 import { logError } from './lib/logger.js';
 import authRoutes from './routes/auth.routes.js';
@@ -24,6 +24,7 @@ import adminRoutes from './routes/admin.routes.js';
 import contractRoutes from './routes/contract.routes.js';
 import disputeRoutes from './routes/dispute.routes.js';
 import reviewRoutes from './routes/review.routes.js';
+import aiRoutes from './routes/ai.routes.js';
 
 export const app = express();
 // Railway/Render гэх мэт hosting нь reverse proxy ард ажилладаг тул
@@ -70,6 +71,7 @@ app.use('/admin', adminRoutes);
 app.use('/', contractRoutes);
 app.use('/disputes', disputeRoutes);
 app.use('/', reviewRoutes);
+app.use('/ai', aiLimiter, aiRoutes);
 
 // 404
 app.use((req, res) => {

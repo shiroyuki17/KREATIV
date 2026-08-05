@@ -31,6 +31,9 @@ const envSchema = z.object({
   QPAY_PASSWORD: z.string().optional(),
   QPAY_INVOICE_CODE: z.string().optional(),
   QPAY_CALLBACK_URL: z.string().optional(),
+
+  // ── AI chat (заавал биш — тохируулаагүй бол frontend rule-based хариултаа ашиглана) ──
+  ANTHROPIC_API_KEY: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

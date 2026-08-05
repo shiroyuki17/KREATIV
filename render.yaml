@@ -56,6 +56,10 @@ services:
         sync: false
       - key: QPAY_CALLBACK_URL
         sync: false
+      # Жинхэнэ LLM холболт идэвхжүүлэх түлхүүр — байхгүй үед ChatWidget.jsx
+      # локал rule-based хариулт руугаа автоматаар унана.
+      - key: ANTHROPIC_API_KEY
+        sync: false
 
   - type: web
     name: kreativ-frontend

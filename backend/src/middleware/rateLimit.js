@@ -24,3 +24,14 @@ export const apiLimiter = rateLimit({
   skip,
   message: { error: 'Хэт олон хүсэлт. Түр хүлээгээд дахин оролдоно уу.' },
 });
+
+// LLM дуудлага бүр жинхэнэ мөнгөтэй холбоотой тул apiLimiter-ээс хамаагүй
+// хатуу хязгаар — нэвтрээгүй зочин ч ChatWidget-ийг зорьж spam хийж чадахгүй.
+export const aiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip,
+  message: { error: 'AI chat-д хэт олон хүсэлт илгээлээ. Түр хүлээгээд дахин оролдоно уу.' },
+});

@@ -76,6 +76,39 @@ async function reply(input) {
   return FALLBACK;
 }
 
+// Module-level, not state — persists for the whole page load. null = not
+// checked yet, false = backend confirmed "not configured" (or unreachable),
+// so we stop retrying it for the rest of the session and just use the
+// rule-based reply() above. This is the same demo/real-fallback pattern as
+// QPay and Google OAuth: real LLM the moment ANTHROPIC_API_KEY is set on the
+// backend, silent fallback to the rule-based bot until then.
+let aiAvailable = null;
+
+async function getReply(history, latest) {
+  if (aiAvailable !== false) {
+    try {
+      const apiMessages = [...history, { from: "user", text: latest }]
+        .slice(-10)
+        .map((m) => ({ role: m.from === "user" ? "user" : "assistant", content: m.text }));
+      const res = await fetch(`${API_BASE}/ai/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: apiMessages }),
+      });
+      if (res.ok) {
+        aiAvailable = true;
+        const data = await res.json();
+        return { text: data.text };
+      }
+      if (res.status === 503) aiAvailable = false;
+    } catch {
+      // network error — fall through to the rule-based reply for this
+      // message, but leave aiAvailable alone in case it was a one-off blip
+    }
+  }
+  return reply(latest);
+}
+
 export default function ChatWidget() {
   const { nav } = useNav();
   const [open, setOpen] = useState(false);
@@ -100,10 +133,11 @@ export default function ChatWidget() {
     if (!t || typing) return;
     setDraft("");
     setAction(null);
+    const history = msgs;
     setMsgs((m) => [...m, { from: "user", text: t }]);
     setTyping(true);
     const askedAt = Date.now();
-    reply(t).then((r) => {
+    getReply(history, t).then((r) => {
       // Keep the natural "thinking" pause even when a live fetch resolves fast
       const wait = Math.max(0, 900 - (Date.now() - askedAt));
       setTimeout(() => {
@@ -132,17 +166,22 @@ export default function ChatWidget() {
       {/* Panel */}
       {open && (
         <div className="glass fixed bottom-[168px] right-6 z-50 flex w-[min(370px,calc(100vw-3rem))] animate-feed-in flex-col overflow-hidden rounded-3xl shadow-[0_24px_70px_rgba(0,0,0,0.55)] lg:bottom-24">
-          <div className="flex items-center gap-2.5 border-b border-white/8 bg-white/[0.03] p-4">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full border border-brand/40 bg-brand/15">
-              <Sparkles className="h-4 w-4 text-brand-soft" />
-            </span>
-            <div>
-              <p className="text-[13.5px] font-bold">KREATIV AI</p>
-              <p className="inline-flex items-center gap-1.5 text-[10.5px] text-mint">
-                <span className="h-1.5 w-1.5 animate-pulse-soft rounded-full bg-mint" />
-                Online · replies instantly
-              </p>
+          <div className="relative flex items-center justify-between border-b border-white/10 bg-gradient-to-r from-brand/15 via-neon/10 to-transparent p-4 backdrop-blur-xl">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand to-neon text-ink glow-brand">
+                <Sparkles className="h-4.5 w-4.5" />
+              </span>
+              <div>
+                <p className="font-display text-[14px] font-bold tracking-wide text-white">KREATIV AI</p>
+                <p className="text-[10.5px] text-brand-soft">● Online & Ready</p>
+              </div>
             </div>
+            <button
+              onClick={() => setOpen(false)}
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/60 transition-colors hover:border-white/20 hover:text-white"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
 
           <div ref={bodyRef} className="max-h-[340px] flex-1 space-y-3 overflow-y-auto p-4">
