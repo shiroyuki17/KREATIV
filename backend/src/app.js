@@ -25,6 +25,7 @@ import contractRoutes from './routes/contract.routes.js';
 import disputeRoutes from './routes/dispute.routes.js';
 import reviewRoutes from './routes/review.routes.js';
 import aiRoutes from './routes/ai.routes.js';
+import taskRoutes from './routes/task.routes.js';
 
 export const app = express();
 // Railway/Render гэх мэт hosting нь reverse proxy ард ажилладаг тул
@@ -72,6 +73,7 @@ app.use('/', contractRoutes);
 app.use('/disputes', disputeRoutes);
 app.use('/', reviewRoutes);
 app.use('/ai', aiLimiter, aiRoutes);
+app.use('/', taskRoutes);
 
 // 404
 app.use((req, res) => {

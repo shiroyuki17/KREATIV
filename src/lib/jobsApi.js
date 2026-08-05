@@ -27,6 +27,19 @@ export async function createJob(data, accessToken) {
   return json;
 }
 
+// FR-1.2: чөлөөтэй бичсэн санааг бүтэцтэй ажлын зар болгож хувиргана.
+// { title, description, category, skills, budgetType, budgetMin, budgetMax }
+export async function generateJobDraft(idea, accessToken) {
+  const res = await fetch(`${API_BASE}/ai/job-draft`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({ idea }),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(errorMessage(json));
+  return json;
+}
+
 // { jobs } — every job the logged-in client has posted, any status
 export async function fetchMyJobs(accessToken) {
   const res = await fetch(`${API_BASE}/jobs/mine`, {

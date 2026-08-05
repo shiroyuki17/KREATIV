@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Briefcase, FileText, Inbox, AlertCircle, Star, Check, Scale } from "lucide-react";
+import { Briefcase, FileText, Inbox, AlertCircle, Star, Check, Scale, LayoutGrid, ChevronDown } from "lucide-react";
 import { useNav } from "../../nav.jsx";
 import { getAccessToken, fetchFreelancerProfile, fetchClientProfile } from "../../lib/authApi.js";
 import { fetchMyJobs } from "../../lib/jobsApi.js";
@@ -15,6 +15,7 @@ import {
   openDispute,
   submitReview,
 } from "../../lib/contractApi.js";
+import KanbanBoard from "../dashboard/KanbanBoard.jsx";
 
 const MILESTONE_BADGE = {
   PENDING_FUNDING: "border-white/15 bg-white/[0.05] text-white/50",
@@ -201,6 +202,13 @@ export default function MyProjects() {
   const [contracts, setContracts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [openWorkspace, setOpenWorkspace] = useState(() => new Set());
+  const toggleWorkspace = (id) =>
+    setOpenWorkspace((s) => {
+      const next = new Set(s);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
   const [busy, setBusy] = useState(false);
   const [reviewedContracts, setReviewedContracts] = useState([]);
 
@@ -341,6 +349,23 @@ export default function MyProjects() {
                     />
                   ))}
                 </div>
+
+                <button
+                  onClick={() => toggleWorkspace(c.id)}
+                  className="mt-4 flex w-full items-center justify-between rounded-xl border border-white/8 bg-white/[0.02] px-4 py-2.5 text-[12.5px] font-semibold text-white/70 transition-colors hover:border-white/20 hover:text-white"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <LayoutGrid className="h-3.5 w-3.5 text-brand-soft" />
+                    Workspace · Kanban board
+                  </span>
+                  <ChevronDown className={`h-3.5 w-3.5 transition-transform ${openWorkspace.has(c.id) ? "rotate-180" : ""}`} />
+                </button>
+                {openWorkspace.has(c.id) && (
+                  <div className="mt-3">
+                    <KanbanBoard contractId={c.id} />
+                  </div>
+                )}
+
                 {c.status === "COMPLETED" && (
                   <ReviewForm busy={busy} done={reviewedContracts.includes(c.id)} onSubmit={(data) => handleReview(c.id, data)} />
                 )}

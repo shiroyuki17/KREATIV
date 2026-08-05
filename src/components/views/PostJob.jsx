@@ -13,12 +13,13 @@ import {
   Clock3,
   CalendarClock,
   Eye,
+  Loader2,
 } from "lucide-react";
 import { CL_CATEGORIES } from "../../data/appMock.js";
 import { FL_SKILLS } from "../../data/appMock.js";
 import { useNav } from "../../nav.jsx";
 import { getAccessToken } from "../../lib/authApi.js";
-import { createJob } from "../../lib/jobsApi.js";
+import { createJob, generateJobDraft } from "../../lib/jobsApi.js";
 import { fetchFreelancers } from "../../lib/talentApi.js";
 
 const STEPS = ["Basics", "Details", "Review"];
@@ -33,6 +34,17 @@ const CATEGORY_TO_API = {
   "Motion & 3D": "Motion",
   "Branding": "Design",
   "Mobile Apps": "Dev",
+  "Writing & Content": "Writing",
+  "Marketing & Growth": "Marketing",
+};
+
+const API_TO_CATEGORY = {
+  Dev: "Web Development",
+  Design: "Product Design",
+  AI: "AI & Data",
+  Motion: "Motion & 3D",
+  Writing: "Writing & Content",
+  Marketing: "Marketing & Growth",
 };
 
 function Steps({ step }) {
@@ -68,6 +80,7 @@ function Steps({ step }) {
 function Chip({ active, children, onClick }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className={
         active
@@ -116,8 +129,35 @@ export default function PostJob() {
   const [moderationStatus, setModerationStatus] = useState(null);
   const [matchCount, setMatchCount] = useState(null);
 
+  const [aiIdea, setAiIdea] = useState("");
+  const [aiDrafting, setAiDrafting] = useState(false);
+  const [aiError, setAiError] = useState("");
+
   const toggleSkill = (s) =>
     setSkills((a) => (a.includes(s) ? a.filter((x) => x !== s) : [...a, s]));
+
+  async function draftWithAi() {
+    const idea = aiIdea.trim();
+    if (idea.length < 8) { setAiError("Санаагаа арай дэлгэрэнгүй бичнэ үү"); return; }
+    const token = getAccessToken();
+    if (!token) { nav("auth", { mode: "login" }); return; }
+
+    setAiDrafting(true);
+    setAiError("");
+    try {
+      const draft = await generateJobDraft(idea, token);
+      setTitle(draft.title);
+      setCat(API_TO_CATEGORY[draft.category] || "Web Development");
+      setDesc(draft.description);
+      setSkills(draft.skills.slice(0, 8));
+      setType(draft.budgetType === "HOURLY" ? "Hourly" : "Fixed");
+      setBudget(draft.budgetType === "HOURLY" ? `$${draft.budgetMax}/hr` : `$${draft.budgetMax.toLocaleString("en-US")}`);
+    } catch (err) {
+      setAiError(err.message);
+    } finally {
+      setAiDrafting(false);
+    }
+  }
 
   const canNext =
     step === 0 ? title.trim() && cat : step === 1 ? desc.trim() && budget.trim() : true;
@@ -221,6 +261,7 @@ export default function PostJob() {
   return (
     <div className="mx-auto max-w-2xl px-6 pb-24 pt-8">
       <button
+        type="button"
         onClick={() => (step === 0 ? nav("home") : setStep((s) => s - 1))}
         className="inline-flex items-center gap-2 text-[13px] font-medium text-white/50 transition-colors hover:text-white"
       >
@@ -242,6 +283,34 @@ export default function PostJob() {
       <div className="glass rounded-2xl p-7">
         {step === 0 && (
           <div className="space-y-6">
+            <div className="rounded-xl border border-brand/25 bg-brand/[0.05] p-4">
+              <p className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-brand-soft">
+                <Sparkles className="h-3.5 w-3.5" />
+                Draft with AI
+              </p>
+              <p className="mt-1 text-[11.5px] leading-relaxed text-white/50">
+                Describe your project in a sentence or two — AI fills in the title, category, description, skills, and a suggested budget below.
+              </p>
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <input
+                  value={aiIdea}
+                  onChange={(e) => setAiIdea(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && draftWithAi()}
+                  placeholder="e.g. I need a logo and brand kit for a coffee shop"
+                  className="flex-1 rounded-lg border border-white/10 bg-white/[0.04] px-3.5 py-2.5 text-[13px] outline-none transition-colors placeholder:text-white/30 focus:border-brand/50"
+                />
+                <button
+                  onClick={draftWithAi}
+                  disabled={aiDrafting}
+                  className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-brand px-4 py-2.5 text-[12.5px] font-bold text-ink transition-shadow hover:shadow-[0_0_20px_rgba(0,211,149,0.4)] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {aiDrafting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                  {aiDrafting ? "Drafting…" : "Draft"}
+                </button>
+              </div>
+              {aiError && <p className="mt-2 text-[11.5px] text-red-400">{aiError}</p>}
+            </div>
+
             <label className="block">
               <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
                 Project title
@@ -302,6 +371,7 @@ export default function PostJob() {
                 {BUDGET_TYPES.map(({ id, Icon, desc: d }) => (
                   <button
                     key={id}
+                    type="button"
                     onClick={() => setType(id)}
                     className={
                       type === id
@@ -435,6 +505,7 @@ export default function PostJob() {
 
         <div className="mt-8 flex items-center justify-between border-t border-white/8 pt-6">
           <button
+            type="button"
             onClick={() => (step === 0 ? nav("home") : setStep((s) => s - 1))}
             className="inline-flex items-center gap-2 text-[13px] font-medium text-white/50 transition-colors hover:text-white"
           >
@@ -442,6 +513,7 @@ export default function PostJob() {
             {step === 0 ? "Cancel" : "Back"}
           </button>
           <button
+            type="button"
             onClick={() => (step < 2 ? setStep((s) => s + 1) : publish())}
             disabled={!canNext || submitting}
             className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand to-brand-soft px-6 py-3 text-[13.5px] font-semibold glow-brand transition-all hover:shadow-[0_0_44px_rgba(0,211,149,0.6)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import prisma from '../lib/prisma.js';
 import * as ai from '../lib/ai.js';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -45,6 +46,25 @@ router.post('/chat', async (req, res, next) => {
 
     const text = await ai.chat(trimmed, { freelancers, clients, jobs, openJobs, completedJobs });
     res.json({ text });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /ai/job-draft ── (FR-1.2 — PostJob wizard-ийн "Draft with AI" товч.
+// Нэвтэрсэн хэрэглэгч л дуудна, тохируулаагүй үед 503 — frontend товчоо
+// нуух/идэвхгүй болгох дохио болгон ашиглана.)
+router.post('/job-draft', requireAuth, async (req, res, next) => {
+  try {
+    if (!ai.isConfigured()) {
+      return res.status(503).json({ error: 'AI тохируулагдаагүй байна' });
+    }
+    const idea = String(req.body.idea || '').trim().slice(0, 500);
+    if (idea.length < 8) {
+      return res.status(400).json({ error: 'Санаагаа арай дэлгэрэнгүй бичнэ үү' });
+    }
+    const draft = await ai.generateJobDraft(idea);
+    res.json(draft);
   } catch (err) {
     next(err);
   }

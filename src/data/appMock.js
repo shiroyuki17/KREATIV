@@ -56,6 +56,7 @@ export const FL_CATEGORIES = ["Design", "Dev", "AI", "Motion", "Writing", "Marke
 
 export const CL_CATEGORIES = [
   "Web Development", "Product Design", "AI & Data", "Motion & 3D", "Branding", "Mobile Apps",
+  "Writing & Content", "Marketing & Growth",
 ];
 
 export const CL_BUDGETS = ["< $1k", "$1k – $5k", "$5k – $20k", "$20k+"];

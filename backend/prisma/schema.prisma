@@ -265,6 +265,7 @@ model Contract {
 
   milestones Milestone[]
   reviews    Review[]
+  tasks      Task[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -313,6 +314,32 @@ enum MilestoneStatus {
   DELIVERED
   APPROVED
   DISPUTED
+}
+
+// FR-3.1: Гэрээ бүрийн Kanban ажлын самбар — Milestone (мөнгөтэй холбоотой,
+// эскроу шат) -аас тусдаа, чөлөөтэй нэмэгддэг өдөр тутмын to-do картууд.
+// Хоёр тал (client, freelancer) хоёулаа үүсгэж/зөөж болно.
+model Task {
+  id          String     @id @default(uuid())
+  contract    Contract   @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  contractId  String
+  title       String
+  description String?
+  status      TaskStatus @default(TODO)
+  order       Int        @default(0)
+  createdBy   String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([contractId])
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  DONE
 }
 
 // ── Disputes (FR-7) ──

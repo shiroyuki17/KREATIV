@@ -28,7 +28,7 @@ Real, current platform facts:
 If asked something unrelated to KREATIV (general trivia, coding help, etc.), politely redirect back to what you can help with on the platform.`;
 }
 
-export async function chat(messages, stats) {
+async function callAnthropic({ system, messages, maxTokens = MAX_TOKENS }) {
   const res = await fetch(ANTHROPIC_URL, {
     method: 'POST',
     headers: {
@@ -36,12 +36,7 @@ export async function chat(messages, stats) {
       'anthropic-version': '2023-06-01',
       'content-type': 'application/json',
     },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: MAX_TOKENS,
-      system: buildSystemPrompt(stats),
-      messages,
-    }),
+    body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, system, messages }),
   });
 
   if (!res.ok) {
@@ -57,4 +52,45 @@ export async function chat(messages, stats) {
     .trim();
   if (!text) throw new Error('Anthropic API хоосон хариу буцаалаа');
   return text;
+}
+
+export async function chat(messages, stats) {
+  return callAnthropic({ system: buildSystemPrompt(stats), messages });
+}
+
+const JOB_CATEGORIES = ['Design', 'Dev', 'AI', 'Motion', 'Writing', 'Marketing'];
+
+// FR-1.2: захиалагчийн товч, чөлөөтэй бичсэн санааг бүтэцтэй ажлын зар болгож
+// хувиргана. Хатуу JSON бүтэц шаардаж, parse хийхэд амжилтгүй бол алдаа шиднэ
+// (хагас broken зар үүсгэхийн оронд).
+export async function generateJobDraft(idea) {
+  const system = `You turn a short, casual freelance project idea into a structured job brief for the KREATIV marketplace. Respond with ONLY valid JSON, no markdown fences, no commentary, matching exactly this shape:
+{"title": string, "description": string, "category": string, "skills": string[], "budgetType": string, "budgetMin": number, "budgetMax": number}
+
+Rules:
+- title: punchy, specific, under 80 characters
+- description: 3-5 sentences, concrete and professional, no placeholder text like "[insert here]"
+- category: exactly one of ${JSON.stringify(JOB_CATEGORIES)}
+- skills: 3 to 6 real, specific skill tags relevant to the work (not generic filler)
+- budgetType: "FIXED" or "HOURLY", whichever fits the scope described
+- budgetMin/budgetMax: a realistic USD range for this kind of freelance work (integers)`;
+
+  const text = await callAnthropic({
+    system,
+    messages: [{ role: 'user', content: idea }],
+    maxTokens: 500,
+  });
+
+  let draft;
+  try {
+    draft = JSON.parse(text.replace(/^```json\s*|\s*```$/g, ''));
+  } catch {
+    throw new Error('AI-ийн хариуг боловсруулж чадсангүй. Дахин оролдоно уу.');
+  }
+  if (!draft.title || !draft.description || !Array.isArray(draft.skills)) {
+    throw new Error('AI-ийн хариу дутуу байна. Дахин оролдоно уу.');
+  }
+  if (!JOB_CATEGORIES.includes(draft.category)) draft.category = 'Dev';
+  draft.budgetType = draft.budgetType === 'HOURLY' ? 'HOURLY' : 'FIXED';
+  return draft;
 }
