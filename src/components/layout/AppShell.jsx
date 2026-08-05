@@ -47,14 +47,19 @@ function timeAgo(iso) {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
+// "Profile" tab-ийг чирэхдээ userId дамжуулдаг — үгүй бол FreelancerProfile.jsx
+// params.userId байхгүй тул зохиомол mock хүн (TALENT[1]) харуулдаг байсан bug.
 const TABS = [
   { page: "freelancer-dashboard", label: "Home", Icon: LayoutDashboard, alias: ["client-dashboard"] },
   { page: "find-work", label: "Jobs", Icon: Search, alias: ["project"] },
   { page: "post-job", label: "Post", Icon: Plus },
   { page: "messages", label: "Chat", Icon: MessageSquare, live: "messages" },
-  { page: "profile", label: "Profile", Icon: User },
+  { page: "profile", label: "Profile", Icon: User, own: true },
 ];
 
+// Notification bell болон account (profile/settings/log out) одоо дээд
+// баруун буланд (DesktopTopBar) байгаа тул sidebar-ийн жагсаалтад давхардуулж
+// оруулахгүй — зөвхөн үндсэн ажлын урсгал энд үлдэнэ.
 const MAIN = [
   { page: "freelancer-dashboard", label: "Dashboard", Icon: LayoutDashboard, alias: ["client-dashboard"] },
   { page: "find-work", label: "Find Work", Icon: Search, alias: ["project"] },
@@ -63,8 +68,6 @@ const MAIN = [
   { page: "my-projects", label: "My Projects", Icon: FolderKanban, alias: ["tracker"] },
   { page: "messages", label: "Messages", Icon: MessageSquare, live: "messages" },
   { page: "payments", label: "Payments", Icon: Wallet },
-  { page: "profile", label: "Profile", Icon: User },
-  { page: "settings", label: "Settings", Icon: Settings },
 ];
 
 function isActive(item, page) {
@@ -462,6 +465,105 @@ function Brand({ go, collapsed }) {
   );
 }
 
+// Account dropdown (avatar + name → view profile / settings / log out) —
+// шилжсэн байрлал: sidebar-ийн ёроолд байсныг deed баруун буланд авчирсан.
+function UserMenu({ go, user, setUser }) {
+  const rootRef = useRef(null);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e) => { if (!rootRef.current?.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  const isAdmin = user.role === "ADMIN";
+  const initials = initialsOf(user.name || user.email);
+  const logout = () => {
+    logoutUser();
+    setUser(null);
+    setOpen(false);
+    go("home");
+  };
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-label="Account menu"
+        className="flex items-center gap-2.5 rounded-xl py-1.5 pl-1.5 pr-3 text-left transition-colors hover:bg-white/5"
+      >
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand/50 to-neon/40 font-display text-[11px] font-bold ring-1 ring-white/15">
+          {initials}
+        </span>
+        <span className="hidden sm:block">
+          <span className="block max-w-[140px] truncate text-[12.5px] font-semibold leading-tight">{user.name || user.email}</span>
+          <span className="block text-[10.5px] leading-tight text-white/40">{isAdmin ? "Superadmin" : "Account"}</span>
+        </span>
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-56 overflow-hidden rounded-2xl border border-white/10 bg-[#0d1411] shadow-[0_24px_60px_rgba(0,0,0,0.6)]">
+          <div className="border-b border-white/8 px-4 py-3">
+            <p className="truncate text-[13px] font-semibold">{user.name || "Account"}</p>
+            <p className="truncate text-[11.5px] text-white/40">{user.email}</p>
+          </div>
+          <button
+            onClick={() => { setOpen(false); go("profile", { userId: user.id }); }}
+            className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-[13px] text-white/80 transition-colors hover:bg-white/5"
+          >
+            <User className="h-4 w-4 text-white/40" /> View profile
+          </button>
+          <button
+            onClick={() => { setOpen(false); go("settings"); }}
+            className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-[13px] text-white/80 transition-colors hover:bg-white/5"
+          >
+            <Settings className="h-4 w-4 text-white/40" /> Settings
+          </button>
+          {isAdmin && (
+            <button
+              onClick={() => { setOpen(false); go("admin"); }}
+              className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-[13px] text-amber-300 transition-colors hover:bg-amber-400/10"
+            >
+              <Crown className="h-4 w-4" /> Admin Panel
+            </button>
+          )}
+          <div className="border-t border-white/8" />
+          <button
+            onClick={logout}
+            className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-[13px] text-red-400 transition-colors hover:bg-red-500/10"
+          >
+            <LogOut className="h-4 w-4" /> Log out
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Desktop-only top bar — notification bell + account menu, deed баруун
+// буланд байрлана (өмнө нь sidebar дотор шингэсэн байсан).
+function DesktopTopBar({ go, user, setUser, authReady, notifBadge }) {
+  return (
+    <div className="sticky top-0 z-30 hidden items-center justify-end gap-2 border-b border-white/8 bg-[#070b09]/80 px-6 py-3 backdrop-blur-xl lg:flex">
+      {authReady && user && <NotifBell badge={notifBadge} align="right" onViewAll={() => go("notifications")} />}
+      {authReady && (
+        user ? (
+          <UserMenu go={go} user={user} setUser={setUser} />
+        ) : (
+          <button
+            onClick={() => go("auth")}
+            className="inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-[13px] font-semibold text-brand-soft transition-colors hover:bg-white/5"
+          >
+            <LogIn className="h-4 w-4" /> Log in
+          </button>
+        )
+      )}
+    </div>
+  );
+}
+
 export default function AppShell({ children }) {
   const { page, nav, role, user, setUser, authReady } = useNav();
   const { unread } = useLive();
@@ -473,7 +575,7 @@ export default function AppShell({ children }) {
   const collapsed = !hovering;
   const notifBadge = unread.notifications || 0;
 
-  const go = (p) => { setOpen(false); nav(p); };
+  const go = (p, params) => { setOpen(false); nav(p, params); };
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
@@ -492,12 +594,8 @@ export default function AppShell({ children }) {
           collapsed ? "w-[76px]" : "w-[264px] shadow-[0_20px_60px_rgba(0,0,0,0.55)]"
         }`}
       >
-        <div className={`flex items-center ${collapsed ? "flex-col gap-1" : "justify-between pr-3"}`}>
-          <Brand go={go} collapsed={collapsed} />
-          <NotifBell collapsed={collapsed} badge={notifBadge} onViewAll={() => go("notifications")} />
-        </div>
+        <Brand go={go} collapsed={collapsed} />
         <NavList page={page} go={go} collapsed={collapsed} role={role} />
-        <UserCard go={go} collapsed={collapsed} user={user} setUser={setUser} authReady={authReady} />
       </aside>
 
       {/* Mobile top bar */}
@@ -540,21 +638,24 @@ export default function AppShell({ children }) {
       )}
 
       {/* Content (each view provides its own max-w container) */}
-      <main className="min-w-0 pb-20 lg:pb-0">{children}</main>
+      <main className="min-w-0 pb-20 lg:pb-0">
+        <DesktopTopBar go={go} user={user} setUser={setUser} authReady={authReady} notifBadge={notifBadge} />
+        {children}
+      </main>
 
-      <MobileTabBar page={page} go={go} />
+      <MobileTabBar page={page} go={go} user={user} />
     </div>
   );
 }
 
 // App-style bottom tab bar for mobile — quick access to the 5 most-used
 // destinations, mirroring the drawer's full nav for everything else.
-function MobileTabBar({ page, go }) {
+function MobileTabBar({ page, go, user }) {
   const { unread } = useLive();
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 flex items-stretch justify-around border-t border-white/8 bg-[#070b09]/95 px-1 backdrop-blur-xl lg:hidden">
-      {TABS.map(({ page: p, label, Icon, alias, live }) => {
+      {TABS.map(({ page: p, label, Icon, alias, live, own }) => {
         const active = isActive({ page: p, alias }, page);
         const badge = live ? unread[live] || 0 : 0;
         const isPost = p === "post-job";
@@ -562,7 +663,7 @@ function MobileTabBar({ page, go }) {
         return (
           <button
             key={p}
-            onClick={() => go(p)}
+            onClick={() => go(p, own && user ? { userId: user.id } : undefined)}
             aria-label={label}
             className={`relative flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-semibold transition-colors ${
               active ? "text-brand-soft" : "text-white/45"

@@ -116,11 +116,12 @@ export default function ChatWidget() {
 
   return (
     <>
-      {/* Launcher */}
+      {/* Launcher — mobile-д AppShell-ийн доод tab bar-тай давхцахаас
+          сэргийлж bottom-24, tab bar байхгүй desktop дээр bottom-6 */}
       <button
         onClick={() => setOpen(!open)}
         aria-label={open ? "Close AI assistant" : "Open AI assistant"}
-        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand to-brand-soft glow-brand transition-all hover:scale-105 hover:shadow-[0_0_44px_rgba(0,211,149,0.7)]"
+        className="fixed bottom-24 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand to-brand-soft glow-brand transition-all hover:scale-105 hover:shadow-[0_0_44px_rgba(0,211,149,0.7)] lg:bottom-6"
       >
         {open ? <X className="h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
         {!open && (
@@ -130,7 +131,7 @@ export default function ChatWidget() {
 
       {/* Panel */}
       {open && (
-        <div className="glass fixed bottom-24 right-6 z-50 flex w-[min(370px,calc(100vw-3rem))] animate-feed-in flex-col overflow-hidden rounded-3xl shadow-[0_24px_70px_rgba(0,0,0,0.55)]">
+        <div className="glass fixed bottom-[168px] right-6 z-50 flex w-[min(370px,calc(100vw-3rem))] animate-feed-in flex-col overflow-hidden rounded-3xl shadow-[0_24px_70px_rgba(0,0,0,0.55)] lg:bottom-24">
           <div className="flex items-center gap-2.5 border-b border-white/8 bg-white/[0.03] p-4">
             <span className="flex h-9 w-9 items-center justify-center rounded-full border border-brand/40 bg-brand/15">
               <Sparkles className="h-4 w-4 text-brand-soft" />

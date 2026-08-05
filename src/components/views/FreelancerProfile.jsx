@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, BadgeCheck, Star, MapPin, Globe, MessageSquare, Zap, Sparkles, Loader2, AlertCircle } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Star, MapPin, Globe, MessageSquare, Zap, Sparkles, Loader2, AlertCircle, Pencil } from "lucide-react";
 import Magnet from "../fx/Magnet.jsx";
 import { TALENT } from "../../data/mock.js";
 import { REVIEWS } from "../../data/appMock.js";
@@ -44,7 +44,7 @@ function normalizeReal(profile, userId) {
 }
 
 export default function FreelancerProfile() {
-  const { params, nav } = useNav();
+  const { params, nav, user } = useNav();
   const [real, setReal] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(!!params?.userId);
@@ -70,12 +70,21 @@ export default function FreelancerProfile() {
       );
     }
     if (error || !real) {
+      // Client-only акаунт өөрийн "View profile" дарахад freelancer профайл
+      // байхгүй тул 404 ирдэг — "олдсонгүй" гэсэн ерөнхий алдаа биш, яг юу
+      // болсныг тайлбарлаж Settings рүү чиглүүлнэ.
+      const isOwn = user?.id === params.userId;
       return (
         <div className="mx-auto max-w-xl px-6 pb-24 pt-20 text-center">
           <AlertCircle className="mx-auto h-8 w-8 text-red-400" />
-          <p className="mt-4 text-[14px] text-white/60">{error || "Профайл олдсонгүй."}</p>
-          <button onClick={() => nav("find-talent")} className="mt-5 text-[13px] font-semibold text-brand-soft hover:text-white">
-            ← Back to talent
+          <p className="mt-4 text-[14px] text-white/60">
+            {isOwn ? "Танд freelancer профайл байхгүй байна — та зөвхөн client акаунттай байж болзошгүй." : (error || "Профайл олдсонгүй.")}
+          </p>
+          <button
+            onClick={() => nav(isOwn ? "settings" : "find-talent")}
+            className="mt-5 text-[13px] font-semibold text-brand-soft hover:text-white"
+          >
+            {isOwn ? "← Тохиргоо руу очих" : "← Back to talent"}
           </button>
         </div>
       );
@@ -86,6 +95,7 @@ export default function FreelancerProfile() {
   const f = isReal ? normalizeReal(real, params.userId) : (params || TALENT[1]);
   const topRated = isReal ? f.rating >= 4.8 : f.rating >= 4.9;
   const isNew = isReal && f.rating === 0 && f.hired === 0;
+  const isOwn = isReal && user?.id === f.userId;
 
   const stats = [
     { label: "Jobs completed", value: 112 },
@@ -150,26 +160,45 @@ export default function FreelancerProfile() {
                   98% AI match for your brief
                 </span>
               )}
+              {isOwn && (
+                <span className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.03] px-2.5 py-1 text-[10.5px] font-semibold text-white/50">
+                  This is how clients see you
+                </span>
+              )}
             </div>
 
             <div className="mt-6 space-y-3">
-              <Magnet strength={0.15} className="w-full">
-                <button className="w-full rounded-xl bg-gradient-to-r from-brand to-brand-soft py-3.5 text-[14px] font-semibold glow-brand transition-shadow hover:shadow-[0_0_44px_rgba(0,211,149,0.6)]">
-                  Hire {f.name.split(" ")[0]}
-                </button>
-              </Magnet>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => nav("messages", isReal ? { withUserId: f.userId } : undefined)}
-                  className="glass inline-flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-[13.5px] font-semibold text-white/85 transition-colors hover:border-white/25"
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  Message
-                </button>
-                <button className="glass rounded-xl px-4 py-3 text-[13.5px] font-semibold text-white/70 transition-colors hover:border-white/25 hover:text-white">
-                  Follow
-                </button>
-              </div>
+              {isOwn ? (
+                <Magnet strength={0.15} className="w-full">
+                  <button
+                    onClick={() => nav("settings")}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand to-brand-soft py-3.5 text-[14px] font-semibold glow-brand transition-shadow hover:shadow-[0_0_44px_rgba(0,211,149,0.6)]"
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Edit profile
+                  </button>
+                </Magnet>
+              ) : (
+                <>
+                  <Magnet strength={0.15} className="w-full">
+                    <button className="w-full rounded-xl bg-gradient-to-r from-brand to-brand-soft py-3.5 text-[14px] font-semibold glow-brand transition-shadow hover:shadow-[0_0_44px_rgba(0,211,149,0.6)]">
+                      Hire {f.name.split(" ")[0]}
+                    </button>
+                  </Magnet>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => nav("messages", isReal ? { withUserId: f.userId } : undefined)}
+                      className="glass inline-flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-[13.5px] font-semibold text-white/85 transition-colors hover:border-white/25"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                      Message
+                    </button>
+                    <button className="glass rounded-xl px-4 py-3 text-[13.5px] font-semibold text-white/70 transition-colors hover:border-white/25 hover:text-white">
+                      Follow
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
 
             {!isReal && (
