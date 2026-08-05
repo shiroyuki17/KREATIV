@@ -568,11 +568,6 @@ export default function AppShell({ children }) {
   const { page, nav, role, user, setUser, authReady } = useNav();
   const { unread } = useLive();
   const [open, setOpen] = useState(false); // mobile drawer
-  // Desktop rail: rests collapsed (icons only) and expands on hover/focus —
-  // no manual toggle. It overlays the content (fixed 76px grid track) so
-  // expanding never reflows the main content.
-  const [hovering, setHovering] = useState(false);
-  const collapsed = !hovering;
   const notifBadge = unread.notifications || 0;
 
   const go = (p, params) => { setOpen(false); nav(p, params); };
@@ -583,19 +578,11 @@ export default function AppShell({ children }) {
   }, [open]);
 
   return (
-    <div className="min-h-screen bg-ink text-white lg:grid lg:grid-cols-[76px_1fr]">
-      {/* Desktop sidebar — collapsed by default, expands over the content on hover/focus */}
-      <aside
-        onMouseEnter={() => setHovering(true)}
-        onMouseLeave={() => setHovering(false)}
-        onFocus={() => setHovering(true)}
-        onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setHovering(false); }}
-        className={`sticky top-0 z-30 hidden h-screen flex-col border-r border-white/8 bg-[#070b09]/95 backdrop-blur-xl transition-[width] duration-200 ease-out lg:flex ${
-          collapsed ? "w-[76px]" : "w-[264px] shadow-[0_20px_60px_rgba(0,0,0,0.55)]"
-        }`}
-      >
-        <Brand go={go} collapsed={collapsed} />
-        <NavList page={page} go={go} collapsed={collapsed} role={role} />
+    <div className="min-h-screen bg-ink text-white lg:grid lg:grid-cols-[264px_1fr]">
+      {/* Desktop sidebar — always shows icon + label, no more hover-to-reveal */}
+      <aside className="sticky top-0 z-30 hidden h-screen w-[264px] flex-col border-r border-white/8 bg-[#070b09]/95 backdrop-blur-xl lg:flex">
+        <Brand go={go} collapsed={false} />
+        <NavList page={page} go={go} collapsed={false} role={role} />
       </aside>
 
       {/* Mobile top bar */}
