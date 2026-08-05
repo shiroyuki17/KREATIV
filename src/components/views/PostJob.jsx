@@ -7,6 +7,12 @@ import {
   ShieldCheck,
   Users,
   AlertCircle,
+  FileText,
+  Tag,
+  Wallet,
+  Clock3,
+  CalendarClock,
+  Eye,
 } from "lucide-react";
 import { CL_CATEGORIES } from "../../data/appMock.js";
 import { FL_SKILLS } from "../../data/appMock.js";
@@ -73,6 +79,25 @@ function Chip({ active, children, onClick }) {
     </button>
   );
 }
+
+function FieldLabel({ Icon, children, hint }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-white/40">
+        <Icon className="h-3.5 w-3.5 text-brand-soft/70" />
+        {children}
+      </span>
+      {hint && <span className="text-[11px] text-white/30">{hint}</span>}
+    </div>
+  );
+}
+
+const BUDGET_TYPES = [
+  { id: "Fixed", Icon: Wallet, desc: "One agreed price for the whole project" },
+  { id: "Hourly", Icon: Clock3, desc: "Pay for actual time worked, billed weekly" },
+];
+
+const TIMELINE_OPTIONS = ["Less than 1 week", "1–2 weeks", "2–4 weeks", "1–3 months", "3 months+"];
 
 export default function PostJob() {
   const { nav } = useNav();
@@ -244,11 +269,11 @@ export default function PostJob() {
         )}
 
         {step === 1 && (
-          <div className="space-y-6">
+          <div className="space-y-7">
             <label className="block">
-              <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
+              <FieldLabel Icon={FileText} hint={`${desc.length} characters`}>
                 Describe the work
-              </span>
+              </FieldLabel>
               <textarea
                 value={desc}
                 onChange={(e) => setDesc(e.target.value)}
@@ -259,11 +284,11 @@ export default function PostJob() {
             </label>
 
             <div>
-              <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
+              <FieldLabel Icon={Tag} hint={`${skills.length} selected`}>
                 Skills required
-              </span>
+              </FieldLabel>
               <div className="mt-3 flex flex-wrap gap-2.5">
-                {FL_SKILLS.slice(0, 8).map((s) => (
+                {FL_SKILLS.map((s) => (
                   <Chip key={s} active={skills.includes(s)} onClick={() => toggleSkill(s)}>
                     {s}
                   </Chip>
@@ -272,21 +297,33 @@ export default function PostJob() {
             </div>
 
             <div>
-              <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
-                Budget type
-              </span>
-              <div className="mt-3 inline-flex rounded-xl border border-white/10 bg-white/[0.03] p-1">
-                {["Fixed", "Hourly"].map((t) => (
+              <FieldLabel Icon={Wallet}>Budget type</FieldLabel>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {BUDGET_TYPES.map(({ id, Icon, desc: d }) => (
                   <button
-                    key={t}
-                    onClick={() => setType(t)}
+                    key={id}
+                    onClick={() => setType(id)}
                     className={
-                      type === t
-                        ? "rounded-lg bg-brand px-5 py-2 text-[12.5px] font-semibold glow-brand"
-                        : "rounded-lg px-5 py-2 text-[12.5px] font-medium text-white/50 hover:text-white"
+                      type === id
+                        ? "flex items-start gap-3 rounded-xl border border-brand/60 bg-brand/10 p-4 text-left shadow-[0_0_20px_rgba(0,211,149,0.2)]"
+                        : "flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-left transition-colors hover:border-white/25"
                     }
                   >
-                    {t}
+                    <span
+                      className={
+                        type === id
+                          ? "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand/20 text-brand-soft"
+                          : "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.05] text-white/50"
+                      }
+                    >
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <span>
+                      <span className={type === id ? "block text-[13.5px] font-semibold text-white" : "block text-[13.5px] font-semibold text-white/80"}>
+                        {id}
+                      </span>
+                      <span className="mt-0.5 block text-[11.5px] leading-snug text-white/45">{d}</span>
+                    </span>
                   </button>
                 ))}
               </div>
@@ -294,9 +331,7 @@ export default function PostJob() {
 
             <div className="grid gap-5 sm:grid-cols-2">
               <label className="block">
-                <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
-                  {type === "Fixed" ? "Budget" : "Hourly rate"}
-                </span>
+                <FieldLabel Icon={Wallet}>{type === "Fixed" ? "Budget" : "Hourly rate"}</FieldLabel>
                 <input
                   value={budget}
                   onChange={(e) => setBudget(e.target.value)}
@@ -304,26 +339,27 @@ export default function PostJob() {
                   className="mt-2 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[14px] outline-none transition-colors placeholder:text-white/25 focus:border-brand/50"
                 />
               </label>
-              <label className="block">
-                <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
-                  Timeline
-                </span>
-                <select
-                  value={timeline}
-                  onChange={(e) => setTimeline(e.target.value)}
-                  className="mt-2 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[14px] text-white/80 outline-none transition-colors focus:border-brand/50 [&>option]:bg-[#14141a]"
-                >
-                  {["Less than 1 week", "1–2 weeks", "2–4 weeks", "1–3 months", "3 months+"].map((o) => (
-                    <option key={o}>{o}</option>
+              <div className="block">
+                <FieldLabel Icon={CalendarClock}>Timeline</FieldLabel>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {TIMELINE_OPTIONS.map((o) => (
+                    <Chip key={o} active={timeline === o} onClick={() => setTimeline(o)}>
+                      {o}
+                    </Chip>
                   ))}
-                </select>
-              </label>
+                </div>
+              </div>
             </div>
           </div>
         )}
 
         {step === 2 && (
           <div className="space-y-4">
+            <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-white/35">
+              <Eye className="h-3.5 w-3.5" />
+              Preview — this is what specialists will see
+            </p>
+
             <div className="rounded-xl border border-white/8 bg-white/[0.03] p-5">
               <p className="text-[10.5px] font-bold uppercase tracking-widest text-brand-soft">
                 {cat || "Category"}
@@ -343,35 +379,50 @@ export default function PostJob() {
                   ))}
                 </div>
               )}
-              <div className="mt-5 flex flex-wrap gap-6 border-t border-white/8 pt-4 text-[12.5px]">
-                <span className="text-white/45">
-                  {type} budget · <b className="font-display text-mint">{budget || "—"}</b>
-                </span>
-                <span className="text-white/45">
-                  Timeline · <b className="text-white/80">{timeline}</b>
-                </span>
+              <div className="mt-5 grid grid-cols-2 gap-3 border-t border-white/8 pt-4">
+                <div className="flex items-center gap-2.5 rounded-lg bg-white/[0.03] px-3 py-2.5">
+                  <Wallet className="h-4 w-4 shrink-0 text-mint" />
+                  <span className="text-[12.5px] text-white/70">
+                    {type} · <b className="font-display text-mint">{budget || "—"}</b>
+                  </span>
+                </div>
+                <div className="flex items-center gap-2.5 rounded-lg bg-white/[0.03] px-3 py-2.5">
+                  <CalendarClock className="h-4 w-4 shrink-0 text-neon" />
+                  <span className="text-[12.5px] text-white/70">{timeline}</span>
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-3 rounded-xl border border-mint/20 bg-mint/[0.06] p-4">
-              <ShieldCheck className="h-5 w-5 shrink-0 text-mint" />
-              <p className="text-[12.5px] leading-relaxed text-white/60">
-                You'll fund the first milestone into escrow after choosing a
-                freelancer. Nothing is charged until you hire.
+            <div className="rounded-xl border border-white/8 bg-white/[0.03] p-5">
+              <p className="mb-3.5 text-[11px] font-semibold uppercase tracking-widest text-white/40">
+                What happens next
               </p>
-            </div>
-            <div className="flex items-center gap-3 rounded-xl border border-brand/20 bg-brand/[0.06] p-4">
-              <Users className="h-5 w-5 shrink-0 text-brand-soft" />
-              <p className="text-[12.5px] leading-relaxed text-white/60">
-                {matchCount != null ? (
-                  <>
-                    <b className="text-white">{matchCount} specialist{matchCount === 1 ? "" : "s"}</b>{" "}
-                    match{matchCount === 1 ? "es" : ""} the skills you picked. Expect proposals within hours.
-                  </>
-                ) : (
-                  "Your brief will be matched to specialists with the skills you picked."
-                )}
-              </p>
+              <div className="space-y-3.5">
+                <div className="flex items-start gap-3">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-mint/30 bg-mint/10 text-mint">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                  </span>
+                  <p className="pt-0.5 text-[12.5px] leading-relaxed text-white/60">
+                    You'll fund the first milestone into escrow after choosing a
+                    freelancer. Nothing is charged until you hire.
+                  </p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-brand/30 bg-brand/10 text-brand-soft">
+                    <Users className="h-3.5 w-3.5" />
+                  </span>
+                  <p className="pt-0.5 text-[12.5px] leading-relaxed text-white/60">
+                    {matchCount != null ? (
+                      <>
+                        <b className="text-white">{matchCount} specialist{matchCount === 1 ? "" : "s"}</b>{" "}
+                        match{matchCount === 1 ? "es" : ""} the skills you picked. Expect proposals within hours.
+                      </>
+                    ) : (
+                      "Your brief will be matched to specialists with the skills you picked."
+                    )}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         )}
