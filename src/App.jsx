@@ -8,6 +8,7 @@ import Navbar from "./components/layout/Navbar.jsx";
 import Footer from "./components/layout/Footer.jsx";
 import AppShell from "./components/layout/AppShell.jsx";
 import ChatWidget from "./components/ChatWidget.jsx";
+import AuroraBackground from "./components/fx/AuroraBackground.jsx";
 
 import Hero from "./components/sections/Hero.jsx";
 import TrendingNow from "./components/sections/TrendingNow.jsx";
@@ -174,6 +175,7 @@ function Shell() {
   // Marketing — top navbar + footer
   return (
     <div className="min-h-screen overflow-x-clip bg-ink text-white">
+      <AuroraBackground />
       <Navbar />
       <main key={page} className="animate-page-in">
         <View page={page} />

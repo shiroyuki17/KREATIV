@@ -103,8 +103,11 @@ export default function BentoShowcase() {
                     className="cursor-pointer rounded-xl border border-white/8 bg-white/[0.03] p-3.5 transition-colors hover:border-neon/40"
                   >
                     <div className="flex items-center gap-2.5">
-                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand/50 to-neon/40 font-display text-[11px] font-bold ring-1 ring-white/20">
+                      <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand/50 to-neon/40 font-display text-[11px] font-bold ring-1 ring-white/20">
                         {f.initials}
+                        {f.available && (
+                          <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 animate-pulse-soft rounded-full border-2 border-[#0d1512] bg-mint" />
+                        )}
                       </span>
                       <div className="min-w-0">
                         <p className="truncate text-[12.5px] font-semibold">
