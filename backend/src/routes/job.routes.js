@@ -110,15 +110,39 @@ router.post('/', requireAuth, requireActiveUser, requireClientProfile, async (re
       link: 'my-projects',
     });
 
-    // FR-2.4: ур чадвар тохирсон freelancer-үүдэд мэдэгдэл (шууд нийтлэгдсэн үед л)
+    // FR-1.1 / FR-2.4: ур чадвар тохирсон freelancer-үүдэд мэдэгдэл (шууд
+    // нийтлэгдсэн үед л). Ур чадвар давхцал + үнэлгээ + төсөвт таарах эсэхээр
+    // онооны дагуу эрэмбэлж, хамгийн тохирох Топ 5-д тусгай "invite" (шууд
+    // урилга) илгээж, үлдсэн тохирогчдод ердийн "шинэ зар" мэдэгдэл явуулна —
+    // "invite" мэдэгдлийн төрөл frontend дээр аль хэдийн тодорхойлогдсон
+    // байсан ч энэ өдрийг хүртэл хэзээ ч ашиглагдаагүй байсан.
     if (moderationStatus === 'APPROVED' && job.skills.length) {
       prisma.freelancerProfile.findMany({
         where: { skills: { hasSome: job.skills } },
-        select: { userId: true },
-        take: 50,
+        select: { userId: true, skills: true, ratingAvg: true, priceMin: true },
+        take: 200,
       }).then((matches) => {
-        for (const m of matches) {
-          if (m.userId === req.user.id) continue;
+        const scored = matches
+          .filter((m) => m.userId !== req.user.id)
+          .map((m) => {
+            const overlap = m.skills.filter((s) => job.skills.includes(s)).length;
+            const budgetFit = job.budgetMax && m.priceMin != null && m.priceMin <= job.budgetMax ? 1 : 0;
+            return { ...m, score: overlap * 10 + m.ratingAvg * 3 + budgetFit * 5 };
+          })
+          .sort((a, b) => b.score - a.score);
+
+        const invited = scored.slice(0, 5);
+        const rest = scored.slice(5, 50);
+
+        for (const m of invited) {
+          createNotification({
+            userId: m.userId,
+            type: 'invite',
+            text: `You're a top match for "${job.title}" — the client's brief lines up closely with your skills. Send a proposal before the rest of the pool sees it.`,
+            link: 'find-work',
+          });
+        }
+        for (const m of rest) {
           createNotification({
             userId: m.userId,
             type: 'job',
