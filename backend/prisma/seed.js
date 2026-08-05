@@ -16,6 +16,11 @@ const CLIENTS = [
   { email: 'helix@demo.kreativ.mn', name: 'Helix Health', orgName: 'Helix Health', verifiedPayer: true, ratingAvg: 4.9 },
   { email: 'pulse@demo.kreativ.mn', name: 'Pulse Fitness', orgName: 'Pulse Fitness', verifiedPayer: false, ratingAvg: 4.7 },
   { email: 'arcade@demo.kreativ.mn', name: 'Arcade Supply', orgName: 'Arcade Supply', verifiedPayer: true, ratingAvg: 4.8 },
+  { email: 'northwind@demo.kreativ.mn', name: 'Northwind Analytics', orgName: 'Northwind Analytics', verifiedPayer: true, ratingAvg: 4.7 },
+  { email: 'wavelength@demo.kreativ.mn', name: 'Wavelength Media', orgName: 'Wavelength Media', verifiedPayer: true, ratingAvg: 4.6 },
+  { email: 'cornerstone@demo.kreativ.mn', name: 'Cornerstone Realty', orgName: 'Cornerstone Realty', verifiedPayer: false, ratingAvg: 4.5 },
+  { email: 'brightpath@demo.kreativ.mn', name: 'Brightpath Learning', orgName: 'Brightpath Learning', verifiedPayer: true, ratingAvg: 4.9 },
+  { email: 'kettle@demo.kreativ.mn', name: 'Kettle & Co', orgName: 'Kettle & Co', verifiedPayer: true, ratingAvg: 4.8 },
 ];
 
 const FREELANCERS = [
@@ -49,6 +54,36 @@ const FREELANCERS = [
     skills: ['Branding', 'Figma', 'Illustration'], priceMin: 55, priceMax: 90,
     portfolio: { title: 'Luminary token library', description: 'Full brand identity and component library.', link: 'https://example.com/sara' },
   },
+  {
+    email: 'priya@demo.kreativ.mn', name: 'Priya Nair', category: 'Writing',
+    headline: 'Content Strategist & Copywriter', bio: 'Long-form and brand-voice copy for fintech and B2B SaaS.',
+    skills: ['Copywriting', 'SEO', 'Content Strategy'], priceMin: 40, priceMax: 75,
+    portfolio: { title: 'Helix Health blog relaunch', description: 'Editorial strategy and 40+ articles over 6 months.', link: 'https://example.com/priya' },
+  },
+  {
+    email: 'marcus@demo.kreativ.mn', name: 'Marcus Webb', category: 'Marketing',
+    headline: 'Growth Marketer', bio: 'Paid acquisition and lifecycle campaigns for DTC and SaaS brands.',
+    skills: ['Paid Ads', 'SEO', 'Analytics'], priceMin: 65, priceMax: 110,
+    portfolio: { title: 'Pulse Fitness launch campaign', description: 'Cut CAC 34% across a 3-month paid social push.', link: 'https://example.com/marcus' },
+  },
+  {
+    email: 'elena@demo.kreativ.mn', name: 'Elena Petrova', category: 'Dev',
+    headline: 'Backend Engineer', bio: 'Scalable APIs and data pipelines, mostly Node and Postgres.',
+    skills: ['Node.js', 'PostgreSQL', 'AWS'], priceMin: 80, priceMax: 130,
+    portfolio: { title: 'Northwind ingestion pipeline', description: 'Rebuilt a batch ETL job into a real-time event pipeline.', link: 'https://example.com/elena' },
+  },
+  {
+    email: 'yuki@demo.kreativ.mn', name: 'Yuki Tanaka', category: 'Design',
+    headline: 'UI Designer & Illustrator', bio: 'Editorial illustration and interface design for consumer apps.',
+    skills: ['Illustration', 'Figma', 'Branding'], priceMin: 50, priceMax: 95,
+    portfolio: { title: 'Cornerstone Realty visual identity', description: 'Illustrated icon set and marketing site refresh.', link: 'https://example.com/yuki' },
+  },
+  {
+    email: 'omar@demo.kreativ.mn', name: 'Omar Hassan', category: 'Motion',
+    headline: '3D & WebGL Artist', bio: 'Real-time 3D product visuals and interactive web experiences.',
+    skills: ['Blender', 'WebGL', '3D'], priceMin: 70, priceMax: 125,
+    portfolio: { title: 'Nova Studio landing scene', description: 'Interactive WebGL hero for an AI product launch.', link: 'https://example.com/omar' },
+  },
 ];
 
 const JOBS = [
@@ -60,6 +95,16 @@ const JOBS = [
   { client: 'arcade@demo.kreativ.mn', title: 'Headless e-commerce build on Next.js', category: 'Dev', skills: ['Next.js', 'Shopify', 'GraphQL'], languages: ['English', 'German'], budgetType: 'HOURLY', budgetMin: 85, budgetMax: 85 },
   { client: 'luminary@demo.kreativ.mn', title: 'Design tokens migration to Tailwind v4', category: 'Dev', skills: ['Tailwind', 'React', 'Figma'], languages: ['English', 'Portuguese'], budgetType: 'FIXED', budgetMin: 3800, budgetMax: 3800 },
   { client: 'arcade@demo.kreativ.mn', title: 'Product explainer video in 3D', category: 'Motion', skills: ['Blender', 'After Effects'], languages: ['English'], budgetType: 'FIXED', budgetMin: 5600, budgetMax: 5600 },
+  { client: 'northwind@demo.kreativ.mn', title: 'Backend API overhaul for a data platform', category: 'Dev', skills: ['Node.js', 'PostgreSQL', 'AWS'], languages: ['English'], budgetType: 'HOURLY', budgetMin: 100, budgetMax: 100 },
+  { client: 'northwind@demo.kreativ.mn', title: 'AI-powered anomaly detection feature', category: 'AI', skills: ['Python', 'LLM'], languages: ['English'], budgetType: 'HOURLY', budgetMin: 130, budgetMax: 130 },
+  { client: 'wavelength@demo.kreativ.mn', title: 'Weekly newsletter and blog content strategy', category: 'Writing', skills: ['Copywriting', 'SEO', 'Content Strategy'], languages: ['English'], budgetType: 'FIXED', budgetMin: 3200, budgetMax: 3200 },
+  { client: 'wavelength@demo.kreativ.mn', title: 'Paid social campaign for a product launch', category: 'Marketing', skills: ['Paid Ads', 'Analytics'], languages: ['English'], budgetType: 'FIXED', budgetMin: 4500, budgetMax: 4500 },
+  { client: 'cornerstone@demo.kreativ.mn', title: 'Illustrated brand refresh for a real estate startup', category: 'Design', skills: ['Illustration', 'Figma', 'Branding'], languages: ['English'], budgetType: 'FIXED', budgetMin: 5400, budgetMax: 5400 },
+  { client: 'brightpath@demo.kreativ.mn', title: 'Interactive course platform frontend', category: 'Dev', skills: ['React', 'TypeScript'], languages: ['English'], budgetType: 'HOURLY', budgetMin: 75, budgetMax: 75 },
+  { client: 'brightpath@demo.kreativ.mn', title: 'Explainer video series for online courses', category: 'Motion', skills: ['After Effects', '3D'], languages: ['English'], budgetType: 'FIXED', budgetMin: 4200, budgetMax: 4200 },
+  { client: 'kettle@demo.kreativ.mn', title: 'SEO content and product copy for a DTC launch', category: 'Writing', skills: ['Copywriting', 'SEO'], languages: ['English'], budgetType: 'FIXED', budgetMin: 2400, budgetMax: 2400 },
+  { client: 'kettle@demo.kreativ.mn', title: 'Growth marketing for a Shopify storefront', category: 'Marketing', skills: ['Paid Ads', 'SEO', 'Analytics'], languages: ['English'], budgetType: 'HOURLY', budgetMin: 70, budgetMax: 70 },
+  { client: 'meridian@demo.kreativ.mn', title: '3D product visualization for a banking app', category: 'Motion', skills: ['Blender', 'WebGL'], languages: ['English'], budgetType: 'FIXED', budgetMin: 6800, budgetMax: 6800 },
 ];
 
 const DEMO_PASSWORD = 'password123';
@@ -114,28 +159,30 @@ async function main() {
     console.log(`  freelancer: ${f.email}`);
   }
 
-  const existingJobCount = await prisma.job.count();
-  if (existingJobCount === 0) {
-    for (const j of JOBS) {
-      const clientProfile = clientProfilesByEmail[j.client];
-      await prisma.job.create({
-        data: {
-          clientId: clientProfile.id,
-          title: j.title,
-          description: `${j.title}. Демо зорилгоор үүсгэсэн жишээ ажлын зар.`,
-          category: j.category,
-          skills: j.skills,
-          languages: j.languages,
-          budgetType: j.budgetType,
-          budgetMin: j.budgetMin,
-          budgetMax: j.budgetMax,
-        },
-      });
-    }
-    console.log(`  jobs: ${JOBS.length} created`);
-  } else {
-    console.log(`  jobs: skipped (${existingJobCount} already exist)`);
+  // Тухайн client дор яг ижил гарчигтай ажил байвал алгасна — жагсаалтад
+  // шинэ ажил нэмээд дахин ажиллуулахад зөвхөн шинэ мөрүүд орно, хуучин
+  // (өөр status-д шилжсэн байж болзошгүй) ажлууд хөндөгдөхгүй.
+  let createdJobs = 0;
+  for (const j of JOBS) {
+    const clientProfile = clientProfilesByEmail[j.client];
+    const exists = await prisma.job.findFirst({ where: { clientId: clientProfile.id, title: j.title } });
+    if (exists) continue;
+    await prisma.job.create({
+      data: {
+        clientId: clientProfile.id,
+        title: j.title,
+        description: `${j.title}. Демо зорилгоор үүсгэсэн жишээ ажлын зар.`,
+        category: j.category,
+        skills: j.skills,
+        languages: j.languages,
+        budgetType: j.budgetType,
+        budgetMin: j.budgetMin,
+        budgetMax: j.budgetMax,
+      },
+    });
+    createdJobs++;
   }
+  console.log(`  jobs: ${createdJobs} created (${JOBS.length - createdJobs} already existed)`);
 
   console.log(`✅ Done. Demo password for all seeded accounts: "${DEMO_PASSWORD}"`);
 }
