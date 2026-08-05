@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { MotionConfig } from "framer-motion";
 import { NavProvider, useNav } from "./nav.jsx";
 import { LiveProvider } from "./live.jsx";
-import { getAccessToken } from "./lib/authApi.js";
+import { getAccessToken, stashRedirect } from "./lib/authApi.js";
 import LiveToasts from "./components/LiveToasts.jsx";
 import Navbar from "./components/layout/Navbar.jsx";
 import Footer from "./components/layout/Footer.jsx";
@@ -133,9 +133,9 @@ function View({ page }) {
 // sidebar link gating, so this is the one place that actually enforces it —
 // renders a blank frame (no protected content leaks) and bounces to /auth.
 function RequireAuth() {
-  const { nav } = useNav();
+  const { nav, page, params } = useNav();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { nav("auth"); }, []);
+  useEffect(() => { stashRedirect(page, params); nav("auth"); }, []);
   return <div className="min-h-screen bg-ink" />;
 }
 

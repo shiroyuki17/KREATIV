@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { AlertCircle } from "lucide-react";
 import { useNav } from "../../nav.jsx";
-import { saveTokens, fetchMe, resolveHomeRoute } from "../../lib/authApi.js";
+import { saveTokens, fetchMe, resolveHomeRoute, consumeStashedRedirect } from "../../lib/authApi.js";
 
 export default function AuthCallback() {
   const { nav, setUser } = useNav();
@@ -27,7 +27,9 @@ export default function AuthCallback() {
     fetchMe(accessToken)
       .then(async (user) => {
         setUser(user);
-        const { page, params: routeParams } = await resolveHomeRoute(user, accessToken);
+        const home = await resolveHomeRoute(user, accessToken);
+        const stashed = home.page !== "onboarding" ? consumeStashedRedirect() : null;
+        const { page, params: routeParams } = stashed || home;
         nav(page, routeParams);
       })
       .catch(() => setError("Хэрэглэгчийн мэдээлэл татахад алдаа гарлаа."));

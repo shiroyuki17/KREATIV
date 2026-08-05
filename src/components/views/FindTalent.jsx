@@ -4,6 +4,7 @@ import { useNav } from "../../nav.jsx";
 import { avatarSrc } from "../../lib/authApi.js";
 import { fetchFreelancers } from "../../lib/talentApi.js";
 import AiPanel from "../ui/AiPanel.jsx";
+import { CardGridSkeleton } from "../ui/Skeleton.jsx";
 
 const CATS = ["All", "Design", "Dev", "AI", "Motion", "Writing", "Marketing"];
 const SORTS = {
@@ -217,7 +218,7 @@ export default function FindTalent() {
         </div>
 
         <p className="mt-6 text-[12.5px] text-white/40">
-          {total} {total === 1 ? "specialist" : "specialists"} found
+          {loading ? "Loading specialists…" : <>{total} {total === 1 ? "specialist" : "specialists"} found</>}
         </p>
 
         {error && (
@@ -227,8 +228,9 @@ export default function FindTalent() {
         )}
 
         {/* Results */}
+        {loading && <CardGridSkeleton count={5} className="mt-4 space-y-4" />}
         <div className="mt-4 space-y-4">
-          {freelancers.map((f, i) => (
+          {!loading && freelancers.map((f, i) => (
             <TalentCard key={f.id} f={f} nav={nav} style={{ animationDelay: `${Math.min(i, 8) * 45}ms` }} />
           ))}
         </div>

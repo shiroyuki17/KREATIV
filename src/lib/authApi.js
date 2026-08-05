@@ -130,6 +130,28 @@ export async function resolveHomeRoute(user, accessToken) {
   return { page: "onboarding", params: { role: "freelancer" } };
 }
 
+const REDIRECT_KEY = "kreativ_redirect_after_login";
+
+// An anonymous visitor hitting a gated page (e.g. searching from the Hero
+// bar → Find Talent) gets bounced to /auth with zero context, and used to
+// lose whatever they were doing. sessionStorage (not in-memory JS state)
+// survives the real page navigation Google's OAuth redirect does.
+export function stashRedirect(page, params) {
+  if (page === "auth" || page === "auth-callback" || page === "onboarding") return;
+  sessionStorage.setItem(REDIRECT_KEY, JSON.stringify({ page, params }));
+}
+
+export function consumeStashedRedirect() {
+  const raw = sessionStorage.getItem(REDIRECT_KEY);
+  if (!raw) return null;
+  sessionStorage.removeItem(REDIRECT_KEY);
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 // FR-1.1: утасны OTP (демо горим — backend хариултад demoCode-ыг шууд
 // буцаадаг тул жинхэнэ SMS gateway ирэх хүртэл UI дээр шууд харуулж болно)
 export function requestPhoneOtp(phone, accessToken) {

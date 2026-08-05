@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Briefcase, Laptop, ArrowLeft, Check, AlertCircle } from "lucide-react";
 import Magnet from "../fx/Magnet.jsx";
 import { useNav } from "../../nav.jsx";
-import { googleLoginUrl, registerUser, loginUser, saveTokens, resolveHomeRoute } from "../../lib/authApi.js";
+import { googleLoginUrl, registerUser, loginUser, saveTokens, resolveHomeRoute, consumeStashedRedirect } from "../../lib/authApi.js";
 
 const OAUTH_ERROR_MESSAGES = {
   invalid_state: "Google холболт хугацаа дууссан байна. Дахин оролдоно уу.",
@@ -67,7 +67,12 @@ export default function Auth() {
       const { user, accessToken, refreshToken } = await loginUser({ email, password });
       saveTokens(accessToken, refreshToken);
       setUser(user);
-      const { page, params: routeParams } = await resolveHomeRoute(user, accessToken);
+      const home = await resolveHomeRoute(user, accessToken);
+      // Came here bounced off a gated page (e.g. searched from the Hero bar
+      // while logged out) — go back to what they were actually trying to do,
+      // unless they still need onboarding first (that always wins).
+      const stashed = home.page !== "onboarding" ? consumeStashedRedirect() : null;
+      const { page, params: routeParams } = stashed || home;
       nav(page, routeParams);
     } catch (err) {
       setFormError(err.message);

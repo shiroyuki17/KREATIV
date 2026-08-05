@@ -4,6 +4,7 @@ import SpotlightCard from "../fx/SpotlightCard.jsx";
 import { useNav } from "../../nav.jsx";
 import { fetchJobs } from "../../lib/jobsApi.js";
 import { useEscapeKey } from "../../hooks/useEscapeKey.js";
+import { CardGridSkeleton } from "../ui/Skeleton.jsx";
 
 const CATS = ["All", "Design", "Dev", "AI", "Motion", "Writing", "Marketing"];
 const TYPES = ["Any", "Fixed", "Hourly"];
@@ -251,7 +252,7 @@ export default function FindWork() {
         <div className="min-w-0">
           <div className="flex items-center justify-between">
             <p className="text-[13px] text-white/50">
-              <b className="text-white">{total}</b> {total === 1 ? "brief" : "briefs"} found
+              {loading ? "Loading briefs…" : <><b className="text-white">{total}</b> {total === 1 ? "brief" : "briefs"} found</>}
             </p>
             {activeCount > 0 && (
               <button onClick={clear} className="text-[12px] font-semibold text-brand-soft hover:text-white">Clear filters</button>
@@ -264,8 +265,10 @@ export default function FindWork() {
             </p>
           )}
 
+          {loading && <CardGridSkeleton count={5} className="mt-4 space-y-3" />}
+
           <div className="mt-4 space-y-3">
-            {jobs.map((job, i) => (
+            {!loading && jobs.map((job, i) => (
               <SpotlightCard
                 key={job.id}
                 onClick={() => nav("project", job)}

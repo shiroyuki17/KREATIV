@@ -86,7 +86,7 @@ function DepositModal({ onClose, onDeposited }) {
         {!invoice ? (
           <>
             <p className="mt-2 text-[12px] text-white/45">
-              Жинхэнэ QPay мерчант данс холбогдоогүй тул демо invoice үүсгэнэ — доорх "Би төлсөн" товч нь бодит банкны webhook-ийн байрыг эзэлнэ.
+              Жинхэнэ QPay мерчант данс холбогдоогүй тул демо invoice үүсгэнэ — QR гарсны дараа систем автоматаар төлбөрийг илрүүлж баланс руу орлого хийнэ.
             </p>
             <label className="mt-5 block text-[11px] font-semibold uppercase tracking-wider text-white/40">Дүн (USD)</label>
             <input
