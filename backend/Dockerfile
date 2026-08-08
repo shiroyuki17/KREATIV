@@ -13,6 +13,15 @@
 # context-оос COPY хийхийн оронд Dockerfile дотроо шууд бичиж, package-lock
 # .json-оос бүрмөсөн татгалзаж (npm install, npm ci биш) энэ эвдрэлийг
 # бүрэн тойрч гарна.
+#
+# ⚠️⚠️ ЭНЭ НЬ ДООРХ ЖАГСААЛТЫГ package.json-ТОЙ ГАРААР СИНК БАЙЛГАХЫГ
+# ШААРДАНА. Нэг удаа мартсанаас production deploy унасан:
+#   Error: Cannot find package 'stripe' imported from /app/src/lib/payments/stripe.js
+# Локал дээр бүх зүйл ажилладаг тул зөрүү нь зөвхөн deploy дээр илэрдэг.
+#
+# Тиймээс src/lib/dockerDeps.test.js нь энэ файлын dependencies-ийг
+# package.json-тэй тулгаж шалгадаг — `npm test` зөрүүг өмнө нь барина.
+# Шинэ dependency нэмэх бүрд ХОЁР газарт нэмнэ.
 FROM node:24-alpine AS deps
 WORKDIR /app
 RUN cat <<'PKGJSON' > package.json
@@ -34,6 +43,7 @@ RUN cat <<'PKGJSON' > package.json
     "test": "vitest run"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1105.0",
     "@prisma/adapter-pg": "7.9.1",
     "@prisma/client": "7.9.1",
     "bcryptjs": "^3.0.0",
@@ -50,6 +60,7 @@ RUN cat <<'PKGJSON' > package.json
     "pg": "^8.13.0",
     "prisma": "7.9.1",
     "socket.io": "^4.8.3",
+    "stripe": "^22.4.0",
     "swagger-ui-express": "^5.0.1",
     "zod": "^4.0.0"
   }
