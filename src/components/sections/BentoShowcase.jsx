@@ -3,15 +3,44 @@ import SpotlightCard from "../fx/SpotlightCard.jsx";
 import Magnet from "../fx/Magnet.jsx";
 import CountUp from "../fx/CountUp.jsx";
 import BlurText from "../fx/BlurText.jsx";
-import { JOBS, TALENT } from "../../data/mock.js";
+import { useEffect, useState } from "react";
 import { useNav } from "../../nav.jsx";
 import { useLive } from "../../live.jsx";
+import { useHomeJobs, useHomeTalent, toJobCard, toTalentCard } from "../../lib/homeData.js";
+import { fetchPublicStats } from "../../lib/analyticsApi.js";
 
-const featured = JOBS.find((j) => j.featured);
+function rateLabel(f) {
+  if (f.priceMin == null) return "Rate on request";
+  if (f.priceMax && f.priceMax !== f.priceMin) return `$${f.priceMin}–${f.priceMax}/hr`;
+  return `$${f.priceMin}/hr`;
+}
 
 export default function BentoShowcase() {
   const { nav } = useNav();
   const { openBriefs } = useLive();
+  const jobs = useHomeJobs();
+  const talent = useHomeTalent();
+  const [clients, setClients] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchPublicStats()
+      .then((s) => { if (!cancelled) setClients(s.clients); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  // "Онцлох" зар: mock-д `featured: true` гэсэн гар хийцийн туг байсан.
+  // Бодит өгөгдөлд ийм ойлголт байхгүй тул хамгийн өндөр төсөвтэй нээлттэй
+  // зарыг сонгоно — "онцлох" гэдэгт хамгийн ойр, тайлбарлахад ойлгомжтой.
+  const featuredRaw = [...(jobs || [])]
+    .sort((a, b) => (b.budgetMax ?? b.budgetMin ?? 0) - (a.budgetMax ?? a.budgetMin ?? 0))[0];
+  const featured = featuredRaw ? toJobCard(featuredRaw) : null;
+
+  const topTalent = [...(talent || [])]
+    .sort((a, b) => (b.ratingAvg || 0) - (a.ratingAvg || 0))
+    .slice(0, 3);
+
   return (
     <section id="showcase" className="relative py-12 md:py-24">
       <div className="mx-auto max-w-6xl px-6">
@@ -35,18 +64,20 @@ export default function BentoShowcase() {
                 Featured brief
               </span>
               <h3 className="mt-5 max-w-sm font-display text-2xl font-bold leading-snug">
-                {featured.title}
+                {featured ? featured.title : "No open briefs yet"}
               </h3>
               <div className="mt-3 flex items-center gap-2 text-[13px] text-white/55">
-                {featured.client}
-                <BadgeCheck className="h-4 w-4 text-neon" />
-                <span className="inline-flex items-center gap-1">
-                  <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                  {featured.rating}
-                </span>
+                {featured?.client}
+                {featured?.verified && <BadgeCheck className="h-4 w-4 text-neon" />}
+                {featured?.rating != null && (
+                  <span className="inline-flex items-center gap-1">
+                    <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                    {featured.rating.toFixed(1)}
+                  </span>
+                )}
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
-                {featured.tags.map((t) => (
+                {(featured?.tags || []).slice(0, 5).map((t) => (
                   <span
                     key={t}
                     className="rounded-full border border-white/10 px-3 py-1 text-[11px] text-white/50"
@@ -58,15 +89,16 @@ export default function BentoShowcase() {
               <div className="mt-auto flex items-center justify-between pt-8">
                 <div>
                   <p className="text-[11px] uppercase tracking-wider text-white/40">
-                    {featured.type} budget
+                    {featured ? `${featured.type} budget` : "Budget"}
                   </p>
                   <p className="font-display text-2xl font-bold text-mint">
-                    {featured.budget}
+                    {featured ? featured.budget : "—"}
                   </p>
                 </div>
                 <Magnet>
                   <button
-                    onClick={() => nav("project", featured)}
+                    disabled={!featured}
+                    onClick={() => featured && nav("project", featured.raw)}
                     className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-3 text-[13px] font-semibold glow-brand transition-shadow"
                   >
                     Apply Now
@@ -96,18 +128,17 @@ export default function BentoShowcase() {
                 </button>
               </div>
               <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                {TALENT.slice(0, 3).map((f) => (
+                {topTalent.map((raw) => {
+                  const f = toTalentCard(raw);
+                  return (
                   <div
-                    key={f.name}
-                    onClick={() => nav("profile", f)}
+                    key={f.userId}
+                    onClick={() => nav("profile", { userId: f.userId })}
                     className="cursor-pointer rounded-xl border border-white/8 bg-white/[0.03] p-3.5 transition-colors hover:border-neon/40"
                   >
                     <div className="flex items-center gap-2.5">
                       <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand/50 to-neon/40 font-display text-[11px] font-bold ring-1 ring-white/20">
                         {f.initials}
-                        {f.available && (
-                          <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 animate-pulse-soft rounded-full border-2 border-[#0d1512] bg-mint" />
-                        )}
                       </span>
                       <div className="min-w-0">
                         <p className="truncate text-[12.5px] font-semibold">
@@ -121,12 +152,13 @@ export default function BentoShowcase() {
                     <div className="mt-2.5 flex items-center justify-between text-[11px]">
                       <span className="inline-flex items-center gap-1 text-white/60">
                         <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                        {f.rating}
+                        {f.rating != null ? f.rating.toFixed(1) : "New"}
                       </span>
-                      <span className="font-semibold text-mint">{f.rate}</span>
+                      <span className="font-semibold text-mint">{rateLabel(raw)}</span>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </SpotlightCard>
@@ -157,11 +189,14 @@ export default function BentoShowcase() {
             <div className="flex h-full flex-col justify-between p-6">
               <Zap className="h-5 w-5 text-brand-soft" />
               <div>
-                <p className="font-display text-4xl font-bold">
-                  <CountUp to={3.2} decimals={1} suffix="h" />
+                {/* Өмнө нь "3.2h avg. time to AI match" гэсэн зохиомол тоо
+                    байв — уг хугацааг хэмждэг ямар ч өгөгдөл системд байхгүй.
+                    Бодитоор тоолж чадах зүйлээр сольсон. */}
+                <p className="font-display text-4xl font-bold tabular-nums">
+                  {clients == null ? "—" : <CountUp to={clients} />}
                 </p>
                 <p className="mt-1 text-[11.5px] text-white/45">
-                  avg. time to AI match
+                  companies hiring
                 </p>
               </div>
             </div>

@@ -1,28 +1,55 @@
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
-import { TALENT, JOBS } from "../../data/mock.js";
 import { useNav } from "../../nav.jsx";
+import { useHomeJobs, useHomeTalent, toJobCard, toTalentCard } from "../../lib/homeData.js";
 import Reveal from "../fx/Reveal.jsx";
 
-const byName = (n) => TALENT.find((t) => t.name === n);
-const byId = (id) => JOBS.find((j) => j.id === id);
+// Мэргэжилтний портфолио болон нээлттэй зарыг холиод нэг "хана" болгож
+// харуулна. Өмнө нь энэ нь mock.js-ийн нэрээр хатуу бичсэн хүмүүс
+// ("Ava Torres", "Tom Beck") болон ID-гаар сонгосон зарууд байв — DB-д
+// байхгүй хүн дээр дарахад хоосон профайл нээгддэг байлаа.
+//
+// Бодит портфолиод градиент байдаггүй тул категориор өнгө оноож,
+// өнгө нь өөрөө утга дамжуулна.
+const CAT_GRAD = {
+  Design: "from-brand/70 to-brand-soft/25",
+  Dev: "from-neon/60 to-brand/25",
+  AI: "from-violet/60 to-violet-soft/25",
+  Motion: "from-mint/60 to-neon/25",
+  Writing: "from-amber-400/55 to-rose-400/20",
+  Marketing: "from-rose-400/55 to-violet/20",
+};
 
-// Contra's big "Standout projects" masonry, adapted: mixes specialist
-// portfolio art with live briefs so it reads as one wall of real activity
-// rather than a second, redundant talent grid.
-const TILES = [
-  { kind: "talent", talent: byName("Ava Torres"), tileIndex: 1, tall: true },
-  { kind: "job", job: byId(4), tall: false },
-  { kind: "talent", talent: byName("Daniel Kim"), tileIndex: 3, tall: false },
-  { kind: "talent", talent: byName("Mina Okafor"), tileIndex: 1, tall: true },
-  { kind: "job", job: byId(12), tall: false },
-  { kind: "talent", talent: byName("Sara Cohen"), tileIndex: 0, tall: false },
-  { kind: "talent", talent: byName("Tom Beck"), tileIndex: 2, tall: true },
-  { kind: "job", job: byId(6), tall: false },
-];
+// Талант, зар хоёрыг ээлжлүүлж, өндөр хайрцгуудыг тодорхой хэв маягаар
+// байрлуулна — masonry нь санамсаргүй биш, тогтвортой харагдах ёстой.
+const TALL_AT = new Set([0, 3, 6]);
+
+function buildTiles(talent, jobs) {
+  const tiles = [];
+  const maxLen = Math.max(talent.length, jobs.length);
+
+  for (let i = 0; i < maxLen && tiles.length < 8; i++) {
+    if (talent[i]) tiles.push({ kind: "talent", data: talent[i] });
+    if (tiles.length >= 8) break;
+    // Хоёр талант тутамд нэг зар — зөвхөн талант байвал зар нь алгасагдана.
+    if (i % 2 === 1 && jobs[Math.floor(i / 2)]) {
+      tiles.push({ kind: "job", data: jobs[Math.floor(i / 2)] });
+    }
+  }
+  return tiles.map((t, i) => ({ ...t, tall: TALL_AT.has(i) }));
+}
 
 export default function StandoutWork() {
   const { nav } = useNav();
+  const jobs = useHomeJobs();
+  const talent = useHomeTalent();
+
+  const loading = jobs == null || talent == null;
+  const tiles = loading ? [] : buildTiles(talent, jobs);
+
+  // Харуулах юу ч байхгүй бол хэсгийг бүхэлд нь нуух — "Standout work
+  // making waves" гэсэн гарчиг доор хоосон тор үлдээхээс дээр.
+  if (!loading && tiles.length === 0) return null;
 
   return (
     <section className="relative py-10 md:py-16">
@@ -39,7 +66,7 @@ export default function StandoutWork() {
         </Reveal>
 
         <div className="mt-7 grid auto-rows-[140px] grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {TILES.map((t, i) => {
+          {tiles.map((t, i) => {
             const motionProps = {
               initial: { opacity: 0, scale: 0.94 },
               whileInView: { opacity: 1, scale: 1 },
@@ -50,33 +77,38 @@ export default function StandoutWork() {
             };
 
             if (t.kind === "talent") {
-              const tile = t.talent.portfolio[t.tileIndex];
+              const f = toTalentCard(t.data);
+              // Портфолио байвал эхний ажлынх нь нэрийг, үгүй бол албан
+              // тушаалыг нь харуулна — хоосон шошго гаргахгүй.
+              const caption = t.data.portfolio?.[0]?.title || f.role;
               return (
                 <motion.button
-                  key={i}
+                  key={`t-${f.userId}`}
                   {...motionProps}
-                  onClick={() => nav("profile", t.talent)}
-                  className={`${motionProps.className} group relative overflow-hidden rounded-2xl bg-gradient-to-br text-left ${tile.grad}`}
+                  onClick={() => nav("profile", { userId: f.userId })}
+                  className={`${motionProps.className} group relative overflow-hidden rounded-2xl bg-gradient-to-br text-left ${CAT_GRAD[f.cat] || CAT_GRAD.Dev}`}
                 >
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
                   <div className="absolute inset-x-3 bottom-3 opacity-0 transition-opacity group-hover:opacity-100">
-                    <p className="text-[12px] font-semibold text-white">{t.talent.name}</p>
-                    <p className="text-[10.5px] text-white/70">{tile.label || t.talent.role}</p>
+                    <p className="text-[12px] font-semibold text-white">{f.name}</p>
+                    <p className="line-clamp-1 text-[10.5px] text-white/70">{caption}</p>
                   </div>
                 </motion.button>
               );
             }
+
+            const job = toJobCard(t.data);
             return (
               <motion.button
-                key={i}
+                key={`j-${job.id}`}
                 {...motionProps}
-                onClick={() => nav("project", t.job)}
+                onClick={() => nav("project", job.raw)}
                 className={`${motionProps.className} group relative flex flex-col justify-end overflow-hidden rounded-2xl border border-white/8 bg-white/[0.03] p-3.5 text-left transition-colors hover:border-brand/40`}
               >
                 <p className="line-clamp-3 text-[12.5px] font-semibold leading-snug text-white/85">
-                  {t.job.title}
+                  {job.title}
                 </p>
-                <p className="mt-2 text-[11px] font-bold text-mint">{t.job.budget}</p>
+                <p className="mt-2 text-[11px] font-bold text-mint">{job.budget}</p>
               </motion.button>
             );
           })}

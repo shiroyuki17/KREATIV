@@ -17,6 +17,7 @@ import {
   Menu,
   X,
   CircleDollarSign,
+  CreditCard,
   Mail,
   Star,
   Info,
@@ -76,6 +77,7 @@ const MAIN = [
   { page: "my-projects", label: "My Projects", Icon: FolderKanban, alias: ["tracker"] },
   { page: "messages", label: "Messages", Icon: MessageSquare, live: "messages" },
   { page: "payments", label: "Payments", Icon: Wallet },
+  { page: "subscription", label: "Plan & billing", Icon: CreditCard },
 ];
 
 // "dashboard" бол хийсвэр мөр — бодит хуудас нь горимоос хамаарна.

@@ -32,6 +32,7 @@ const FreelancerDashboard = lazy(() => import("./components/views/FreelancerDash
 const MyProjects = lazy(() => import("./components/views/MyProjects.jsx"));
 const Messages = lazy(() => import("./components/views/Messages.jsx"));
 const Payments = lazy(() => import("./components/views/Payments.jsx"));
+const Subscription = lazy(() => import("./components/views/Subscription.jsx"));
 const Settings = lazy(() => import("./components/views/Settings.jsx"));
 const Notifications = lazy(() => import("./components/views/Notifications.jsx"));
 const TrustSafety = lazy(() => import("./components/views/TrustSafety.jsx"));
@@ -67,6 +68,7 @@ const APP_PAGES = new Set([
   "my-projects",
   "messages",
   "payments",
+  "subscription",
   "notifications",
   "profile",
   "settings",
@@ -98,7 +100,7 @@ function HomePage() {
 const KNOWN = new Set([
   "home", "trust", "how", "help", "contact", "reviews", "auth", "auth-callback", "onboarding",
   "project", "profile", "client-dashboard", "freelancer-dashboard", "my-projects",
-  "messages", "payments", "settings", "notifications", "admin", "post-job",
+  "messages", "payments", "subscription", "settings", "notifications", "admin", "post-job",
   "find-talent", "find-work", "tracker", "terms", "dispute-policy",
 ]);
 
@@ -133,6 +135,7 @@ function ViewSwitch({ page }) {
     case "my-projects": return <MyProjects />;
     case "messages": return <Messages />;
     case "payments": return <Payments />;
+    case "subscription": return <Subscription />;
     case "settings": return <Settings />;
     case "notifications": return <Notifications />;
     case "admin": return <AdminPanel />;
