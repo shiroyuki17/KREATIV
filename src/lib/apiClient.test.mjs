@@ -17,6 +17,23 @@ globalThis.window = {
   dispatchEvent: (e) => { (listeners.get(e.type) || []).forEach((fn) => fn(e)); return true; },
 };
 
+// Web Locks нь Node-д байхгүй. Табуудыг цуваалдаг зан төлөвийг шалгахын
+// тулд хамгийн энгийн жинхэнэ mutex-ээр орлуулна.
+let lockChain = Promise.resolve();
+// Node 24-д `navigator` нь getter-only тул шууд оноож болохгүй.
+Object.defineProperty(globalThis, "navigator", {
+  configurable: true,
+  value: {
+    locks: {
+      request(_name, fn) {
+        const run = lockChain.then(() => fn());
+        lockChain = run.catch(() => {});
+        return run;
+      },
+    },
+  },
+});
+
 const api = await import("./apiClient.js");
 
 const ACCESS = "kreativ:accessToken";
@@ -127,5 +144,48 @@ assert.equal(api.hasSession(), true, "зөвхөн refresh token байхад ч
 reset();
 assert.equal(api.hasSession(), false);
 console.log("✅ 6. hasSession() зөв ажиллаж байна");
+
+// ── Тест 7: ХОЁР ТАБ зэрэг refresh хийхэд токен ганц л удаа rotate болно ──
+//
+// Backend нь rotate хийгдсэн refresh token дахин ирвэл "хулгайлагдсан" гэж
+// үзээд хэрэглэгчийн БҮХ session-ийг устгадаг. Модуль доторх single-flight
+// нь зөвхөн НЭГ таб дотор хамгаалдаг тул хоёр таб зэрэг оролдоход хэрэглэгч
+// бүх табаас санамсаргүй гардаг байв. Web Locks табуудыг цуваална.
+reset();
+store.set(ACCESS, "expired-access");
+store.set(REFRESH, "good-refresh");
+const refreshCalls = [];
+globalThis.fetch = async (url, opts) => {
+  if (url.endsWith("/auth/refresh")) {
+    const sent = JSON.parse(opts.body).refreshToken;
+    refreshCalls.push(sent);
+    // Хуучирсан токен ирвэл backend-ийн адил бүх session-ийг устгана.
+    if (sent !== store.get(REFRESH)) {
+      store.delete(ACCESS);
+      store.delete(REFRESH);
+      return json(401, { error: "бүх төхөөрөмжөөс гарлаа" });
+    }
+    await new Promise((r) => setTimeout(r, 15));
+    const n = refreshCalls.length;
+    return json(200, { accessToken: `access-${n}`, refreshToken: `refresh-${n}` });
+  }
+  return json(401, { error: "Token хүчингүй" });
+};
+
+// Тусдаа instance = тусдаа таб (тус бүр өөрийн refreshPromise-тэй)
+const stamp = Date.now();
+const tabA = await import(`./apiClient.js?tabA=${stamp}`);
+const tabB = await import(`./apiClient.js?tabB=${stamp}`);
+const [accA, accB] = await Promise.all([tabA.refreshAccessToken(), tabB.refreshAccessToken()]);
+
+assert.ok(accA, "таб A access token авах ёстой");
+assert.ok(accB, "таб B access token авах ёстой");
+assert.equal(
+  refreshCalls.length,
+  1,
+  `refresh ганц л удаа явах ёстой, ${refreshCalls.length} удаа явлаа`
+);
+assert.ok(store.get(REFRESH), "session амьд үлдэх ёстой");
+console.log("✅ 7. Хоёр таб зэрэг refresh → session устахгүй");
 
 console.log("\nБүх тест давлаа.");

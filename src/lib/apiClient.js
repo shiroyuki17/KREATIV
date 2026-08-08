@@ -77,13 +77,44 @@ export class ApiError extends Error {
   }
 }
 
-// ── Refresh (single-flight) ──
+// ── Refresh (single-flight, ТАБ ХООРОНД ч мөн) ──
 let refreshPromise = null;
 
-async function doRefresh() {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) return null;
+// Backend нь refresh token-ыг rotate хийж, аль хэдийн ашигласныг нь дахин
+// илгээвэл "хулгайлагдсан" гэж үзээд тухайн хэрэглэгчийн БҮХ session-ийг
+// устгадаг (auth.routes.js).
+//
+// Модулийн доторх `refreshPromise` нь зөвхөн НЭГ таб дотор хамгаална. Хоёр
+// таб нээлттэй үед хоёул localStorage-оос ИЖИЛ токен уншаад зэрэг refresh
+// хийвэл: нэг нь амжилттай, нөгөө нь дахин ашигласан болж, backend бүх
+// токеныг устгана — тэр дундаа саяхан олгосон шинийг нь. Үр дүнд нь
+// хэрэглэгч бүх табаас санамсаргүй гарна.
+//
+// Web Locks нь нэг origin-ий бүх табыг цуваалдаг тул үүнийг таслана.
+function withRefreshLock(fn) {
+  if (typeof navigator !== "undefined" && navigator.locks?.request) {
+    return navigator.locks.request("kreativ:token-refresh", fn);
+  }
+  // Дэмжихгүй орчинд урьдын зан төлөв — түгжээгүй.
+  return fn();
+}
 
+async function doRefresh() {
+  const seen = getRefreshToken();
+  if (!seen) return null;
+
+  return withRefreshLock(async () => {
+    // Түгжээ хүлээж байх зуур өөр таб аль хэдийн шинэчилсэн байж болно.
+    // Тэр тохиолдолд ХУУЧИН токеноор дахин оролдвол яг тэр "дахин
+    // ашиглалт"-ыг өдөөнө — оронд нь тэдний авсан шинийг ашиглана.
+    const current = getRefreshToken();
+    if (!current) return null;
+    if (current !== seen) return getAccessToken();
+    return performRefresh(current);
+  });
+}
+
+async function performRefresh(refreshToken) {
   let res;
   try {
     res = await fetch(`${API_BASE}/auth/refresh`, {
