@@ -68,7 +68,7 @@ export default function ClientDashboard() {
             <h1 className="font-display text-3xl font-bold tracking-tight">
               Welcome back, {firstName}
             </h1>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-brand/40 bg-brand/10 px-3.5 py-1.5 text-[10.5px] font-bold uppercase tracking-widest text-brand-soft shadow-[0_0_18px_rgba(0,211,149,0.2)]">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-brand/40 bg-brand/10 px-3.5 py-1.5 text-[10.5px] font-bold uppercase tracking-widest text-brand-soft">
               <Briefcase className="h-3.5 w-3.5" />
               Client
             </span>
@@ -80,7 +80,7 @@ export default function ClientDashboard() {
         <div className="flex gap-3">
           <button
             onClick={() => nav("post-job")}
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand to-brand-soft px-5 py-3 text-[13px] font-semibold glow-brand transition-shadow hover:shadow-[0_0_40px_rgba(0,211,149,0.6)]"
+            className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-3 text-[13px] font-semibold glow-brand transition-shadow"
           >
             <Plus className="h-4 w-4" />
             Post a Job

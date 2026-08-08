@@ -1,10 +1,8 @@
-// Day 9 (PRD): Payment Module. Жинхэнэ QPay мерчант данс/key байхгүй тул
-// демо горимоор ажиллана — /deposit нь QPay-ийн invoice/create-тэй адил
-// PENDING invoice үүсгэж, /deposit/:id/confirm нь бодит банкны webhook
-// ирэхэд хийх ёстой зүйлийг (COMPLETED болгож үлдэгдэлд нэмэх) хэрэглэгчийн
-// "Би төлсөн" товчоор дуурайлгана. Жинхэнэ QPay key орж ирвэл confirm-ийг
-// webhook route-оор сольж, deposit-ийг QPay-ийн invoice.create дуудлагаар
-// сольхоос өөр өөрчлөлт хэрэггүй байхаар бүтэцлэв.
+// Day 9 (PRD): Payment Module.
+//
+// Гурван горим: Stripe, QPay, эсвэл демо — lib/payments/index.js сонгоно.
+// Демо горим нь ЯМАР Ч МӨНГӨГҮЙГЭЭР үлдэгдэл үүсгэдэг тул production-д
+// зөвхөн ALLOW_DEMO_PAYMENTS=true үед л ажиллана (доорх requireUsablePayments).
 import { Router } from 'express';
 import prisma from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -12,9 +10,26 @@ import { createNotification } from './notification.routes.js';
 import { computeBalance, computeEscrowHeld, computePendingBalance, MIN_WITHDRAWAL } from '../lib/wallet.js';
 import { logEvent, logError } from '../lib/logger.js';
 import * as qpay from '../lib/qpay.js';
+import * as stripe from '../lib/payments/stripe.js';
+import { activeProvider, demoAllowed, paymentStatus } from '../lib/payments/index.js';
 import { config } from '../config/env.js';
 
 const router = Router();
+
+// Демо горим production дээр асаалттай үлдэхээс сэргийлнэ. Мөнгө хөдөлгөх
+// (deposit/confirm) route-уудад л хэрэглэнэ — үлдэгдэл харах, түүх татах
+// зэрэг нь ямар ч горимд ажиллах ёстой.
+function requireUsablePayments(req, res, next) {
+  if (activeProvider() !== 'demo' || demoAllowed()) return next();
+  return res.status(503).json({
+    error: 'Төлбөрийн систем тохируулагдаагүй байна. Админтай холбогдоно уу.',
+  });
+}
+
+// ── GET /payments/status ── (UI-д ямар горимд ажиллаж байгааг ил хэлнэ)
+router.get('/status', (req, res) => {
+  res.json(paymentStatus());
+});
 
 // ── GET /payments/balance ──
 router.get('/balance', requireAuth, async (req, res, next) => {
@@ -46,15 +61,42 @@ router.get('/transactions', requireAuth, async (req, res, next) => {
 
 // ── POST /payments/deposit ── (QPay холбогдсон бол бодит invoice/create,
 // эс бөгөөс демо горим)
-router.post('/deposit', requireAuth, async (req, res, next) => {
+router.post('/deposit', requireAuth, requireUsablePayments, async (req, res, next) => {
   try {
     const amount = Number(req.body?.amount);
     if (!Number.isFinite(amount) || amount <= 0 || amount > 10_000_000) {
       return res.status(400).json({ error: 'Дүн буруу байна' });
     }
     const roundedAmount = Math.round(amount);
+    const provider = activeProvider();
 
-    if (qpay.isConfigured()) {
+    // ── Stripe: Checkout Session үүсгээд хэрэглэгчийг Stripe рүү илгээнэ.
+    // Төлөгдсөнийг ЗӨВХӨН webhook баталгаажуулна — success_url руу буцаж
+    // ирсэн нь төлбөр хийгдсэний баталгаа БИШ (хэрэглэгч тэр хаягийг
+    // гараар бичиж болно).
+    if (provider === 'stripe') {
+      const tx = await prisma.transaction.create({
+        data: { userId: req.user.id, kind: 'DEPOSIT', amount: roundedAmount, provider: 'stripe' },
+      });
+      try {
+        const session = await stripe.createDepositSession({
+          amountUsd: roundedAmount,
+          userId: req.user.id,
+          transactionId: tx.id,
+          email: req.user.email,
+        });
+        await prisma.transaction.update({
+          where: { id: tx.id },
+          data: { stripeSessionId: session.sessionId },
+        });
+        return res.status(201).json({ transaction: tx, checkoutUrl: session.url });
+      } catch (stripeErr) {
+        await prisma.transaction.delete({ where: { id: tx.id } });
+        throw stripeErr;
+      }
+    }
+
+    if (provider === 'qpay') {
       const tx = await prisma.transaction.create({
         data: { userId: req.user.id, kind: 'DEPOSIT', amount: roundedAmount, provider: 'qpay' },
       });
@@ -101,16 +143,19 @@ async function completeDeposit(tx) {
   return updated;
 }
 
-// Демо горимд хэрэглэгч өөрөө "төлсөн" гэж мэдэгдэх (self-attestation)
-// шаардлагагүй байхын тулд — жинхэнэ банкны апп шиг бага зэрэг хугацаа
-// өнгөрсний дараа "систем төлбөрийг илрүүлсэн" мэт lazy-статусаар шийднэ
-// (autoApprovePastDue-тэй ижил зарчим — цаг хугацаанд тулгуурласан шалгалт).
+// Демо горимд хэрэглэгч "төлсөн" гэж мэдэгдэхийг хэдэн секундын дараа
+// хүлээн зөвшөөрнө — жинхэнэ банкны баталгаажуулалтыг дуурайна.
+//
+// ⚠️ Энэ нь ямар ч мөнгөгүйгээр үлдэгдэл үүсгэдэг тул production-д АЮУЛТАЙ.
+// requireUsablePayments нь production дээр демог бүрмөсөн хаадаг (зөвхөн
+// ALLOW_DEMO_PAYMENTS=true үед онгойно) — өөрөөр хэлбэл энэ мөр зөвхөн
+// dev/test/санаатай демо орчинд л хүрнэ.
 // Integration тест хиймэл хугацаа хүлээж чадахгүй тул NODE_ENV=test-д шууд шийднэ
 const DEMO_AUTO_COMPLETE_MS = config.NODE_ENV === 'test' ? 0 : 4000;
 
 // ── POST /payments/deposit/:id/confirm ── (frontend-ээс автоматаар poll
 // хийгддэг — "settled: false" нь "хараахан ирээгүй", алдаа биш)
-router.post('/deposit/:id/confirm', requireAuth, async (req, res, next) => {
+router.post('/deposit/:id/confirm', requireAuth, requireUsablePayments, async (req, res, next) => {
   try {
     const tx = await prisma.transaction.findUnique({ where: { id: req.params.id } });
     if (!tx || tx.userId !== req.user.id) return res.status(404).json({ error: 'Олдсонгүй' });
@@ -118,7 +163,15 @@ router.post('/deposit/:id/confirm', requireAuth, async (req, res, next) => {
       return res.json({ transaction: tx, balance: await computeBalance(req.user.id), settled: true });
     }
 
-    if (qpay.isConfigured() && tx.qpayInvoiceId) {
+    // Stripe: төлбөрийг ЗӨВХӨН webhook эцэслэнэ. Энэ route нь Stripe-ийн
+    // хувьд ердөө "төлөгдсөн үү?" гэсэн асуулт — өөрөө хэзээ ч COMPLETED
+    // болгохгүй. Тэгэхгүй бол хэрэглэгч энэ endpoint-ыг гараар дуудаад
+    // үнэгүй үлдэгдэл авах боломжтой болно.
+    if (tx.provider === 'stripe') {
+      return res.json({ transaction: tx, settled: false, awaitingWebhook: true });
+    }
+
+    if (tx.provider === 'qpay' && tx.qpayInvoiceId) {
       const { paid } = await qpay.checkPayment(tx.qpayInvoiceId);
       if (!paid) return res.json({ transaction: tx, settled: false });
     } else {

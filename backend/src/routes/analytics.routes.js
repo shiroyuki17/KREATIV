@@ -12,14 +12,45 @@ const EMPTY_STATUS_COUNTS = { OPEN: 0, IN_PROGRESS: 0, CLOSED: 0, CANCELLED: 0 }
 // ── GET /analytics/public ── (нэвтрэлт шаардахгүй — Home хуудасны статистик)
 router.get('/public', async (req, res, next) => {
   try {
-    const [freelancers, clients, jobs, openJobs, completedJobs] = await Promise.all([
-      prisma.freelancerProfile.count(),
-      prisma.clientProfile.count(),
-      prisma.job.count(),
-      prisma.job.count({ where: { status: 'OPEN' } }),
-      prisma.job.count({ where: { status: 'CLOSED' } }),
-    ]);
-    res.json({ freelancers, clients, jobs, openJobs, completedJobs });
+    const [freelancers, clients, jobs, openJobs, completedJobs, released, byCategoryRows] =
+      await Promise.all([
+        prisma.freelancerProfile.count(),
+        prisma.clientProfile.count(),
+        prisma.job.count(),
+        prisma.job.count({ where: { status: 'OPEN' } }),
+        prisma.job.count({ where: { status: 'CLOSED' } }),
+        // "Аюулгүй төлөгдсөн" дүн — escrow-оос freelancer рүү БОДИТООР
+        // гарсан мөнгө. Өмнө нь Home хуудас "$32M" гэсэн зохиомол тоо
+        // харуулдаг байсан; энэ нь ledger-ийн жинхэнэ нийлбэр.
+        prisma.transaction.aggregate({
+          where: { kind: 'ESCROW_RELEASE', status: 'COMPLETED' },
+          _sum: { amount: true },
+        }),
+        // Категори тус бүрийн БОДИТ мэргэжилтний тоо. Home хуудасны
+        // "480 experts / 3,200 experts" гэх мэт тоонууд ямар ч өгөгдөлд
+        // тулгуурладаггүй байв.
+        prisma.freelancerProfile.groupBy({
+          by: ['category'],
+          where: { headline: { not: null } },
+          _count: { _all: true },
+        }),
+      ]);
+
+    const byCategory = Object.fromEntries(
+      byCategoryRows
+        .filter((r) => r.category)
+        .map((r) => [r.category, r._count._all])
+    );
+
+    res.json({
+      freelancers,
+      clients,
+      jobs,
+      openJobs,
+      completedJobs,
+      paidOut: released._sum.amount || 0,
+      byCategory,
+    });
   } catch (err) {
     next(err);
   }

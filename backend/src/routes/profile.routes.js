@@ -2,6 +2,7 @@ import { Router } from 'express';
 import prisma from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { uploadAvatar } from '../middleware/upload.js';
+import { saveUpload, deleteUpload } from '../lib/storage.js';
 import {
   freelancerProfileSchema,
   freelancerQuerySchema,
@@ -84,12 +85,27 @@ router.post('/avatar', requireAuth, (req, res, next) => {
     if (!req.file) return res.status(400).json({ error: 'Зураг сонгогдоогүй байна' });
 
     try {
-      const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+      // Хуучин аватарыг санаж авна — шинийг амжилттай хадгалсны дараа л
+      // устгана (эсрэгээр хийвэл шинэ нь амжилтгүй болоход хэрэглэгч
+      // аватаргүй үлдэнэ).
+      const previous = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { avatarUrl: true },
+      });
+
+      const avatarUrl = await saveUpload('avatars', req.user.id, req.file);
       const user = await prisma.user.update({
         where: { id: req.user.id },
         data: { avatarUrl },
         select: { id: true, email: true, name: true, phone: true, avatarUrl: true, role: true },
       });
+
+      // Google-ийн профайл зураг (гадаад https:// хаяг) бол манайх биш —
+      // устгах гэж оролдохгүй.
+      if (previous?.avatarUrl && previous.avatarUrl !== avatarUrl && !/^https?:\/\//.test(previous.avatarUrl)) {
+        deleteUpload(previous.avatarUrl);
+      }
+
       res.json(user);
     } catch (e) {
       next(e);

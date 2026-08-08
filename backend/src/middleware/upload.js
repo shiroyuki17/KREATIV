@@ -1,25 +1,19 @@
+// Multer нь зөвхөн ХҮЛЭЭН АВЧ шалгах үүрэгтэй — хаана хадгалахыг
+// src/lib/storage.js шийднэ (S3-нийцтэй объект хадгалалт эсвэл локал диск).
+//
+// Өмнө нь энд multer.diskStorage шууд ашиглаж, файлыг `backend/uploads/`
+// руу бичдэг байсан тул хадгалах байршил route-ын кодод хатуу шигдсэн
+// байв. Одоо memoryStorage ашиглаж, буферийг storage давхаргад дамжуулна —
+// ингэснээр диск ⇄ S3 солих нь env хувьсагчийн асуудал болж хялбарлана.
+//
+// Санах ойд хадгалах нь энд аюулгүй: хязгаар нь аватарт 2 МБ, чатын
+// хавсралтад 15 МБ бөгөөд буфер нь хүсэлт дуусмагц чөлөөлөгдөнө.
 import multer from 'multer';
-import path from 'node:path';
-import fs from 'node:fs';
-import crypto from 'node:crypto';
-import { fileURLToPath } from 'node:url';
+import { UPLOAD_ROOT } from '../lib/storage.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-export const UPLOAD_ROOT = path.join(__dirname, '../../uploads');
-const AVATAR_DIR = path.join(UPLOAD_ROOT, 'avatars');
-const CHAT_DIR = path.join(UPLOAD_ROOT, 'chat');
-fs.mkdirSync(AVATAR_DIR, { recursive: true });
-fs.mkdirSync(CHAT_DIR, { recursive: true });
+export { UPLOAD_ROOT };
 
 const ALLOWED = { 'image/png': '.png', 'image/jpeg': '.jpg' };
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, AVATAR_DIR),
-  filename: (req, file, cb) => {
-    const ext = ALLOWED[file.mimetype];
-    cb(null, `${req.user.id}-${crypto.randomBytes(6).toString('hex')}${ext}`);
-  },
-});
 
 function fileFilter(req, file, cb) {
   if (!ALLOWED[file.mimetype]) {
@@ -28,19 +22,13 @@ function fileFilter(req, file, cb) {
   cb(null, true);
 }
 
-// Day 7 deliverable: "File Upload (шаардлагатай бол)". Диск дээр хадгалдаг —
-// production-д S3/Cloud Storage руу шилжих боломжтойгоор AVATAR_DIR-ийг
-// тусад нь тодорхойлсон.
 export const uploadAvatar = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 2 * 1024 * 1024 }, // 2MB, frontend-ийн заасан хязгаартай тааруулсан
   fileFilter,
 }).single('avatar');
 
-// FR-2.1: чатад зураг/PDF/zip хавсаргах. Anthropic/QPay-той адил диск дээр
-// хадгалдаг — Render-ийн үнэгүй/стандарт web service дээр disk нь redeploy
-// бүрд арилдгийг анхаарах хэрэгтэй (production-д удаан хугацаанд найдвартай
-// байлгах бол S3/Cloudflare R2 руу шилжих ёстой, энэ бол эхний бодит алхам).
+// FR-2.1: чатад зураг/PDF/zip хавсаргах.
 const CHAT_ALLOWED = {
   'image/png': '.png',
   'image/jpeg': '.jpg',
@@ -50,14 +38,6 @@ const CHAT_ALLOWED = {
   'application/x-zip-compressed': '.zip',
 };
 
-const chatStorage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, CHAT_DIR),
-  filename: (req, file, cb) => {
-    const ext = CHAT_ALLOWED[file.mimetype] || path.extname(file.originalname) || '';
-    cb(null, `${req.user.id}-${crypto.randomBytes(6).toString('hex')}${ext}`);
-  },
-});
-
 function chatFileFilter(req, file, cb) {
   if (!CHAT_ALLOWED[file.mimetype]) {
     return cb(new Error('Зөвхөн зураг, PDF эсвэл ZIP файл хавсаргаж болно'));
@@ -66,7 +46,7 @@ function chatFileFilter(req, file, cb) {
 }
 
 export const uploadChatFile = multer({
-  storage: chatStorage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 15 * 1024 * 1024 }, // 15MB
   fileFilter: chatFileFilter,
 }).single('file');

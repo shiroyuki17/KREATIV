@@ -9,7 +9,7 @@ import swaggerUi from 'swagger-ui-express';
 import { config } from './config/env.js';
 import { openapiSpec } from './docs/openapi.js';
 import { metricsMiddleware, metricsHandler } from './middleware/monitoring.js';
-import { apiLimiter, aiLimiter } from './middleware/rateLimit.js';
+import { apiLimiter } from './middleware/rateLimit.js';
 import { UPLOAD_ROOT } from './middleware/upload.js';
 import { logError } from './lib/logger.js';
 import authRoutes from './routes/auth.routes.js';
@@ -26,12 +26,15 @@ import disputeRoutes from './routes/dispute.routes.js';
 import reviewRoutes from './routes/review.routes.js';
 import aiRoutes from './routes/ai.routes.js';
 import taskRoutes from './routes/task.routes.js';
+import subscriptionRoutes from './routes/subscription.routes.js';
+import stripeWebhookRoutes from './routes/stripe-webhook.routes.js';
 
 export const app = express();
 // Railway/Render гэх мэт hosting нь reverse proxy ард ажилладаг тул
 // req.ip (rate limiting-ийн key) зөв тодорхойлогдохын тулд шаардлагатай.
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
+app.set('etag', false);
 app.use(helmet({
   // API сервер тул HTML CSP шаардлагагүй, disable хийхгүй бол Swagger UI-г эвдэнэ
   contentSecurityPolicy: false,
@@ -46,6 +49,14 @@ const corsOrigin = config.NODE_ENV === 'production'
   ? config.FRONTEND_URL
   : [config.FRONTEND_URL, /^http:\/\/localhost:\d+$/];
 app.use(cors({ origin: corsOrigin }));
+
+// ⚠️ Stripe webhook нь express.json()-оос ӨМНӨ холбогдоно.
+// Stripe гарын үсгийг ЯГ ирсэн байт дээр тооцдог тул JSON болгож задалсан
+// биет гарын үсгийг эвднэ (route дотроо express.raw() ашиглана). Мөн
+// apiLimiter-аас өмнө: Stripe нэг дор олон эвент илгээж болох тул rate
+// limit-д хүрч 429 авбал төлбөр алдагдана.
+app.use('/webhooks', stripeWebhookRoutes);
+
 app.use(express.json({ limit: '100kb' }));
 app.use(cookieParser());
 if (config.NODE_ENV !== 'test') app.use(morgan(config.NODE_ENV === 'production' ? 'combined' : 'dev'));
@@ -72,8 +83,11 @@ app.use('/admin', adminRoutes);
 app.use('/', contractRoutes);
 app.use('/disputes', disputeRoutes);
 app.use('/', reviewRoutes);
-app.use('/ai', aiLimiter, aiRoutes);
+// Лимитерүүд route тус бүрд ai.routes.js дотор өгөгдөнө — чат болон
+// хайлт өөр өөр давтамжтай тул нэг blanket лимит хоёуланд нь тохирохгүй.
+app.use('/ai', aiRoutes);
 app.use('/', taskRoutes);
+app.use('/', subscriptionRoutes);
 
 // 404
 app.use((req, res) => {

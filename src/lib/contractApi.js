@@ -1,23 +1,9 @@
-import { API_BASE } from "./authApi.js";
+// Хүсэлт бүр apiClient-ээр дамжина — access token хугацаа дуусахад 401 дээр
+// автоматаар refresh хийгээд хүсэлтийг давтана. Дуудагч талын `accessToken`
+// аргумент нь буцаж нийцтэй байхын тулд үлдсэн ба ашиглагдахаа больсон.
+import { apiJson, publicJson } from "./apiClient.js";
 
-function errorMessage(data) {
-  if (Array.isArray(data?.error)) return data.error.join(", ");
-  return data?.error || "Алдаа гарлаа. Дахин оролдоно уу.";
-}
-
-async function authedJson(path, { method = "GET", body, accessToken } = {}) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method,
-    headers: {
-      ...(body ? { "Content-Type": "application/json" } : {}),
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(errorMessage(data));
-  return data;
-}
+const authedJson = (path, { method = "GET", body } = {}) => apiJson(path, { method, body });
 
 // ── Proposals (PRD FR-3) ──
 export const submitProposal = (jobId, data, accessToken) =>
@@ -61,3 +47,6 @@ export const submitReview = (contractId, data, accessToken) =>
   authedJson(`/contracts/${contractId}/reviews`, { method: "POST", body: data, accessToken });
 
 export const fetchReviewsFor = (userId) => authedJson(`/reviews/for/${userId}`);
+
+// Нийтийн "Success stories" хуудас — { stats, reviews }. Нэвтрэлт шаардахгүй.
+export const fetchPublicReviews = () => publicJson("/reviews/public");

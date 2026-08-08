@@ -93,7 +93,7 @@ export default function DeliverableHub({ onApprove, onRevision, approved }) {
             className={
               approved
                 ? "w-full cursor-default rounded-xl bg-mint/20 py-3 text-[13px] font-semibold text-mint"
-                : "w-full rounded-xl bg-gradient-to-r from-mint to-emerald-400 py-3 text-[13px] font-bold text-ink glow-mint transition-shadow hover:shadow-[0_0_44px_rgba(16,185,129,0.6)]"
+                : "w-full rounded-xl bg-gradient-to-r from-mint to-emerald-400 py-3 text-[13px] font-bold text-ink glow-mint transition-shadow"
             }
           >
             <span className="inline-flex items-center gap-2">

@@ -32,6 +32,7 @@ model User {
   refreshTokens     RefreshToken[]
   freelancerProfile FreelancerProfile?
   clientProfile     ClientProfile?
+  subscription      Subscription?
   transactions      Transaction[]
   notifications     Notification[]
   sentMessages       Message[]
@@ -198,6 +199,11 @@ model Transaction {
   // Жинхэнэ QPay холбогдсон үед invoice/create-ийн буцаасан invoice_id —
   // webhook callback ирэхэд тухайн Transaction-ыг олоход хэрэглэнэ.
   qpayInvoiceId String? @unique
+  // Stripe провайдерын эквивалент: Checkout Session-ийн id. Webhook
+  // (checkout.session.completed) ирэхэд Transaction-ыг үүгээр олно.
+  // QPay/Stripe хоёрыг нэг талбарт хольж хадгалахгүй — webhook-ууд тус
+  // тусдаа ирдэг тул хайлт нь тодорхой байх ёстой.
+  stripeSessionId String? @unique
 
   @@index([userId])
   @@index([milestoneId])
@@ -214,6 +220,53 @@ enum TransactionStatus {
   PENDING
   COMPLETED
   FAILED
+}
+
+// ── Захиалга (Pricing хуудасны Starter/Pro/Enterprise) ──
+//
+// Өмнө нь Pricing хуудас src/data/mock.js-ийн hardcode жагсаалтыг харуулж,
+// товч нь ямар ч onClick-гүй байсан — өөрөөр хэлбэл захиалгын төлбөр огт
+// байгаагүй. Багцын тодорхойлолт одоо сервер талд (lib/plans.js) ганц эх
+// сурвалжтай; энэ хүснэгт нь хэрэглэгч аль багцад байгааг хадгална.
+//
+// Stripe-ийн subscription төлөвийг ТОЛЬДОЖ хадгална (эх сурвалж нь Stripe
+// хэвээр): webhook бүрд шинэчлэгдэнэ. Ингэснээр эрх шалгах болгонд Stripe
+// API руу хандахгүй.
+model Subscription {
+  id     String @id @default(uuid())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Нэг хэрэглэгчид нэг л идэвхтэй захиалга.
+  userId String @unique
+
+  // "starter" | "pro" | "enterprise" — lib/plans.js-ийн түлхүүр.
+  planKey String             @default("starter")
+  status  SubscriptionStatus @default(NONE)
+
+  // Stripe-ийн талын танигчид. Provider солигдвол (эсвэл огт байхгүй үед)
+  // null хэвээр — планы эрх нь эдгээргүйгээр ч ажиллана.
+  stripeCustomerId     String? @unique
+  stripeSubscriptionId String? @unique
+
+  // Одоогийн төлсөн хугацааны төгсгөл — эрх хэдийг хүртэл хүчинтэйг харуулна.
+  currentPeriodEnd DateTime?
+  // Хэрэглэгч цуцалсан ч хугацааны эцэс хүртэл эрх нь хэвээр үлддэг.
+  cancelAtPeriodEnd Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+}
+
+enum SubscriptionStatus {
+  // Хэзээ ч төлбөр хийгээгүй — үнэгүй Starter багц.
+  NONE
+  // Stripe Checkout эхэлсэн ч webhook хараахан ирээгүй.
+  PENDING
+  ACTIVE
+  // Төлбөр амжилтгүй — Stripe дахин оролдож байна (эрхийг шууд таслахгүй).
+  PAST_DUE
+  CANCELED
 }
 
 // ── Proposals, Contracts, Milestones (PRD FR-3/FR-4 — "гол flow") ──

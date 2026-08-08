@@ -1,23 +1,22 @@
-import { useEffect, useRef, useState } from "react";
+import { DUR, reveal, stagger, useMotion } from "../../lib/motion.js";
 
-/** Word-by-word blur reveal (React Bits "Blur Text" concept). */
-export default function BlurText({ text, className = "", stagger = 70 }) {
-  const ref = useRef(null);
-  const [on, setOn] = useState(false);
-
-  useEffect(() => {
-    const io = new IntersectionObserver(
-      ([e]) => {
-        if (e.isIntersecting) {
-          setOn(true);
-          io.disconnect();
-        }
-      },
-      { threshold: 0.25 }
-    );
-    if (ref.current) io.observe(ref.current);
-    return () => io.disconnect();
-  }, []);
+/**
+ * Word-by-word blur reveal (React Bits "Blur Text" concept).
+ *
+ * Props нь өмнөхтэй яг ижил — 14 дуудлагын цэг өөрчлөгдөхгүй. Дотор нь
+ * component бүрийн өөрийн IntersectionObserver-ыг anime-ийн onScroll-оор
+ * сольж, үг бүрийн саатлыг гараар тооцохын оронд stagger() ашиглав.
+ */
+export default function BlurText({ text, className = "", stagger: step = 70 }) {
+  const ref = useMotion(() => {
+    reveal(".blur-word", {
+      opacity: [0, 1],
+      filter: ["blur(12px)", "blur(0px)"],
+      y: [16, 0],
+      duration: DUR.slow,
+      delay: stagger(step),
+    });
+  }, [text, step]);
 
   return (
     <span ref={ref} className={className} aria-label={text} role="text">
@@ -25,16 +24,17 @@ export default function BlurText({ text, className = "", stagger = 70 }) {
         <span
           key={i}
           aria-hidden="true"
-          className="inline-block will-change-transform transition-all duration-700 ease-out"
-          style={{
-            opacity: on ? 1 : 0,
-            filter: on ? "blur(0px)" : "blur(12px)",
-            transform: on ? "translateY(0)" : "translateY(16px)",
-            transitionDelay: `${i * stagger}ms`,
-          }}
+          // opacity-г эхэлж inline-аар нуух нь чухал: onScroll нь элемент
+          // харагдах хүртэл хүлээдэг тул эс тэгвэл текст эхлээд бүтэн
+          // гараад дараа нь 0 болж "анивчих" болно.
+          style={{ opacity: 0 }}
+          // `whitespace-pre` — үгийн ард байгаа хоосон зай inline-block дотор
+          // хумигдан өргөнөө алддаг тул үгс "Postabrief,getAI-matched" гэж
+          // наалддаг байв. Зайг санааны дагуу хэвээр үлдээхийн тулд хэрэгтэй.
+          className="blur-word inline-block whitespace-pre will-change-[transform,filter,opacity]"
         >
           {word}
-          {" "}
+          {" "}
         </span>
       ))}
     </span>

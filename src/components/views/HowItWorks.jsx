@@ -19,7 +19,7 @@ const FREELANCER = [
 
 function Journey({ label, steps, accent }) {
   return (
-    <SpotlightCard spotColor={accent === "mint" ? "rgba(16,185,129,0.14)" : "rgba(0,211,149,0.16)"}>
+    <SpotlightCard spotColor={accent === "mint" ? "rgba(127, 168, 138, 0.14)" : "rgba(201, 160, 99, 0.16)"}>
       <div className="p-7">
         <span className="rounded-full border border-brand/30 bg-brand/10 px-3.5 py-1.5 text-[10.5px] font-bold uppercase tracking-widest text-brand-soft">
           {label}
@@ -107,7 +107,7 @@ export default function HowItWorks() {
       <div className="mt-14 flex flex-col items-center gap-4 text-center">
         <h2 className="font-display text-2xl font-bold tracking-tight">Ready to start?</h2>
         <div className="flex flex-wrap justify-center gap-3">
-          <button onClick={() => nav("post-job")} className="rounded-2xl bg-gradient-to-r from-brand to-brand-soft px-7 py-3.5 text-[14px] font-semibold text-ink glow-brand transition-shadow hover:shadow-[0_0_44px_rgba(0,211,149,0.6)]">
+          <button onClick={() => nav("post-job")} className="rounded-2xl bg-brand px-7 py-3.5 text-[14px] font-semibold text-ink glow-brand transition-shadow">
             Post a Job
           </button>
           <button onClick={() => nav("find-work")} className="glass rounded-2xl px-7 py-3.5 text-[14px] font-semibold text-white/85 transition-colors hover:border-white/25">

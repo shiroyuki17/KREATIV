@@ -61,7 +61,7 @@ function TalentCard({ f, nav, style }) {
           </button>
           <button
             onClick={() => nav("messages", { withUserId: f.userId })}
-            className="rounded-full bg-gradient-to-r from-brand to-brand-soft px-5 py-2.5 text-[13px] font-bold text-ink glow-brand transition-shadow hover:shadow-[0_0_30px_rgba(0,211,149,0.55)]"
+            className="rounded-full bg-brand px-5 py-2.5 text-[13px] font-bold text-ink glow-brand transition-shadow"
           >
             Message
           </button>
@@ -119,7 +119,8 @@ function TalentCard({ f, nav, style }) {
 export default function FindTalent() {
   const { params, nav } = useNav();
   const [q, setQ] = useState(params?.query || "");
-  const [cat, setCat] = useState("All");
+  // Home хуудасны категорийн картууд `{ category: "Dev" }` дамжуулна.
+  const [cat, setCat] = useState(params?.category || "All");
   const [sort, setSort] = useState("relevant");
   const [page, setPage] = useState(1);
 
@@ -131,6 +132,10 @@ export default function FindTalent() {
 
   useEffect(() => {
     if (params?.query) setQ(params.query);
+    // Өмнө нь категорийн картууд шүүлтүүрийн оронд ЧӨЛӨӨТ ХАЙЛТААР
+    // ("AI Services" гэх мэт системд байдаггүй мөрөөр) дамжуулдаг тул
+    // үргэлж хоосон үр дүн гардаг байв.
+    if (params?.category) { setCat(params.category); setPage(1); }
   }, [params]);
 
   const chips = [

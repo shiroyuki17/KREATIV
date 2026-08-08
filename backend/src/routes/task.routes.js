@@ -21,10 +21,13 @@ async function loadContractAsParticipant(req, contractId) {
   return { contract };
 }
 
-router.use(requireAuth);
-
+// ⚠️ Энд `router.use(requireAuth)` БАЙЖ БОЛОХГҮЙ. Энэ router нь app.js-д
+// '/' дээр холбогддог тул blanket middleware нь өөрийнх нь route-ууд төдийгүй
+// ДАРАА нь бүртгэгдсэн БҮХ root-route-ыг хаана. Үүнээс болж нийтэд нээлттэй
+// байх ёстой /plans нь "Token байхгүй" гэж 401 буцааж, GET / нь 404-ийн
+// оронд 401 өгдөг байв. Тиймээс requireAuth-ыг route бүрд нь тусад нь өгнө.
 // ── GET /contracts/:contractId/tasks ──
-router.get('/contracts/:contractId/tasks', async (req, res, next) => {
+router.get('/contracts/:contractId/tasks', requireAuth, async (req, res, next) => {
   try {
     const { error } = await loadContractAsParticipant(req, req.params.contractId);
     if (error) return res.status(error).json({ error: error === 404 ? 'Олдсонгүй' : 'Хандах эрхгүй' });
@@ -40,7 +43,7 @@ router.get('/contracts/:contractId/tasks', async (req, res, next) => {
 });
 
 // ── POST /contracts/:contractId/tasks ──
-router.post('/contracts/:contractId/tasks', async (req, res, next) => {
+router.post('/contracts/:contractId/tasks', requireAuth, async (req, res, next) => {
   try {
     const { error } = await loadContractAsParticipant(req, req.params.contractId);
     if (error) return res.status(error).json({ error: error === 404 ? 'Олдсонгүй' : 'Хандах эрхгүй' });
@@ -69,7 +72,7 @@ router.post('/contracts/:contractId/tasks', async (req, res, next) => {
 });
 
 // ── PATCH /tasks/:id ── (title/description/status/order)
-router.patch('/tasks/:id', async (req, res, next) => {
+router.patch('/tasks/:id', requireAuth, async (req, res, next) => {
   try {
     const existing = await prisma.task.findUnique({ where: { id: req.params.id } });
     if (!existing) return res.status(404).json({ error: 'Олдсонгүй' });
@@ -96,7 +99,7 @@ router.patch('/tasks/:id', async (req, res, next) => {
 });
 
 // ── DELETE /tasks/:id ──
-router.delete('/tasks/:id', async (req, res, next) => {
+router.delete('/tasks/:id', requireAuth, async (req, res, next) => {
   try {
     const existing = await prisma.task.findUnique({ where: { id: req.params.id } });
     if (!existing) return res.status(404).json({ error: 'Олдсонгүй' });

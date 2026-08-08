@@ -5,6 +5,7 @@ import { createNotification } from './notification.routes.js';
 import { detectLeakage } from '../lib/leakage.js';
 import { emitToUser } from '../lib/socket.js';
 import { uploadChatFile } from '../middleware/upload.js';
+import { saveUpload } from '../lib/storage.js';
 
 const router = Router();
 
@@ -22,9 +23,30 @@ function publicUser(user) {
   return { id: user.id, name: user.name, avatarUrl: user.avatarUrl };
 }
 
+function unreadMessageCount(userId) {
+  return prisma.message.count({
+    where: {
+      senderId: { not: userId },
+      readAt: null,
+      conversation: { OR: [{ userAId: userId }, { userBId: userId }] },
+    },
+  });
+}
+
 function notifyNewMessage(conversation, senderId, message) {
   const recipientId = conversation.userAId === senderId ? conversation.userBId : conversation.userAId;
-  emitToUser(recipientId, 'message:new', { conversationId: conversation.id, message });
+  // Sidebar-ийн badge яг таг байхын тулд шинэ тоог хамт явуулна — эс тэгвээс
+  // frontend нь өөрөө нэмэгдүүлэх ёстой болж, хоёр таб нээлттэй үед эсвэл
+  // socket тасарч дахин холбогдоход тоо зөрдөг.
+  unreadMessageCount(recipientId)
+    .then((unreadCount) =>
+      emitToUser(recipientId, 'message:new', {
+        conversationId: conversation.id,
+        message,
+        unreadCount,
+      })
+    )
+    .catch(() => emitToUser(recipientId, 'message:new', { conversationId: conversation.id, message }));
   prisma.user.findUnique({ where: { id: senderId }, select: { name: true } })
     .then((sender) => createNotification({
       userId: recipientId,
@@ -158,12 +180,13 @@ router.post('/conversations/:id/attachments', requireAuth, (req, res, next) => {
         return res.status(404).json({ error: 'Олдсонгүй' });
       }
 
+      const fileUrl = await saveUpload('chat', req.user.id, req.file);
       const message = await prisma.message.create({
         data: {
           conversationId: conversation.id,
           senderId: req.user.id,
           text: '',
-          fileUrl: `/uploads/chat/${req.file.filename}`,
+          fileUrl,
           fileName: req.file.originalname,
           fileType: req.file.mimetype,
           fileSize: req.file.size,

@@ -20,7 +20,7 @@ export default function MilestoneStepper({ stage }) {
                 <span
                   className={`relative flex h-9 w-9 items-center justify-center rounded-full transition-all duration-300 group-hover:scale-110 ${
                     done
-                      ? "bg-brand text-ink shadow-[0_0_16px_rgba(0,211,149,0.55)]"
+                      ? "bg-brand text-ink"
                       : active
                         ? "border-2 border-brand bg-brand/10 text-brand"
                         : "border border-white/12 bg-white/[0.03] text-white/30"

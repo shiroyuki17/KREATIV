@@ -41,7 +41,13 @@ async function callAnthropic({ system, messages, maxTokens = MAX_TOKENS }) {
 
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`Anthropic API алдаа: ${res.status} ${body}`);
+    // Дээд урсгалын алдааг (кредит дуусах, rate limit, тасалдал) тэмдэглэж
+    // өгнө — route үүнийг 503 болгож буцаана, ингэснээр ChatWidget локал
+    // хариулт руугаа шилжиж, хүсэлт бүрд дэмий дахин оролдохоо болино.
+    const err = new Error(`Anthropic API алдаа: ${res.status} ${body}`);
+    err.upstream = true;
+    err.upstreamStatus = res.status;
+    throw err;
   }
 
   const data = await res.json();

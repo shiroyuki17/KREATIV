@@ -27,6 +27,27 @@ export function initSocket(httpServer, corsOrigin) {
 
   io.on('connection', (socket) => {
     socket.join(`user:${socket.userId}`);
+
+    // FR-2.2: WebRTC дуудлагын signaling — сервер offer/answer/ICE
+    // candidate-ийг зөвхөн дамжуулна, өөрөө хадгалдаггүй (дуудлага бол
+    // ephemeral, мессежийн адил persist хийх шаардлагагүй). Бодит
+    // аудио/видео урсгал хэрэглэгчид хооронд шууд (peer-to-peer) урсдаг —
+    // сервер зөвхөн холболт тохируулах "гар барих" мэдээллийг дамжуулна.
+    socket.on('call:offer', ({ toUserId, conversationId, sdp, kind }) => {
+      emitToUser(toUserId, 'call:offer', { fromUserId: socket.userId, conversationId, sdp, kind });
+    });
+    socket.on('call:answer', ({ toUserId, sdp }) => {
+      emitToUser(toUserId, 'call:answer', { fromUserId: socket.userId, sdp });
+    });
+    socket.on('call:ice-candidate', ({ toUserId, candidate }) => {
+      emitToUser(toUserId, 'call:ice-candidate', { fromUserId: socket.userId, candidate });
+    });
+    socket.on('call:reject', ({ toUserId }) => {
+      emitToUser(toUserId, 'call:reject', { fromUserId: socket.userId });
+    });
+    socket.on('call:end', ({ toUserId }) => {
+      emitToUser(toUserId, 'call:end', { fromUserId: socket.userId });
+    });
   });
 
   return io;

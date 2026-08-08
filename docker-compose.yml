@@ -1,0 +1,41 @@
+# Локал хөгжүүлэлтийн PostgreSQL.
+#
+# Яагаад: backend/.env-ийн DATABASE_URL нь localhost:5433 руу заадаг ч
+# тухайн порт дээр юу ч ажилладаггүй байсан тул шинэ машин дээр repo-г
+# татаад `npm run dev:backend` гэвэл нэвтрэх/бүртгүүлэх бүгд Prisma-гийн
+# 500-аар унадаг байв. Энэ файл нь тэр алдаа завсрыг хаана.
+#
+#   docker compose up -d          # DB асаах
+#   npm --prefix backend run prisma:migrate    # хүснэгтүүд үүсгэх
+#   npm --prefix backend run seed              # демо өгөгдөл
+#   docker compose down           # зогсоох (өгөгдөл хадгалагдана)
+#   docker compose down -v        # өгөгдлийг нь ХАМТ устгах
+#
+# Порт 5433-ыг санаатайгаар сонгосон: хэрэв машин дээр өөр PostgreSQL
+# 5432 дээр ажиллаж байвал мөргөлдөхгүй.
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: kreativ-pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: kreativ_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - kreativ-pgdata:/var/lib/postgresql/data
+      # Vitest-ийн тусдаа "kreativ_test" баазыг үүсгэнэ (.env.test үүнийг
+      # заадаг). Зөвхөн volume хоосон үед нэг удаа ажиллана.
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+    # Migrate/seed-ийг DB бэлэн болохоос өмнө ажиллуулбал холболтын алдаа
+    # өгдөг тул healthcheck-ээр бэлэн болохыг нь мэдэгдэнэ.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d kreativ_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  kreativ-pgdata:

@@ -60,6 +60,48 @@ services:
       # локал rule-based хариулт руугаа автоматаар унана.
       - key: ANTHROPIC_API_KEY
         sync: false
+      # ⚠️ Render-ийн web service-ийн файл систем нь ТҮР ЗУУРЫНХ: deploy
+      # эсвэл restart болгонд backend/uploads/ доторх бүх аватар, чатын
+      # хавсралт устана. Эдгээрийг бөглөж объект хадгалалт (S3/R2) руу
+      # шилжүүлэх нь production-д ЗААВАЛ шаардлагатай. Хоосон үлдээвэл код
+      # диск рүүгээ унаж ажиллаад, файлууд чимээгүй алга болно.
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_PUBLIC_URL
+        sync: false
+      # ── Stripe ── escrow deposit + Pro захиалга. STRIPE_WEBHOOK_SECRET нь
+      # Stripe Dashboard → Webhooks дээр энэ service-ийн бодит URL
+      # (https://<backend>/webhooks/stripe) бүртгэсний дараа гарна.
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRICE_PRO_MONTHLY
+        sync: false
+      - key: STRIPE_PRICE_PRO_YEARLY
+        sync: false
+      - key: PAYMENT_PROVIDER
+        value: auto
+      # ⚠️ Демо төлбөр нь мөнгөгүйгээр үлдэгдэл үүсгэдэг тул production-д
+      # хаалттай. Зориуд асаах бол л "true" болгоно.
+      - key: ALLOW_DEMO_PAYMENTS
+        value: "false"
+      # ── Gemini ── prompt-оор ажил хайх. Байхгүй бол түлхүүр үгийн
+      # хайлт руугаа унана (алдаа өгөхгүй).
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: AI_SEARCH_DAILY_LIMIT
+        value: "40"
 
   - type: web
     name: kreativ-frontend
@@ -68,6 +110,16 @@ services:
     staticPublishPath: dist
     envVars:
       - key: VITE_API_URL
+        sync: false
+      # ── TURN ── чат доторх дуудлага. Хоосон бол STUN-only: хатуу NAT /
+      # корпорацийн firewall / мобайл CGNAT дор дуудлага холбогдохгүй.
+      # ⚠️ VITE_ угтвартай утга bundle дотор ил орно — хугацаатай
+      # (ephemeral) credential ашиглана уу.
+      - key: VITE_TURN_URL
+        sync: false
+      - key: VITE_TURN_USERNAME
+        sync: false
+      - key: VITE_TURN_CREDENTIAL
         sync: false
     routes:
       - type: rewrite

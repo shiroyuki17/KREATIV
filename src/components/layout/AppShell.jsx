@@ -23,7 +23,7 @@ import {
   CheckCheck,
   Briefcase,
 } from "lucide-react";
-import { useNav } from "../../nav.jsx";
+import { DASHBOARD_FOR, useNav } from "../../nav.jsx";
 import { useLive } from "../../live.jsx";
 import { logoutUser, getAccessToken } from "../../lib/authApi.js";
 import { fetchNotifications, markAllNotificationsRead } from "../../lib/notificationsApi.js";
@@ -49,10 +49,15 @@ function timeAgo(iso) {
 
 // "Profile" tab-ийг чирэхдээ userId дамжуулдаг — үгүй бол FreelancerProfile.jsx
 // params.userId байхгүй тул зохиомол mock хүн (TALENT[1]) харуулдаг байсан bug.
+// Дунд товч нь горимоос хамаарна: захиалагчид "Post a Job", ажил гүйцэтгэгчид
+// "Find Work" — өмнө нь хоёуланд нь "Post" гардаг байсан тул freelancer
+// хүн дарахад 403 авдаг байв.
 const TABS = [
-  { page: "freelancer-dashboard", label: "Home", Icon: LayoutDashboard, alias: ["client-dashboard"] },
-  { page: "find-work", label: "Jobs", Icon: Search, alias: ["project"] },
-  { page: "post-job", label: "Post", Icon: Plus },
+  { page: "dashboard", label: "Home", Icon: LayoutDashboard },
+  { page: "find-work", label: "Jobs", Icon: Search, alias: ["project"], modes: ["freelancer"] },
+  { page: "find-talent", label: "Talent", Icon: Users, modes: ["client"] },
+  { page: "post-job", label: "Post", Icon: Plus, modes: ["client"], accent: true },
+  { page: "my-projects", label: "Work", Icon: FolderKanban, alias: ["tracker"], modes: ["freelancer"], accent: true },
   { page: "messages", label: "Chat", Icon: MessageSquare, live: "messages" },
   { page: "profile", label: "Profile", Icon: User, own: true },
 ];
@@ -60,15 +65,28 @@ const TABS = [
 // Notification bell болон account (profile/settings/log out) одоо дээд
 // баруун буланд (DesktopTopBar) байгаа тул sidebar-ийн жагсаалтад давхардуулж
 // оруулахгүй — зөвхөн үндсэн ажлын урсгал энд үлдэнэ.
+// `modes` заагаагүй мөр нь хоёр горимд хоёуланд нь харагдана. Өмнө нь бүх
+// мөр нэг дор гардаг байсан тул freelancer хүн "Post a Job"/"Find Talent"-ыг,
+// захиалагч "Find Work"-ийг харж, дарвал 403 авдаг байв.
 const MAIN = [
-  { page: "freelancer-dashboard", label: "Dashboard", Icon: LayoutDashboard, alias: ["client-dashboard"] },
-  { page: "find-work", label: "Find Work", Icon: Search, alias: ["project"] },
-  { page: "find-talent", label: "Find Talent", Icon: Users },
-  { page: "post-job", label: "Post a Job", Icon: Plus },
+  { page: "dashboard", label: "Dashboard", Icon: LayoutDashboard },
+  { page: "find-work", label: "Find Work", Icon: Search, alias: ["project"], modes: ["freelancer"] },
+  { page: "find-talent", label: "Find Talent", Icon: Users, modes: ["client"] },
+  { page: "post-job", label: "Post a Job", Icon: Plus, modes: ["client"] },
   { page: "my-projects", label: "My Projects", Icon: FolderKanban, alias: ["tracker"] },
   { page: "messages", label: "Messages", Icon: MessageSquare, live: "messages" },
   { page: "payments", label: "Payments", Icon: Wallet },
 ];
+
+// "dashboard" бол хийсвэр мөр — бодит хуудас нь горимоос хамаарна.
+function resolveNavItem(item, mode) {
+  if (item.page !== "dashboard") return item;
+  const page = DASHBOARD_FOR[mode] || DASHBOARD_FOR.freelancer;
+  const other = page === DASHBOARD_FOR.freelancer ? DASHBOARD_FOR.client : DASHBOARD_FOR.freelancer;
+  // Нөгөө dashboard-ыг alias-д үлдээв: горим солих агшинд ч идэвхтэй
+  // төлөв нь анивчихгүй.
+  return { ...item, page, alias: [other] };
+}
 
 function isActive(item, page) {
   return item.page === page || (item.alias || []).includes(page);
@@ -187,14 +205,18 @@ function AdminRow({ active, collapsed, onClick }) {
   );
 }
 
-function NavList({ page, go, collapsed, role }) {
+function NavList({ page, go, collapsed, role, mode }) {
   const { unread } = useLive();
+
+  const items = MAIN
+    .filter((item) => !item.modes || item.modes.includes(mode))
+    .map((item) => resolveNavItem(item, mode));
 
   return (
     <nav className={`flex-1 space-y-1 overflow-y-auto overflow-x-hidden py-4 ${collapsed ? "px-2" : "px-3"}`}>
-      {MAIN.map(({ page: p, label, Icon, live, alias }) => (
+      {items.map(({ page: p, label, Icon, live, alias }) => (
         <NavRow
-          key={p}
+          key={label}
           page={p}
           label={label}
           Icon={Icon}
@@ -212,6 +234,85 @@ function NavList({ page, go, collapsed, role }) {
         </>
       )}
     </nav>
+  );
+}
+
+/**
+ * Freelancer ⇄ Client горим солигч.
+ *
+ * Нэг хүн хоёуланд нь байж болно (өдөр ажил захиалж, орой ажил хайх) —
+ * өмнө нь горимыг зөвхөн онбординг дээр нэг удаа сонгодог, дараа нь өөрчлөх
+ * ямар ч зам байхгүй байсан. Хараахан үүсээгүй профайл руу шилжихийг
+ * оролдвол switchMode() өөрөө onboarding руу оруулна — тиймээс энд хоёр
+ * товчийг үргэлж харуулж, дутуу талыг нь "Set up" гэж тэмдэглэнэ.
+ */
+function ModeSwitcher({ collapsed, mode, user, onSwitch }) {
+  if (!user) return null;
+
+  const OPTIONS = [
+    { key: "freelancer", label: "Freelancing", Icon: Search, ready: !!user.hasFreelancerProfile },
+    { key: "client", label: "Hiring", Icon: Briefcase, ready: !!user.hasClientProfile },
+  ];
+
+  if (collapsed) {
+    const other = OPTIONS.find((o) => o.key !== mode);
+    if (!other) return null;
+    return (
+      <div className="px-2 pt-3">
+        <button
+          onClick={() => onSwitch(other.key)}
+          aria-label={`Switch to ${other.label}`}
+          className="flex w-full items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] p-2.5 text-white/70 transition-colors hover:bg-white/[0.08] hover:text-white"
+        >
+          <other.Icon className="h-[18px] w-[18px]" />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-3 pt-4">
+      <p className="px-1 pb-1.5 text-[9.5px] font-bold uppercase tracking-[0.14em] text-white/30">
+        Working as
+      </p>
+      <div
+        role="radiogroup"
+        aria-label="Working mode"
+        className="grid grid-cols-2 gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1"
+      >
+        {OPTIONS.map(({ key, label, Icon, ready }) => {
+          const active = mode === key;
+          return (
+            <button
+              key={key}
+              role="radio"
+              aria-checked={active}
+              onClick={() => onSwitch(key)}
+              title={ready ? label : `${label} — set up your profile first`}
+              className={`flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-[11.5px] font-semibold transition-all ${
+                active
+                  ? "bg-brand text-ink shadow-sm"
+                  : "text-white/55 hover:bg-white/[0.06] hover:text-white"
+              }`}
+            >
+              <Icon className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{label}</span>
+              {!ready && (
+                <span
+                  aria-hidden="true"
+                  className={`h-1.5 w-1.5 shrink-0 rounded-full ${active ? "bg-ink/40" : "bg-amber-400/70"}`}
+                />
+              )}
+            </button>
+          );
+        })}
+      </div>
+      {!OPTIONS.find((o) => o.key === mode)?.ready && (
+        <p className="px-1 pt-1.5 text-[10.5px] leading-snug text-amber-300/80">
+          Profile not set up yet — you'll be asked to finish it.
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -430,7 +531,7 @@ function NotifBell({ collapsed, badge, onViewAll, align, buttonClassName, dotCla
       >
         <Bell className="h-4.5 w-4.5" />
         {badge > 0 && (
-          <span className={dotClassName || "absolute right-1 top-1 h-2 w-2 rounded-full bg-brand ring-2 ring-[#070b09]"} />
+          <span className={dotClassName || "absolute right-1 top-1 h-2 w-2 rounded-full bg-brand ring-2 ring-[#141517]"} />
         )}
         {collapsed && !open && (
           <RailTip anchorRef={ref} active={hovered}>
@@ -546,7 +647,7 @@ function UserMenu({ go, user, setUser }) {
 // буланд байрлана (өмнө нь sidebar дотор шингэсэн байсан).
 function DesktopTopBar({ go, user, setUser, authReady, notifBadge }) {
   return (
-    <div className="sticky top-0 z-30 hidden items-center justify-end gap-2 border-b border-white/8 bg-[#070b09]/80 px-6 py-3 backdrop-blur-xl lg:flex">
+    <div className="sticky top-0 z-30 hidden items-center justify-end gap-2 border-b border-white/8 bg-[#141517]/80 px-6 py-3 lg:flex">
       {authReady && user && <NotifBell badge={notifBadge} align="right" onViewAll={() => go("notifications")} />}
       {authReady && (
         user ? (
@@ -565,7 +666,7 @@ function DesktopTopBar({ go, user, setUser, authReady, notifBadge }) {
 }
 
 export default function AppShell({ children }) {
-  const { page, nav, role, user, setUser, authReady } = useNav();
+  const { page, nav, role, user, setUser, authReady, mode, switchMode } = useNav();
   const { unread } = useLive();
   const [open, setOpen] = useState(false); // mobile drawer
   const notifBadge = unread.notifications || 0;
@@ -580,13 +681,14 @@ export default function AppShell({ children }) {
   return (
     <div className="min-h-screen bg-ink text-white lg:grid lg:grid-cols-[264px_1fr]">
       {/* Desktop sidebar — always shows icon + label, no more hover-to-reveal */}
-      <aside className="sticky top-0 z-30 hidden h-screen w-[264px] flex-col border-r border-white/8 bg-[#070b09]/95 backdrop-blur-xl lg:flex">
+      <aside className="sticky top-0 z-30 hidden h-screen w-[264px] flex-col border-r border-white/8 bg-[#141517]/95 lg:flex">
         <Brand go={go} collapsed={false} />
-        <NavList page={page} go={go} collapsed={false} role={role} />
+        <ModeSwitcher collapsed={false} mode={mode} user={user} onSwitch={switchMode} />
+        <NavList page={page} go={go} collapsed={false} role={role} mode={mode} />
       </aside>
 
       {/* Mobile top bar */}
-      <div className="sticky top-0 z-40 flex items-center justify-between border-b border-white/8 bg-[#070b09]/90 px-4 py-3 backdrop-blur-xl lg:hidden">
+      <div className="sticky top-0 z-40 flex items-center justify-between border-b border-white/8 bg-[#141517]/90 px-4 py-3 lg:hidden">
         <button
           onClick={() => setOpen(true)}
           aria-label="Open menu"
@@ -610,15 +712,21 @@ export default function AppShell({ children }) {
       {/* Mobile drawer (always full width) */}
       {open && (
         <>
-          <div className="fixed inset-0 z-[45] bg-black/50 backdrop-blur-sm lg:hidden" onClick={() => setOpen(false)} />
-          <aside className="fixed inset-y-0 left-0 z-50 flex w-[280px] max-w-[85vw] animate-feed-in flex-col border-r border-white/10 bg-[#070b09] lg:hidden">
+          <div className="fixed inset-0 z-[45] bg-black/50 lg:hidden" onClick={() => setOpen(false)} />
+          <aside className="fixed inset-y-0 left-0 z-50 flex w-[280px] max-w-[85vw] animate-feed-in flex-col border-r border-white/10 bg-[#141517] lg:hidden">
             <div className="flex items-center justify-between pr-3">
               <Brand go={go} collapsed={false} />
               <button onClick={() => setOpen(false)} aria-label="Close menu" className="rounded-lg p-2 text-white/50 hover:text-white">
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <NavList page={page} go={go} collapsed={false} role={role} />
+            <ModeSwitcher
+              collapsed={false}
+              mode={mode}
+              user={user}
+              onSwitch={(next) => { setOpen(false); switchMode(next); }}
+            />
+            <NavList page={page} go={go} collapsed={false} role={role} mode={mode} />
             <UserCard go={go} collapsed={false} user={user} setUser={setUser} authReady={authReady} />
           </aside>
         </>
@@ -630,26 +738,30 @@ export default function AppShell({ children }) {
         {children}
       </main>
 
-      <MobileTabBar page={page} go={go} user={user} />
+      <MobileTabBar page={page} go={go} user={user} mode={mode} />
     </div>
   );
 }
 
 // App-style bottom tab bar for mobile — quick access to the 5 most-used
 // destinations, mirroring the drawer's full nav for everything else.
-function MobileTabBar({ page, go, user }) {
+function MobileTabBar({ page, go, user, mode }) {
   const { unread } = useLive();
 
+  const tabs = TABS
+    .filter((item) => !item.modes || item.modes.includes(mode))
+    .map((item) => resolveNavItem(item, mode));
+
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 flex items-stretch justify-around border-t border-white/8 bg-[#070b09]/95 px-1 backdrop-blur-xl lg:hidden">
-      {TABS.map(({ page: p, label, Icon, alias, live, own }) => {
+    <nav className="fixed inset-x-0 bottom-0 z-40 flex items-stretch justify-around border-t border-white/8 bg-[#141517]/95 px-1 lg:hidden">
+      {tabs.map(({ page: p, label, Icon, alias, live, own, accent }) => {
         const active = isActive({ page: p, alias }, page);
         const badge = live ? unread[live] || 0 : 0;
-        const isPost = p === "post-job";
+        const isPost = !!accent;
 
         return (
           <button
-            key={p}
+            key={label}
             onClick={() => go(p, own && user ? { userId: user.id } : undefined)}
             aria-label={label}
             className={`relative flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-semibold transition-colors ${
@@ -657,7 +769,7 @@ function MobileTabBar({ page, go, user }) {
             }`}
           >
             {isPost ? (
-              <span className="-mt-6 flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-brand to-brand-soft text-ink shadow-[0_6px_20px_rgba(0,211,149,0.5)]">
+              <span className="-mt-6 flex h-11 w-11 items-center justify-center rounded-full bg-brand text-ink">
                 <Icon className="h-5 w-5" />
               </span>
             ) : (

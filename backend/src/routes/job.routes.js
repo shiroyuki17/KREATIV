@@ -8,6 +8,9 @@ import { sendMail } from '../lib/mailer.js';
 import { createNotification } from './notification.routes.js';
 import { detectLeakage } from '../lib/leakage.js';
 import { logEvent } from '../lib/logger.js';
+// Хайлтын query нь AI хайлттай хуваалцдаг ганц эх сурвалж (lib/jobSearch.js) —
+// хоёр зам зөрж, аль нэгэнд нь модерацийн шүүлт мартагдахаас сэргийлнэ.
+import { searchJobs } from '../lib/jobSearch.js';
 
 // FR-3.3: сард 5 үнэгүй санал (спам бууруулах + Ph.2 монетизацийн суурь)
 const FREE_PROPOSALS_PER_MONTH = 5;
@@ -177,50 +180,7 @@ router.get('/', async (req, res, next) => {
     const { data, error } = validate(jobQuerySchema, req.query);
     if (error) return res.status(400).json({ error });
 
-    const and = [{ status: data.status || 'OPEN' }, { moderationStatus: 'APPROVED' }];
-    if (data.category) and.push({ category: data.category });
-    if (data.type) and.push({ budgetType: data.type });
-    if (data.skills) {
-      const list = data.skills.split(',').map((s) => s.trim()).filter(Boolean);
-      if (list.length) and.push({ skills: { hasSome: list } });
-    }
-    if (data.q) {
-      and.push({
-        OR: [
-          { title: { contains: data.q, mode: 'insensitive' } },
-          { description: { contains: data.q, mode: 'insensitive' } },
-        ],
-      });
-    }
-    // Төсвийн шүүлт: хайлтын мужтай давхцаж буй зар бүр тохирно
-    if (data.minBudget != null) {
-      and.push({ OR: [{ budgetMax: null }, { budgetMax: { gte: data.minBudget } }] });
-    }
-    if (data.maxBudget != null) {
-      and.push({ OR: [{ budgetMin: null }, { budgetMin: { lte: data.maxBudget } }] });
-    }
-
-    const where = { AND: and };
-    const skip = (data.page - 1) * data.pageSize;
-
-    const [jobs, total] = await Promise.all([
-      prisma.job.findMany({
-        where,
-        include: clientInclude,
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: data.pageSize,
-      }),
-      prisma.job.count({ where }),
-    ]);
-
-    res.json({
-      jobs: jobs.map(publicJob),
-      total,
-      page: data.page,
-      pageSize: data.pageSize,
-      totalPages: Math.max(1, Math.ceil(total / data.pageSize)),
-    });
+    res.json(await searchJobs(data));
   } catch (err) {
     next(err);
   }

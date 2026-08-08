@@ -41,11 +41,11 @@ export default function TimeTracker() {
               strokeLinecap="round"
               strokeDasharray={C}
               strokeDashoffset={C * (1 - pct)}
-              style={{ transition: "stroke-dashoffset 1s linear", filter: "drop-shadow(0 0 6px rgba(6,182,212,0.7))" }}
+              style={{ transition: "stroke-dashoffset 1s linear", filter: "drop-shadow(0 0 6px rgba(201, 160, 99, 0.7))" }}
             />
             <defs>
               <linearGradient id="tt-grad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#00D395" />
+                <stop offset="0%" stopColor="#C9A063" />
                 <stop offset="100%" stopColor="#06B6D4" />
               </linearGradient>
             </defs>
@@ -70,7 +70,7 @@ export default function TimeTracker() {
           aria-label={running ? "Pause timer" : "Start timer"}
           className={
             running
-              ? "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-neon/40 bg-neon/15 text-neon shadow-[0_0_18px_rgba(6,182,212,0.4)] transition-transform hover:scale-105"
+              ? "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-neon/40 bg-neon/15 text-neon transition-transform hover:scale-105"
               : "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/[0.05] text-white/70 transition-transform hover:scale-105"
           }
         >

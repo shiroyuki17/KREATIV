@@ -24,7 +24,7 @@ export default function LiveToasts() {
         return (
           <div
             key={t.id}
-            className="pointer-events-auto flex animate-toast-in items-start gap-3 rounded-2xl border border-white/10 bg-[#0a100d]/95 p-3.5 shadow-[0_16px_44px_rgba(0,0,0,0.6)] backdrop-blur-xl"
+            className="pointer-events-auto flex animate-toast-in items-start gap-3 rounded-2xl border border-white/10 bg-[#0a100d]/95 p-3.5 shadow-[0_16px_44px_rgba(0,0,0,0.6)]"
           >
             <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${cls}`}>
               <Icon className="h-4 w-4" />

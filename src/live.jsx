@@ -1,14 +1,22 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { getAccessToken } from "./lib/authApi.js";
+import { hasSession, getAccessToken } from "./lib/authApi.js";
 import { fetchNotifications } from "./lib/notificationsApi.js";
 import { fetchMessageUnreadCount } from "./lib/messagesApi.js";
+import { fetchPublicStats } from "./lib/analyticsApi.js";
 
 /**
- * Realtime-ish layer, backed by real polling (no WebSocket yet, so a short
- * interval stands in for push). Sidebar badges and toast popups both read
- * from real /notifications and /messages/unread-count — previously this
- * played a scripted, entirely fake event stream, which stopped being honest
- * once real Notifications/Messages existed to actually track this.
+ * Realtime давхарга — sidebar-ийн badge болон toast popup-ууд.
+ *
+ * Өмнө нь энэ нь 12 секунд тутам /notifications + /messages/unread-count
+ * руу poll хийдэг байв: socket холболт аль хэдийн байсаар байтал нэвтэрсэн
+ * хэрэглэгч бүр цагт ~600 нэмэлт хүсэлт үүсгэж, түүнийхээ хариуд мэдэгдлээ
+ * 12 секунд хүртэл хоцорч авдаг байлаа. Одоо:
+ *
+ *   • Эхлэхэд НЭГ удаа татаж эхний төлөвөө тогтооно.
+ *   • Цаашид бүх шинэчлэлт socket-оор ирнэ ("notification:new",
+ *     "message:new") — сервер тухай бүрд нь шинэ unread тоог хамт явуулна.
+ *   • Socket тасарч дахин холбогдох үед л дахин татна: салсан хугацаанд
+ *     алдагдсан эвентүүдийг ингэж нөхнө.
  */
 const LiveCtx = createContext(null);
 
@@ -20,9 +28,8 @@ function toToast(n) {
 export function LiveProvider({ children }) {
   const [toasts, setToasts] = useState([]);
   const [unread, setUnread] = useState({ messages: 0, notifications: 0 });
-  const [openBriefs, setOpenBriefs] = useState(1284);
+  const [openBriefs, setOpenBriefs] = useState(null);
   const seenNotifIds = useRef(new Set());
-  const isFirstPoll = useRef(true);
 
   const dismiss = (id) => setToasts((list) => list.filter((t) => t.id !== id));
   // Bail out (return the same reference) when already 0 — otherwise every
@@ -30,51 +37,89 @@ export function LiveProvider({ children }) {
   // this always minted a new object even for a no-op clear.
   const clearUnread = (key) => setUnread((u) => (u[key] === 0 ? u : { ...u, [key]: 0 }));
 
-  // Poll real unread counts + turn brand-new unread notifications into toasts
   useEffect(() => {
-    const token = getAccessToken();
-    if (!token) return;
+    if (!hasSession()) return undefined;
 
-    const poll = async () => {
+    let cancelled = false;
+
+    const pushToast = (notification) => {
+      if (!notification || notification.read) return;
+      if (seenNotifIds.current.has(notification.id)) return;
+      seenNotifIds.current.add(notification.id);
+      const toast = toToast(notification);
+      setToasts((list) => [...list, toast].slice(-3));
+      setTimeout(() => dismiss(toast.id), 6000);
+    };
+
+    // Эхний (болон дахин холбогдсоны дараах) төлөв. Энд ирсэн мэдэгдлүүдийг
+    // toast болгохгүй — зөвхөн "үзсэн" гэж тэмдэглэнэ. Эс тэгвэл нэвтрэх
+    // болгонд бүх түүх нэг дор toast болж цутгана.
+    const hydrate = async () => {
       try {
         const [notifRes, msgCount] = await Promise.all([
-          fetchNotifications(token),
-          fetchMessageUnreadCount(token),
+          fetchNotifications(),
+          fetchMessageUnreadCount(),
         ]);
+        if (cancelled) return;
         setUnread({ messages: msgCount.count, notifications: notifRes.unreadCount });
-
-        // Skip the very first poll so logging in doesn't dump your whole
-        // notification history as a burst of toasts.
-        if (!isFirstPoll.current) {
-          for (const n of notifRes.notifications) {
-            if (!n.read && !seenNotifIds.current.has(n.id)) {
-              const toast = toToast(n);
-              setToasts((list) => [...list, toast].slice(-3));
-              setTimeout(() => dismiss(toast.id), 6000);
-            }
-          }
-        }
-        isFirstPoll.current = false;
         notifRes.notifications.forEach((n) => seenNotifIds.current.add(n.id));
       } catch {
-        /* transient network hiccup — next poll retries */
+        /* сүлжээний түр зуурын алдаа — дараагийн reconnect дээр дахин оролдоно */
       }
     };
 
-    poll();
-    const t = setInterval(poll, 12000);
-    return () => clearInterval(t);
+    hydrate();
+
+    const onNotification = ({ notification, unreadCount }) => {
+      setUnread((u) => ({ ...u, notifications: unreadCount ?? u.notifications + 1 }));
+      pushToast(notification);
+    };
+    const onMessage = ({ unreadCount }) => {
+      setUnread((u) => ({ ...u, messages: unreadCount ?? u.messages + 1 }));
+    };
+    // Салсан хугацаанд ирсэн эвентүүд алдагдсан байж болзошгүй тул
+    // дахин холбогдоход төлөвөө бүхэлд нь сэргээнэ.
+    const onReconnect = () => hydrate();
+
+    // socket.io-client-ийг ДИНАМИКААР ачаална: LiveProvider нь апп-ын
+    // үндэст (нүүр хуудсанд ч) байрладаг тул статик import хийвэл ~40 KB
+    // realtime сан нэвтрээгүй зочны эхний ачаалалтад ч ордог. Энд зөвхөн
+    // session байгаа үед л татагдана.
+    let detach = null;
+    import("./lib/socket.js").then(({ connectSocket }) => {
+      if (cancelled) return;
+      const socket = connectSocket(getAccessToken());
+      socket.on("notification:new", onNotification);
+      socket.on("message:new", onMessage);
+      socket.io.on("reconnect", onReconnect);
+      detach = () => {
+        socket.off("notification:new", onNotification);
+        socket.off("message:new", onMessage);
+        socket.io.off("reconnect", onReconnect);
+      };
+    }).catch((err) => {
+      // Чимээгүй залгих ёсгүй: энэ салбар унавал realtime давхарга бүхэлдээ
+      // үхэх бөгөөд UI нь ердөө "мэдэгдэл ирэхгүй" гэж харагдана — маш
+      // хэцүү оношлогддог. Хэрэглэгчийн урсгалыг зогсоохгүй ч мөрөө үлдээнэ.
+      console.error("[live] realtime холболт үүсгэж чадсангүй:", err);
+    });
+
+    return () => {
+      cancelled = true;
+      detach?.();
+    };
   }, []);
 
-  // Ambient "platform activity" counter — a cosmetic aggregate drift, not a
-  // claim about any specific real event (unlike the old message/payment
-  // toast script, this never names a person or job that doesn't exist).
+  // "Нээлттэй брифүүд" — BentoShowcase дээр харагддаг тоо. Өмнө нь 1284-өөс
+  // эхлээд 4 секунд тутам санамсаргүйгээр өөрчлөгддөг чимэглэл байсан
+  // (Math.random) — өөрөөр хэлбэл зохиомол тоо. Одоо /analytics/public-ийн
+  // бодит нээлттэй ажлын тоо.
   useEffect(() => {
-    const t = setInterval(
-      () => setOpenBriefs((n) => n + Math.floor(Math.random() * 5) - 1),
-      4000
-    );
-    return () => clearInterval(t);
+    let cancelled = false;
+    fetchPublicStats()
+      .then((s) => { if (!cancelled) setOpenBriefs(s.openJobs); })
+      .catch(() => {});
+    return () => { cancelled = true; };
   }, []);
 
   const value = useMemo(

@@ -33,6 +33,11 @@ export const jobQuerySchema = z.object({
   category: z.enum(CATEGORIES).optional(),
   type: z.enum(['FIXED', 'HOURLY']).optional(),
   skills: z.string().optional(), // таслалаар тусгаарласан
+  // Мөн таслалаар. Өмнө нь энэ шүүлтүүр зөвхөн frontend дээр, ХУУДАСЛАЛТЫН
+  // ДАРАА хийгддэг байсан тул тухайн хуудсанд байсан 12 зараас л шүүж,
+  // "18 brief" гэж бичээд 3-ыг харуулах, эсвэл бүтэн хуудас хоосон гарах
+  // алдаа өгдөг байв.
+  languages: z.string().optional(),
   minBudget: z.coerce.number().int().nonnegative().optional(),
   maxBudget: z.coerce.number().int().nonnegative().optional(),
   status: z.enum(['OPEN', 'IN_PROGRESS', 'CLOSED', 'CANCELLED']).optional(),

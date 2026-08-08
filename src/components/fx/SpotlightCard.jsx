@@ -4,7 +4,7 @@ import { useRef } from "react";
 export default function SpotlightCard({
   children,
   className = "",
-  spotColor = "rgba(0, 211, 149, 0.22)",
+  spotColor = "rgba(201, 160, 99, 0.14)",
   as: Tag = "div",
   ...rest
 }) {

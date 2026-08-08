@@ -83,7 +83,7 @@ export default function FreelancerDashboard() {
             <h1 className="font-display text-3xl font-bold tracking-tight">
               Welcome back, {firstName}
             </h1>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-neon/40 bg-neon/10 px-3.5 py-1.5 text-[10.5px] font-bold uppercase tracking-widest text-neon shadow-[0_0_18px_rgba(6,182,212,0.2)]">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-neon/40 bg-neon/10 px-3.5 py-1.5 text-[10.5px] font-bold uppercase tracking-widest text-neon">
               <Laptop className="h-3.5 w-3.5" />
               Freelancer
             </span>
@@ -104,7 +104,7 @@ export default function FreelancerDashboard() {
           </p>
           <button
             onClick={() => nav("settings")}
-            className="shrink-0 rounded-lg bg-gradient-to-r from-brand to-brand-soft px-4 py-2.5 text-[12.5px] font-bold text-ink glow-brand transition-shadow hover:shadow-[0_0_30px_rgba(0,211,149,0.5)]"
+            className="shrink-0 rounded-lg bg-brand px-4 py-2.5 text-[12.5px] font-bold text-ink glow-brand transition-shadow"
           >
             Set up profile
           </button>
@@ -209,7 +209,7 @@ export default function FreelancerDashboard() {
                       title={`$${e.v.toLocaleString("en-US")}`}
                       className={
                         last
-                          ? "w-full rounded-t-lg bg-gradient-to-t from-brand to-neon shadow-[0_0_18px_rgba(0,211,149,0.45)]"
+                          ? "w-full rounded-t-lg bg-brand"
                           : "w-full rounded-t-lg bg-white/12 transition-colors hover:bg-brand/40"
                       }
                       style={{ height: `${Math.max(3, Math.round((e.v / max) * 100))}%` }}
@@ -238,7 +238,7 @@ export default function FreelancerDashboard() {
             <Magnet strength={0.15} className="mt-4 w-full">
               <button
                 onClick={() => nav("profile", { userId: user?.id })}
-                className="w-full rounded-xl bg-gradient-to-r from-brand to-brand-soft py-2.5 text-[12.5px] font-semibold glow-brand transition-shadow hover:shadow-[0_0_36px_rgba(0,211,149,0.55)]"
+                className="w-full rounded-xl bg-brand py-2.5 text-[12.5px] font-semibold glow-brand transition-shadow"
               >
                 View public profile
               </button>

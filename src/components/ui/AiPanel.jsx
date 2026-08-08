@@ -25,7 +25,7 @@ export default function AiPanel({ title, chips, onRefine }) {
   return (
     <aside className="glass sticky top-24 hidden h-[calc(100vh-7rem)] w-[340px] shrink-0 flex-col rounded-2xl border border-white/10 p-5 xl:flex">
       <div className="flex items-center gap-2 border-b border-white/8 pb-4">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand to-neon">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand">
           <Sparkles className="h-3.5 w-3.5 text-ink" />
         </span>
         <p className="text-[13.5px] font-semibold">{title}</p>
@@ -75,7 +75,7 @@ export default function AiPanel({ title, chips, onRefine }) {
         <button
           type="submit"
           aria-label="Send"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand text-ink transition-shadow hover:shadow-[0_0_18px_rgba(0,211,149,0.5)]"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand text-ink transition-shadow"
         >
           <Send className="h-3.5 w-3.5" />
         </button>

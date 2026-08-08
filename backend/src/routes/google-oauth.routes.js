@@ -26,6 +26,18 @@ async function issueRefreshToken(userId) {
 // GOOGLE_CLIENT_ID/SECRET орж ирмэгц /google дараа энэ route-ыг дуудахгүй.)
 router.get('/google/demo', async (req, res, next) => {
   try {
+    // Энэ route баталгаажуулалтгүйгээр хүчинтэй session олгодог тул
+    // production-д хэзээ ч байж болохгүй — өмнө нь зөвхөн тайлбар дээр
+    // "дуудахгүй" гэж бичсэн байсан ч хэрэгжүүлээгүй, улмаас хэн ч энэ
+    // хаягаар нэвтрэх боломжтой байлаа.
+    //
+    // Dev дээр харин үлдээнэ: жинхэнэ Google урсгал тохиргооны алдаанаас
+    // (redirect_uri зөрөх г.м) унасан үед хөгжүүлэгч огт нэвтэрч чадахгүй
+    // болохоос сэргийлнэ.
+    if (config.NODE_ENV === 'production') {
+      return res.status(404).json({ error: 'Not found' });
+    }
+
     const DEMO_EMAIL = 'demo.google@kreativ.mn';
     let user = await prisma.user.findUnique({ where: { email: DEMO_EMAIL } });
     if (!user) {
@@ -130,8 +142,16 @@ router.get('/google/callback', async (req, res, next) => {
 
     if (!user) {
       // Ижил имэйлтэй акаунт аль хэдийн байвал холбоно (жишээ нь эхлээд
-      // email/password-оор бүртгүүлж байсан хэрэглэгч дараа нь Google ашиглах)
+      // email/password-оор бүртгүүлж байсан хэрэглэгч дараа нь Google ашиглах).
+      //
+      // Холбохын өмнө Google имэйлийг баталгаажуулсан эсэхийг шалгана:
+      // баталгаажаагүй имэйлээр (Workspace/гадаад домэйнд боломжтой) хэн
+      // нэгэн байгаа акаунт руу холбогдож эзэмших эрсдэлээс сэргийлнэ.
+      // Шинэ хэрэглэгч үүсгэхэд энэ шалгалт хамаарахгүй — булаах акаунт алга.
       const existing = await prisma.user.findUnique({ where: { email: profile.email } });
+      if (existing && profile.email_verified !== true) {
+        return res.redirect(`${config.FRONTEND_URL}/#/auth?oauth_error=email_unverified`);
+      }
       if (existing) {
         user = await prisma.user.update({
           where: { id: existing.id },

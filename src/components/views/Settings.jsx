@@ -284,7 +284,7 @@ export default function Settings() {
         {tab === "profile" && (
           <div className="space-y-5">
             <div className="flex items-center gap-5">
-              <span className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-brand to-neon font-display text-lg font-bold">
+              <span className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-brand font-display text-lg font-bold">
                 {avatarUrl ? (
                   <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
                 ) : (
@@ -408,7 +408,7 @@ export default function Settings() {
             <button
               onClick={save}
               disabled={saving}
-              className="rounded-xl bg-gradient-to-r from-brand to-brand-soft px-6 py-3 text-[13.5px] font-semibold glow-brand transition-shadow hover:shadow-[0_0_40px_rgba(0,211,149,0.6)] disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-xl bg-brand px-6 py-3 text-[13.5px] font-semibold glow-brand transition-shadow disabled:cursor-not-allowed disabled:opacity-60"
             >
               {saving ? "Saving…" : "Save changes"}
             </button>

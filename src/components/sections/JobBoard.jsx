@@ -2,8 +2,8 @@ import { useState } from "react";
 import { Star, BadgeCheck, ArrowRight } from "lucide-react";
 import SpotlightCard from "../fx/SpotlightCard.jsx";
 import BlurText from "../fx/BlurText.jsx";
-import { JOBS } from "../../data/mock.js";
 import { useNav } from "../../nav.jsx";
+import { useHomeJobs, toJobCard } from "../../lib/homeData.js";
 
 const FILTERS = ["All", "Design", "Dev", "AI", "Motion", "Writing", "Marketing"];
 
@@ -12,8 +12,9 @@ const PREVIEW_COUNT = 6;
 export default function JobBoard() {
   const { nav } = useNav();
   const [filter, setFilter] = useState("All");
-  const matching = JOBS.filter((j) => filter === "All" || j.cat === filter);
-  const jobs = matching.slice(0, PREVIEW_COUNT); // landing shows a taste, not the whole board
+  const all = useHomeJobs();
+  const matching = (all || []).filter((j) => filter === "All" || j.category === filter);
+  const jobs = matching.slice(0, PREVIEW_COUNT).map(toJobCard); // landing shows a taste, not the whole board
 
   return (
     <section id="jobs" className="relative py-12 md:py-24">
@@ -44,13 +45,19 @@ export default function JobBoard() {
           </div>
         </div>
 
+        {all && jobs.length === 0 && (
+          <p className="mt-10 text-[13.5px] text-white/45">
+            No open briefs in this category right now.
+          </p>
+        )}
+
         <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {jobs.map((job, i) => (
             <SpotlightCard
               key={job.id}
-              onClick={() => nav("project", job)}
+              onClick={() => nav("project", job.raw)}
               style={{ animationDelay: `${i * 70}ms` }}
-              className="animate-rise-in cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:border-brand/40 hover:shadow-[0_0_34px_rgba(0,211,149,0.16)]"
+              className="animate-rise-in cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:border-brand/40"
             >
               <div className="flex h-full flex-col p-6">
                 <div className="flex items-start justify-between gap-3">
@@ -73,10 +80,12 @@ export default function JobBoard() {
                 <div className="mt-2.5 flex items-center gap-1.5 text-[12px] text-white/50">
                   {job.client}
                   {job.verified && <BadgeCheck className="h-3.5 w-3.5 text-neon" />}
-                  <span className="ml-1 inline-flex items-center gap-1">
-                    <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                    {job.rating}
-                  </span>
+                  {job.rating != null && (
+                    <span className="ml-1 inline-flex items-center gap-1">
+                      <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                      {job.rating.toFixed(1)}
+                    </span>
+                  )}
                 </div>
 
                 <div className="mt-4 flex flex-wrap gap-1.5">
@@ -94,7 +103,9 @@ export default function JobBoard() {
                   <div>
                     <p className="font-display text-lg font-bold">{job.budget}</p>
                     <p className="text-[10.5px] text-white/35">
-                      {job.proposals} proposals
+                      {job.raw.proposalCount === 0
+                        ? "No proposals yet"
+                        : `${job.raw.proposalCount} proposal${job.raw.proposalCount === 1 ? "" : "s"}`}
                     </p>
                   </div>
                   <button className="inline-flex items-center gap-1.5 rounded-xl border border-brand/40 bg-brand/15 px-4 py-2.5 text-[12.5px] font-semibold text-brand-soft transition-all hover:bg-brand hover:text-ink">

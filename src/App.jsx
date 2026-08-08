@@ -1,8 +1,8 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { MotionConfig } from "framer-motion";
 import { NavProvider, useNav } from "./nav.jsx";
 import { LiveProvider } from "./live.jsx";
-import { getAccessToken, stashRedirect } from "./lib/authApi.js";
+import { hasSession, stashRedirect } from "./lib/authApi.js";
 import LiveToasts from "./components/LiveToasts.jsx";
 import Navbar from "./components/layout/Navbar.jsx";
 import Footer from "./components/layout/Footer.jsx";
@@ -10,43 +10,52 @@ import AppShell from "./components/layout/AppShell.jsx";
 import ChatWidget from "./components/ChatWidget.jsx";
 import AuroraBackground from "./components/fx/AuroraBackground.jsx";
 
+// ── Нүүр хуудас: шууд (eager) import ──
+// Эдгээр нь анхны дэлгэцэнд ЯГ ОДОО хэрэгтэй тул тусад нь хуваавал
+// зөвхөн нэмэлт round-trip нэмнэ.
 import Hero from "./components/sections/Hero.jsx";
-import TrendingNow from "./components/sections/TrendingNow.jsx";
-import FeaturedWork from "./components/sections/FeaturedWork.jsx";
-import LiveBriefs from "./components/sections/LiveBriefs.jsx";
 import StandoutWork from "./components/sections/StandoutWork.jsx";
 import Categories from "./components/sections/Categories.jsx";
 import BentoShowcase from "./components/sections/BentoShowcase.jsx";
-import JobBoard from "./components/sections/JobBoard.jsx";
 import AISection from "./components/sections/AISection.jsx";
 import Pricing from "./components/sections/Pricing.jsx";
-import ProjectProgressDashboard from "./components/dashboard/ProjectProgressDashboard.jsx";
-
-import ProjectDetail from "./components/views/ProjectDetail.jsx";
-import FreelancerProfile from "./components/views/FreelancerProfile.jsx";
-import ClientDashboard from "./components/views/ClientDashboard.jsx";
-import FreelancerDashboard from "./components/views/FreelancerDashboard.jsx";
-import MyProjects from "./components/views/MyProjects.jsx";
-import Messages from "./components/views/Messages.jsx";
-import Payments from "./components/views/Payments.jsx";
-import Settings from "./components/views/Settings.jsx";
-import Notifications from "./components/views/Notifications.jsx";
-import TrustSafety from "./components/views/TrustSafety.jsx";
-import AdminPanel from "./components/views/AdminPanel.jsx";
-import PostJob from "./components/views/PostJob.jsx";
-import FindTalent from "./components/views/FindTalent.jsx";
-import FindWork from "./components/views/FindWork.jsx";
-import Auth from "./components/views/Auth.jsx";
-import AuthCallback from "./components/views/AuthCallback.jsx";
-import Onboarding from "./components/views/Onboarding.jsx";
-import HowItWorks from "./components/views/HowItWorks.jsx";
-import HelpCenter from "./components/views/HelpCenter.jsx";
-import Contact from "./components/views/Contact.jsx";
-import Reviews from "./components/views/Reviews.jsx";
-import Terms from "./components/views/Terms.jsx";
-import DisputePolicy from "./components/views/DisputePolicy.jsx";
-import NotFound from "./components/views/NotFound.jsx";
 import Testimonials from "./components/sections/Testimonials.jsx";
+import NotFound from "./components/views/NotFound.jsx";
+
+// ── Бусад бүх хуудас: шаардлагатай үед нь (lazy) ──
+// Өмнө нь 30 гаруй хуудас нэг bundle-д багтаж, нүүр хуудас нээхэд AdminPanel,
+// Payments, WebRTC дуудлагын код хүртэл бүгд татагддаг байв (796 KB).
+const ProjectDetail = lazy(() => import("./components/views/ProjectDetail.jsx"));
+const FreelancerProfile = lazy(() => import("./components/views/FreelancerProfile.jsx"));
+const ClientDashboard = lazy(() => import("./components/views/ClientDashboard.jsx"));
+const FreelancerDashboard = lazy(() => import("./components/views/FreelancerDashboard.jsx"));
+const MyProjects = lazy(() => import("./components/views/MyProjects.jsx"));
+const Messages = lazy(() => import("./components/views/Messages.jsx"));
+const Payments = lazy(() => import("./components/views/Payments.jsx"));
+const Settings = lazy(() => import("./components/views/Settings.jsx"));
+const Notifications = lazy(() => import("./components/views/Notifications.jsx"));
+const TrustSafety = lazy(() => import("./components/views/TrustSafety.jsx"));
+const AdminPanel = lazy(() => import("./components/views/AdminPanel.jsx"));
+const PostJob = lazy(() => import("./components/views/PostJob.jsx"));
+const FindTalent = lazy(() => import("./components/views/FindTalent.jsx"));
+const FindWork = lazy(() => import("./components/views/FindWork.jsx"));
+const Auth = lazy(() => import("./components/views/Auth.jsx"));
+const AuthCallback = lazy(() => import("./components/views/AuthCallback.jsx"));
+const Onboarding = lazy(() => import("./components/views/Onboarding.jsx"));
+const HowItWorks = lazy(() => import("./components/views/HowItWorks.jsx"));
+const HelpCenter = lazy(() => import("./components/views/HelpCenter.jsx"));
+const Contact = lazy(() => import("./components/views/Contact.jsx"));
+const Reviews = lazy(() => import("./components/views/Reviews.jsx"));
+const Terms = lazy(() => import("./components/views/Terms.jsx"));
+const DisputePolicy = lazy(() => import("./components/views/DisputePolicy.jsx"));
+const ProjectProgressDashboard = lazy(() => import("./components/dashboard/ProjectProgressDashboard.jsx"));
+
+// Chunk татагдах хормын завсарт — бүтэн хуудас багтаах хэмжээний тайван
+// орон зай. Spinner тавихаас татгалзав: chunk ихэвчлэн 100ms-аас
+// хурдан ирдэг тул spinner нь зөвхөн анивчиж, илүү таагүй мэдрэгддэг.
+function PageFallback() {
+  return <div className="min-h-[60vh]" />;
+}
 
 // Pages that live inside the logged-in sidebar shell.
 const APP_PAGES = new Set([
@@ -76,14 +85,9 @@ function HomePage() {
   return (
     <>
       <Hero />
-      <TrendingNow />
-      <FeaturedWork />
-      <LiveBriefs />
       <Categories />
       <BentoShowcase />
-      <JobBoard />
       <AISection />
-      <ProjectProgressDashboard />
       <StandoutWork />
       <Testimonials />
       <Pricing />
@@ -98,7 +102,18 @@ const KNOWN = new Set([
   "find-talent", "find-work", "tracker", "terms", "dispute-policy",
 ]);
 
+// Хуудсууд lazy болсон тул Suspense заавал хэрэгтэй. Гурван дуудлагын цэг
+// (auth flow / sidebar shell / marketing) бүрд давтахын оронд View дотор
+// нэг л удаа боов.
 function View({ page }) {
+  return (
+    <Suspense fallback={<PageFallback />}>
+      <ViewSwitch page={page} />
+    </Suspense>
+  );
+}
+
+function ViewSwitch({ page }) {
   switch (page) {
     case "home": return <HomePage />;
     case "trust": return <TrustSafety />;
@@ -160,7 +175,10 @@ function Shell() {
 
   // Logged-in app — sidebar shell
   if (APP_PAGES.has(page)) {
-    if (PROTECTED_PAGES.has(page) && !getAccessToken()) {
+    // hasSession() нь access ЭСВЭЛ refresh token байхад үнэн — access token
+    // 15 минутын дараа хугацаа нь дуусдаг тул зөвхөн түүнийг шалгавал
+    // хүчинтэй session-тэй хэрэглэгчийг нэвтрэх хуудас руу буруу шиднэ.
+    if (PROTECTED_PAGES.has(page) && !hasSession()) {
       return <RequireAuth />;
     }
     return (
@@ -185,16 +203,20 @@ function Shell() {
   );
 }
 
+import { ErrorBoundary } from "./components/ui/ErrorBoundary.jsx";
+
 export default function App() {
   return (
-    <MotionConfig reducedMotion="user">
-      <NavProvider>
-        <LiveProvider>
-          <Shell />
-          <LiveToasts />
-          <ChatWidget />
-        </LiveProvider>
-      </NavProvider>
-    </MotionConfig>
+    <ErrorBoundary>
+      <MotionConfig reducedMotion="user">
+        <NavProvider>
+          <LiveProvider>
+            <Shell />
+            <LiveToasts />
+            <ChatWidget />
+          </LiveProvider>
+        </NavProvider>
+      </MotionConfig>
+    </ErrorBoundary>
   );
 }

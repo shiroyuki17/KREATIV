@@ -1,17 +1,38 @@
 @import "tailwindcss";
 
 @theme {
-  --color-ink: #04070a;
-  --color-panel: #0a0f0d;
-  --color-brand: #00d395;
-  --color-brand-soft: #34e3ad;
-  --color-violet: #8b5cf6;
-  --color-violet-soft: #a78bfa;
-  --color-mint: #10b981;
-  --color-neon: #06b6d4;
+  /* Ground — near-neutral with a faint cool cast, so it reads chosen not muddy.
+     Token names are unchanged on purpose: every component keeps working and the
+     whole app repalettes from here. */
+  --color-ink: #141517;
+  --color-panel: #1b1d20;
+  --color-raised: #25282c;
+  --color-line: #33373c;
+  --color-line-2: #454a51;
 
-  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  /* The only accent in the system — actions only, never decoration. */
+  --color-brand: #c9a063;
+  --color-brand-soft: #d9b683;
+
+  /* Status. Never used as decoration. */
+  --color-mint: #7fa88a;
+  --color-bad: #d07e75;
+
+  /* Formerly cyan/purple decoration — neutralised rather than removed so the
+     29 files still referencing them degrade to grey instead of breaking. */
+  --color-neon: #c9a063;
+  --color-violet: #82878f;
+  --color-violet-soft: #b4b8be;
+
+  /* Text ramp */
+  --color-fg-1: #edeef0;
+  --color-fg-2: #b4b8be;
+  --color-fg-3: #82878f;
+
+  /* Cyrillic-capable throughout — Space Grotesk and Plus Jakarta Sans are not. */
+  --font-display: "Roboto Flex", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Onest", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
   --animate-float: float 7s ease-in-out infinite;
   --animate-float-slow: float 11s ease-in-out infinite;
@@ -38,8 +59,8 @@
   to { opacity: 1; transform: translateY(0); filter: blur(0); }
 }
 @keyframes pulse-soft {
-  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0, 211, 149, 0.45); }
-  50% { opacity: 0.75; box-shadow: 0 0 0 6px rgba(0, 211, 149, 0); }
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(201, 160, 99, 0.4); }
+  50% { opacity: 0.75; box-shadow: 0 0 0 6px rgba(201, 160, 99, 0); }
 }
 @keyframes badge-pop {
   0% { transform: scale(0.6); }
@@ -91,37 +112,51 @@ section[id] { scroll-margin-top: 110px; }
 
 /* Visible keyboard focus (mouse clicks stay clean via :focus-visible) */
 :where(a, button, input, textarea, select, [tabindex]):focus-visible {
-  outline: 2px solid rgba(0, 211, 149, 0.75);
+  outline: 2px solid var(--color-brand);
   outline-offset: 2px;
   border-radius: 6px;
 }
 
+/* Flat ground. The aurora gradients and the grid overlay are gone: colour on
+   this page comes from the work people upload, not from the chrome. */
 body {
-  background:
-    radial-gradient(1100px 620px at 50% -8%, rgba(0, 211, 149, 0.1), transparent 60%),
-    radial-gradient(900px 600px at 100% 4%, rgba(0, 211, 149, 0.06), transparent 55%),
-    var(--color-ink);
-  background-attachment: fixed;
-  color: #eef2f0;
+  background: var(--color-ink);
+  color: var(--color-fg-1);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
 
-::selection { background: rgba(0, 211, 149, 0.5); color: #04070a; }
+/* Brass is a light accent, so anything filled with it must take ink text —
+   white on #c9a063 measures 2.42:1 and is unreadable. This sits in the base
+   layer so any explicit text-* utility on the element still wins. */
+@layer base {
+  .bg-brand,
+  .bg-brand-soft,
+  .bg-mint {
+    color: var(--color-ink);
+  }
+}
+
+::selection { background: var(--color-brand); color: var(--color-ink); }
 
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(0, 211, 149, 0.4); border-radius: 6px; }
+::-webkit-scrollbar-thumb { background: var(--color-line-2); border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-brand); }
 
+/* Was frosted glass; now a solid card surface. Depth comes from a single
+   hairline of light on the top edge, not from blur or glow. Redefining the
+   utility here converts all 36 files that use it. */
 @utility glass {
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: var(--color-panel);
+  border: 1px solid var(--color-line);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.03);
 }
 
+/* The glow utilities are kept as names so the 29 files referencing them keep
+   compiling, but they no longer glow — the system has no glow anywhere. */
 @utility glow-brand {
-  box-shadow: 0 0 24px rgba(0, 211, 149, 0.38), 0 0 72px rgba(0, 211, 149, 0.16);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
 }
 
 /* Tactile press feedback for primary buttons (150–250ms micro-interaction
@@ -132,13 +167,32 @@ button.glow-mint:active {
   transform: scale(0.96);
 }
 @utility glow-violet {
-  box-shadow: 0 0 24px rgba(139, 92, 246, 0.38), 0 0 72px rgba(139, 92, 246, 0.16);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
 }
 @utility glow-mint {
-  box-shadow: 0 0 22px rgba(16, 185, 129, 0.4), 0 0 56px rgba(16, 185, 129, 0.14);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
 }
+/* Text never glows now. Emphasis comes from weight and colour. */
 @utility text-glow {
-  text-shadow: 0 0 26px rgba(0, 211, 149, 0.5), 0 2px 0 rgba(0, 0, 0, 0.35);
+  text-shadow: none;
+}
+
+@utility glass-panel {
+  background: var(--color-panel);
+  border: 1px solid var(--color-line);
+}
+
+@utility glass-card-neon {
+  background: var(--color-panel);
+  border: 1px solid var(--color-line);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.03);
+  transition: background 0.22s ease, border-color 0.22s ease, transform 0.22s ease;
+}
+
+.glass-card-neon:hover {
+  background: var(--color-raised);
+  border-color: var(--color-line-2);
+  transform: translateY(-2px);
 }
 
 @media (prefers-reduced-motion: reduce) {

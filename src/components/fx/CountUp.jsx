@@ -1,6 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
+import { revealValue } from "../../lib/motion.js";
 
-/** Eased count-up on scroll into view. */
+/**
+ * Eased count-up on scroll into view.
+ *
+ * Тоог proxy объект дээр tween хийгээд DOM руу шууд бичнэ — өмнө нь кадр
+ * бүрт setState дуудаж бүтэн component-ыг дахин render хийдэг байсныг
+ * орлуулав (нэг дэлгэц дээр 4 тоолуур зэрэг ажиллахад мэдэгдэхүйц).
+ */
 export default function CountUp({
   to,
   prefix = "",
@@ -9,38 +16,28 @@ export default function CountUp({
   duration = 1600,
   className = "",
 }) {
-  const ref = useRef(null);
-  const [val, setVal] = useState(0);
+  const numRef = useRef(null);
 
   useEffect(() => {
-    const io = new IntersectionObserver(
-      ([e]) => {
-        if (!e.isIntersecting) return;
-        io.disconnect();
-        const t0 = performance.now();
-        const tick = (now) => {
-          const p = Math.min((now - t0) / duration, 1);
-          const eased = 1 - Math.pow(1 - p, 3);
-          setVal(to * eased);
-          if (p < 1) requestAnimationFrame(tick);
-        };
-        requestAnimationFrame(tick);
-      },
-      { threshold: 0.4 }
-    );
-    if (ref.current) io.observe(ref.current);
-    return () => io.disconnect();
-  }, [to, duration]);
+    const el = numRef.current;
+    if (!el) return undefined;
 
-  const shown =
-    decimals > 0
-      ? val.toFixed(decimals)
-      : Math.round(val).toLocaleString("en-US");
+    const format = (n) =>
+      decimals > 0 ? n.toFixed(decimals) : Math.round(n).toLocaleString("en-US");
+
+    return revealValue(el, {
+      to,
+      duration,
+      onUpdate: (value) => {
+        el.textContent = format(value);
+      },
+    });
+  }, [to, duration, decimals]);
 
   return (
-    <span ref={ref} className={className}>
+    <span className={className}>
       {prefix}
-      {shown}
+      <span ref={numRef} />
       {suffix}
     </span>
   );

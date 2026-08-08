@@ -70,7 +70,7 @@ export default function Contact() {
               </label>
               <button
                 onClick={() => setSent(true)}
-                className="mt-5 w-full rounded-xl bg-gradient-to-r from-brand to-brand-soft py-3.5 text-[14px] font-semibold text-ink glow-brand transition-shadow hover:shadow-[0_0_40px_rgba(0,211,149,0.6)]"
+                className="mt-5 w-full rounded-xl bg-brand py-3.5 text-[14px] font-semibold text-ink glow-brand transition-shadow"
               >
                 Send message
               </button>

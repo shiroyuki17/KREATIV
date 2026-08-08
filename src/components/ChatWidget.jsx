@@ -155,7 +155,7 @@ export default function ChatWidget() {
       <button
         onClick={() => setOpen(!open)}
         aria-label={open ? "Close AI assistant" : "Open AI assistant"}
-        className="fixed bottom-24 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand to-brand-soft glow-brand transition-all hover:scale-105 hover:shadow-[0_0_44px_rgba(0,211,149,0.7)] lg:bottom-6"
+        className="fixed bottom-24 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-brand glow-brand transition-all hover:scale-105 lg:bottom-6"
       >
         {open ? <X className="h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
         {!open && (
@@ -166,9 +166,9 @@ export default function ChatWidget() {
       {/* Panel */}
       {open && (
         <div className="glass fixed bottom-[168px] right-6 z-50 flex w-[min(370px,calc(100vw-3rem))] animate-feed-in flex-col overflow-hidden rounded-3xl shadow-[0_24px_70px_rgba(0,0,0,0.55)] lg:bottom-24">
-          <div className="relative flex items-center justify-between border-b border-white/10 bg-gradient-to-r from-brand/15 via-neon/10 to-transparent p-4 backdrop-blur-xl">
+          <div className="relative flex items-center justify-between border-b border-white/10 bg-gradient-to-r from-brand/15 via-neon/10 to-transparent p-4">
             <div className="flex items-center gap-2.5">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand to-neon text-ink glow-brand">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-ink glow-brand">
                 <Sparkles className="h-4.5 w-4.5" />
               </span>
               <div>
@@ -190,7 +190,7 @@ export default function ChatWidget() {
                 <div
                   className={
                     m.from === "user"
-                      ? "max-w-[85%] rounded-2xl rounded-br-md bg-gradient-to-r from-brand to-brand-soft px-4 py-2.5 text-[13px] leading-relaxed"
+                      ? "max-w-[85%] rounded-2xl rounded-br-md bg-brand px-4 py-2.5 text-[13px] leading-relaxed"
                       : "max-w-[88%] rounded-2xl rounded-bl-md border border-white/8 bg-white/[0.05] px-4 py-2.5 text-[13px] leading-relaxed text-white/85"
                   }
                 >
@@ -250,7 +250,7 @@ export default function ChatWidget() {
               <button
                 onClick={() => send()}
                 aria-label="Send"
-                className="rounded-xl bg-brand p-2.5 glow-brand transition-shadow hover:shadow-[0_0_30px_rgba(0,211,149,0.6)]"
+                className="rounded-xl bg-brand p-2.5 glow-brand transition-shadow"
               >
                 <Send className="h-4 w-4" />
               </button>

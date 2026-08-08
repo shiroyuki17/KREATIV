@@ -1,18 +1,29 @@
-import { useState } from "react";
-import { Check, Feather, Rocket, Building2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Check, Feather, Rocket, Building2, Loader2, AlertCircle } from "lucide-react";
 import StarBorder from "../fx/StarBorder.jsx";
 import Magnet from "../fx/Magnet.jsx";
 import BlurText from "../fx/BlurText.jsx";
-import { PLANS } from "../../data/mock.js";
+import { useNav } from "../../nav.jsx";
+import { hasSession } from "../../lib/authApi.js";
+import { fetchPlans, startSubscriptionCheckout } from "../../lib/billingApi.js";
 
 const PLAN_ICON = { Starter: Feather, Pro: Rocket, Enterprise: Building2 };
 
+// Багцууд одоо GET /plans-аас ирнэ (backend/src/lib/plans.js). Өмнө нь
+// src/data/mock.js-д hardcode байсан бөгөөд товч нь onClick ч үгүй байв —
+// өөрөөр хэлбэл "Pro $29/сар" гэдэг нь ердөө зурсан текст байлаа.
+
 function Price({ plan, yearly }) {
-  if (plan.monthly === null)
+  if (plan.monthlyUsd === null)
     return <p className="font-display text-4xl font-bold">Custom</p>;
-  if (plan.monthly === 0)
+  if (plan.monthlyUsd === 0)
     return <p className="font-display text-4xl font-bold">Free</p>;
-  const price = yearly ? Math.round(plan.monthly * 0.8) : plan.monthly;
+  // Жилийн үнийг серверийн yearlyUsd-аас гаргана — 0.8-аар үржүүлж
+  // таамаглахгүй (Stripe дээрх бодит Price-тай зөрвөл хэрэглэгч
+  // өөр дүн харснаа өөр дүнгээр төлнө).
+  const price = yearly && plan.yearlyUsd != null
+    ? Math.round(plan.yearlyUsd / 12)
+    : plan.monthlyUsd;
   return (
     <p className="font-display text-4xl font-bold">
       ${price}
@@ -21,8 +32,9 @@ function Price({ plan, yearly }) {
   );
 }
 
-function PlanCard({ plan, yearly }) {
+function PlanCard({ plan, yearly, onSelect, busy, disabledReason }) {
   const Icon = PLAN_ICON[plan.name] || Feather;
+  const disabled = busy || (!plan.purchasable && plan.key === "pro");
   return (
     <div className="flex h-full flex-col p-7">
       <div className="flex items-start justify-between">
@@ -57,22 +69,86 @@ function PlanCard({ plan, yearly }) {
       <div className="mt-auto pt-8">
         <Magnet strength={0.2} className="w-full">
           <button
+            onClick={() => onSelect(plan)}
+            disabled={disabled}
+            title={disabled && disabledReason ? disabledReason : undefined}
             className={
-              plan.popular
-                ? "w-full rounded-xl bg-gradient-to-r from-brand to-brand-soft py-3 text-[13.5px] font-semibold glow-brand transition-shadow hover:shadow-[0_0_44px_rgba(0,211,149,0.6)]"
-                : "glass w-full rounded-xl py-3 text-[13.5px] font-semibold text-white/85 transition-colors hover:border-white/25"
+              (plan.popular
+                ? "w-full rounded-xl bg-brand py-3 text-[13.5px] font-semibold glow-brand transition-shadow"
+                : "glass w-full rounded-xl py-3 text-[13.5px] font-semibold text-white/85 transition-colors hover:border-white/25")
+              + (disabled ? " cursor-not-allowed opacity-50" : "")
             }
           >
-            {plan.cta}
+            {busy ? (
+              <span className="inline-flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" /> Redirecting…
+              </span>
+            ) : (
+              plan.cta
+            )}
           </button>
         </Magnet>
+        {disabled && disabledReason && (
+          <p className="mt-2 text-center text-[10.5px] leading-snug text-white/40">{disabledReason}</p>
+        )}
       </div>
     </div>
   );
 }
 
 export default function Pricing() {
+  const { nav } = useNav();
   const [yearly, setYearly] = useState(true);
+  const [plans, setPlans] = useState([]);
+  const [billingEnabled, setBillingEnabled] = useState(false);
+  const [busyKey, setBusyKey] = useState(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchPlans()
+      .then((res) => {
+        if (cancelled) return;
+        setPlans(res.plans);
+        setBillingEnabled(res.billingEnabled);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  async function selectPlan(plan) {
+    setError("");
+
+    // Enterprise бол self-serve биш — борлуулалттай холбоно.
+    if (plan.key === "enterprise") { nav("contact"); return; }
+    // Үнэгүй багц авах гэж төлбөрийн урсгал руу оруулах шаардлагагүй.
+    if (plan.key === "starter") { nav("auth"); return; }
+
+    // Нэвтрээгүй бол нэвтрэх хуудас руу.
+    //
+    // ⚠️ Энд stashRedirect("home") дуудаж БОЛОХГҮЙ. Auth.jsx нь нэвтэрсний
+    // дараа stash-ыг хэрэглэгчийн жинхэнэ дашбоардаас ИЛҮҮД үздэг тул
+    // "home"-ыг хадгалбал нэвтэрсэн хүн бүр дашбоард дээрээ очихын оронд
+    // landing page руу буцдаг байв. Дээр нь sessionStorage-д наалдаж
+    // үлддэг тул хэдэн ч удаа нэвтэрсэн дахин давтагдана.
+    if (!hasSession()) {
+      nav("auth");
+      return;
+    }
+
+    setBusyKey(plan.key);
+    try {
+      const { checkoutUrl } = await startSubscriptionCheckout(plan.key, yearly ? "yearly" : "monthly");
+      // Stripe-ийн байршуулсан хуудас руу шилжинэ — картын мэдээлэл манай
+      // домэйнд огт орохгүй.
+      window.location.href = checkoutUrl;
+    } catch (err) {
+      setError(err.message);
+      setBusyKey(null);
+    }
+  }
+
+  const disabledReason = billingEnabled ? "" : "Online billing is not configured yet.";
 
   return (
     <section id="pricing" className="relative py-12 md:py-24">
@@ -114,18 +190,30 @@ export default function Pricing() {
           </div>
         </div>
 
+        {error && (
+          <div className="mx-auto mt-8 flex max-w-md items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-[12.5px] text-red-300">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            {error}
+          </div>
+        )}
+
         <div className="mt-12 grid items-stretch gap-5 md:grid-cols-3">
-          {PLANS.map((plan) =>
-            plan.popular ? (
-              <StarBorder key={plan.name}>
-                <PlanCard plan={plan} yearly={yearly} />
-              </StarBorder>
+          {plans.map((plan) => {
+            const card = (
+              <PlanCard
+                plan={plan}
+                yearly={yearly}
+                onSelect={selectPlan}
+                busy={busyKey === plan.key}
+                disabledReason={disabledReason}
+              />
+            );
+            return plan.popular ? (
+              <StarBorder key={plan.key}>{card}</StarBorder>
             ) : (
-              <div key={plan.name} className="glass rounded-2xl">
-                <PlanCard plan={plan} yearly={yearly} />
-              </div>
-            )
-          )}
+              <div key={plan.key} className="glass rounded-2xl">{card}</div>
+            );
+          })}
         </div>
       </div>
     </section>

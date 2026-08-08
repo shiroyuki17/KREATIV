@@ -8,6 +8,8 @@ const OAUTH_ERROR_MESSAGES = {
   invalid_state: "Google холболт хугацаа дууссан байна. Дахин оролдоно уу.",
   token_exchange_failed: "Google-тэй холбогдоход алдаа гарлаа.",
   invalid_profile: "Google-ээс профайлын мэдээлэл ирсэнгүй.",
+  email_unverified:
+    "Энэ имэйлтэй акаунт аль хэдийн байна. Google дээрх имэйлээ баталгаажуулаад дахин оролдоно уу.",
   account_disabled: "Энэ акаунт идэвхгүй болгогдсон байна.",
 };
 
@@ -125,7 +127,7 @@ export default function Auth() {
                   onClick={() => setRole(id)}
                   className={
                     role === id
-                      ? "rounded-2xl border border-brand/60 bg-brand/10 p-4 text-left shadow-[0_0_24px_rgba(0,211,149,0.25)]"
+                      ? "rounded-2xl border border-brand/60 bg-brand/10 p-4 text-left"
                       : "rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left transition-colors hover:border-white/25"
                   }
                 >
@@ -258,7 +260,7 @@ export default function Auth() {
           <button
             onClick={handleSubmit}
             disabled={!canSubmit}
-            className="mt-6 w-full rounded-xl bg-gradient-to-r from-brand to-brand-soft py-3.5 text-[14px] font-semibold text-ink glow-brand transition-all hover:shadow-[0_0_44px_rgba(0,211,149,0.6)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+            className="mt-6 w-full rounded-xl bg-brand py-3.5 text-[14px] font-semibold text-ink glow-brand transition-all disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
           >
             {submitting ? "Түр хүлээнэ үү…" : mode === "signup" ? "Create account" : "Log in"}
           </button>

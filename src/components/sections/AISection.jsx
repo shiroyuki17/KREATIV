@@ -44,7 +44,7 @@ export default function AISection() {
           <Magnet strength={0.2} className="mt-9">
             <button
               onClick={openChat}
-              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-brand to-brand-soft px-7 py-3.5 text-[14px] font-semibold glow-brand transition-shadow hover:shadow-[0_0_44px_rgba(0,211,149,0.6)]"
+              className="inline-flex items-center gap-2 rounded-2xl bg-brand px-7 py-3.5 text-[14px] font-semibold glow-brand transition-shadow"
             >
               <Sparkles className="h-4 w-4" />
               Try the AI Assistant
@@ -68,7 +68,7 @@ export default function AISection() {
             </div>
 
             <div className="mt-5 space-y-3">
-              <div className="ml-auto max-w-[85%] rounded-2xl rounded-br-md bg-gradient-to-r from-brand to-brand-soft px-4 py-3 text-[13px] leading-relaxed">
+              <div className="ml-auto max-w-[85%] rounded-2xl rounded-br-md bg-brand px-4 py-3 text-[13px] leading-relaxed">
                 I need a React developer for a booking platform. Budget around $5k.
               </div>
               <div className="max-w-[90%] rounded-2xl rounded-bl-md border border-white/8 bg-white/[0.05] px-4 py-3 text-[13px] leading-relaxed text-white/80">

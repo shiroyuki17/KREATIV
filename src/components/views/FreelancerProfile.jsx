@@ -119,14 +119,14 @@ export default function FreelancerProfile() {
         <div className="space-y-5 lg:sticky lg:top-28 lg:self-start">
           <div className="glass rounded-2xl p-7">
             <div className="flex flex-col items-center text-center">
-              <span className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-brand to-neon font-display text-xl font-bold ring-1 ring-white/15">
+              <span className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand font-display text-xl font-bold ring-1 ring-white/15">
                 {isReal && f.avatarUrl ? (
                   <img src={f.avatarUrl} alt="" className="h-full w-full object-cover" />
                 ) : (
                   f.initials
                 )}
                 {!isReal && f.available && (
-                  <span className="absolute -bottom-0.5 -right-0.5 h-5 w-5 rounded-full border-2 border-[#0a0f0d] bg-mint" />
+                  <span className="absolute -bottom-0.5 -right-0.5 h-5 w-5 rounded-full border-2 border-[#1b1d20] bg-mint" />
                 )}
               </span>
               <p className="mt-4 flex items-center gap-2 font-display text-xl font-bold">
@@ -172,7 +172,7 @@ export default function FreelancerProfile() {
                 <Magnet strength={0.15} className="w-full">
                   <button
                     onClick={() => nav("settings")}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand to-brand-soft py-3.5 text-[14px] font-semibold glow-brand transition-shadow hover:shadow-[0_0_44px_rgba(0,211,149,0.6)]"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand py-3.5 text-[14px] font-semibold glow-brand transition-shadow"
                   >
                     <Pencil className="h-4 w-4" />
                     Edit profile
@@ -181,7 +181,7 @@ export default function FreelancerProfile() {
               ) : (
                 <>
                   <Magnet strength={0.15} className="w-full">
-                    <button className="w-full rounded-xl bg-gradient-to-r from-brand to-brand-soft py-3.5 text-[14px] font-semibold glow-brand transition-shadow hover:shadow-[0_0_44px_rgba(0,211,149,0.6)]">
+                    <button className="w-full rounded-xl bg-brand py-3.5 text-[14px] font-semibold glow-brand transition-shadow">
                       Hire {f.name.split(" ")[0]}
                     </button>
                   </Magnet>

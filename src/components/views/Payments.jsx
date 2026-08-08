@@ -16,6 +16,7 @@ import {
 import { useNav } from "../../nav.jsx";
 import { getAccessToken } from "../../lib/authApi.js";
 import { fetchBalance, fetchTransactions, createDeposit, confirmDeposit, withdraw, downloadTransactionsCsv } from "../../lib/paymentsApi.js";
+import { fetchPaymentStatus } from "../../lib/billingApi.js";
 import { useEscapeKey } from "../../hooks/useEscapeKey.js";
 
 const ACCENT = {
@@ -25,7 +26,7 @@ const ACCENT = {
   amber: "border-amber-400/30 bg-amber-400/10 text-amber-300",
 };
 
-function DepositModal({ onClose, onDeposited }) {
+function DepositModal({ onClose, onDeposited, payStatus }) {
   const [amount, setAmount] = useState("100");
   const [invoice, setInvoice] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -40,7 +41,12 @@ function DepositModal({ onClose, onDeposited }) {
     setBusy(true);
     setError("");
     try {
-      setInvoice(await createDeposit(n, token));
+      const res = await createDeposit(n, token);
+      // Stripe горимд төлбөр нь Stripe-ийн байршуулсан Checkout хуудсанд
+      // хийгдэнэ — QR/poll байхгүй, шууд шилжинэ. Буцаж ирэхэд webhook
+      // аль хэдийн үлдэгдлийг нэмсэн байна.
+      if (res.checkoutUrl) { window.location.href = res.checkoutUrl; return; }
+      setInvoice(res);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -74,10 +80,13 @@ function DepositModal({ onClose, onDeposited }) {
   }, [invoice, settled]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
       <div role="dialog" aria-modal="true" aria-labelledby="deposit-modal-title" className="glass w-full max-w-sm rounded-2xl p-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
-          <p id="deposit-modal-title" className="text-[15px] font-bold">Add funds · Demo QPay</p>
+          <p id="deposit-modal-title" className="text-[15px] font-bold">
+            Add funds
+            {payStatus?.provider === "stripe" ? " · Stripe" : payStatus?.provider === "qpay" ? " · QPay" : " · Demo"}
+          </p>
           <button onClick={onClose} aria-label="Close" className="rounded-lg p-1.5 text-white/50 hover:text-white">
             <X className="h-4 w-4" />
           </button>
@@ -85,8 +94,16 @@ function DepositModal({ onClose, onDeposited }) {
 
         {!invoice ? (
           <>
+            {/* Ямар горимд ажиллаж байгааг ил хэлнэ — хэрэглэгч жинхэнэ
+                мөнгө төлж байна уу үгүй юу гэдгээ мэдэх ёстой. */}
             <p className="mt-2 text-[12px] text-white/45">
-              Жинхэнэ QPay мерчант данс холбогдоогүй тул демо invoice үүсгэнэ — QR гарсны дараа систем автоматаар төлбөрийг илрүүлж баланс руу орлого хийнэ.
+              {payStatus?.provider === "stripe"
+                ? (payStatus.testMode
+                    ? "Stripe TEST MODE — жинхэнэ мөнгө хөдлөхгүй. Туршилтын карт: 4242 4242 4242 4242, дурын ирээдүйн хугацаа, дурын CVC."
+                    : "Та Stripe-ийн аюулгүй төлбөрийн хуудас руу шилжинэ.")
+                : payStatus?.provider === "qpay"
+                  ? "QPay-ийн нэхэмжлэх үүсгэнэ — банкны аппаараа QR-ыг уншуулна уу."
+                  : "⚠️ Демо горим: жинхэнэ төлбөр хийгдэхгүй, үлдэгдэл зөвхөн туршилтын зорилгоор нэмэгдэнэ."}
             </p>
             <label className="mt-5 block text-[11px] font-semibold uppercase tracking-wider text-white/40">Дүн (USD)</label>
             <input
@@ -102,7 +119,7 @@ function DepositModal({ onClose, onDeposited }) {
             <button
               onClick={createInvoice}
               disabled={busy}
-              className="mt-5 w-full rounded-xl bg-brand py-3 text-[13.5px] font-bold text-ink glow-brand transition-shadow hover:shadow-[0_0_30px_rgba(0,211,149,0.5)] disabled:opacity-50"
+              className="mt-5 w-full rounded-xl bg-brand py-3 text-[13.5px] font-bold text-ink glow-brand transition-shadow disabled:opacity-50"
             >
               {busy ? "Түр хүлээнэ үү…" : "Invoice үүсгэх"}
             </button>
@@ -111,7 +128,7 @@ function DepositModal({ onClose, onDeposited }) {
           <>
             <div className="mt-4 flex flex-col items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-6 text-center">
               {settled ? (
-                <span className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-mint bg-mint/10 text-mint shadow-[0_0_30px_rgba(16,185,129,0.4)]">
+                <span className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-mint bg-mint/10 text-mint">
                   <Check className="h-8 w-8" />
                 </span>
               ) : invoice.qrImage ? (
@@ -170,7 +187,7 @@ function WithdrawModal({ balance, minWithdrawal, onClose, onWithdrawn }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
       <div role="dialog" aria-modal="true" aria-labelledby="withdraw-modal-title" className="glass w-full max-w-sm rounded-2xl p-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <p id="withdraw-modal-title" className="text-[15px] font-bold">Withdraw</p>
@@ -194,7 +211,7 @@ function WithdrawModal({ balance, minWithdrawal, onClose, onWithdrawn }) {
         <button
           onClick={submit}
           disabled={busy}
-          className="mt-5 w-full rounded-xl bg-mint py-3 text-[13.5px] font-bold text-ink transition-shadow hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] disabled:opacity-50"
+          className="mt-5 w-full rounded-xl bg-mint py-3 text-[13.5px] font-bold text-ink transition-shadow disabled:opacity-50"
         >
           {busy ? "Боловсруулж байна…" : "Гаргалт хүсэх"}
         </button>
@@ -254,6 +271,17 @@ export default function Payments() {
   const [showDeposit, setShowDeposit] = useState(false);
   const [showWithdraw, setShowWithdraw] = useState(false);
   const [exporting, setExporting] = useState(false);
+  // Ямар провайдер идэвхтэй байгаа (stripe/qpay/demo) — DepositModal үүнийг
+  // хэрэглэгчид ил хэлэхэд ашиглана.
+  const [payStatus, setPayStatus] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchPaymentStatus()
+      .then((st) => { if (!cancelled) setPayStatus(st); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (params?.tab) setTab(params.tab);
@@ -296,13 +324,32 @@ export default function Payments() {
           <h1 className="font-display text-3xl font-bold tracking-tight">Payments</h1>
           <p className="mt-1.5 text-[13px] text-white/45">Your real wallet balance and transaction history.</p>
         </div>
-        <button
-          onClick={exportCsv}
-          disabled={exporting}
-          className="glass rounded-xl px-4 py-2.5 text-[12.5px] font-semibold text-white/70 transition-colors hover:text-white disabled:opacity-50"
-        >
-          {exporting ? "Экспортлож байна…" : "Export CSV (тайлан)"}
-        </button>
+        {/* Мөнгө нэмэх/татах нь хуудасны түвшний үйлдэл тул үлдэгдлийн картын
+            булангаас гаргаж энд авчирсан — карт зөвхөн тоогоо харуулна. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={exportCsv}
+            disabled={exporting}
+            className="rounded-xl px-4 py-2.5 text-[12.5px] font-medium text-fg-3 transition-colors hover:text-fg-1 disabled:opacity-50"
+          >
+            {exporting ? "Экспортлож байна…" : "Export CSV"}
+          </button>
+          <button
+            onClick={() => setShowWithdraw(true)}
+            disabled={balance <= 0}
+            title={balance <= 0 ? "Татах боломжтой үлдэгдэл алга" : undefined}
+            className="rounded-xl border border-line-2 px-4 py-2.5 text-[12.5px] font-semibold text-fg-2 transition-colors hover:border-brand hover:text-fg-1 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-line-2 disabled:hover:text-fg-2"
+          >
+            Withdraw
+          </button>
+          <button
+            onClick={() => setShowDeposit(true)}
+            className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-[12.5px] font-bold text-ink transition-colors hover:bg-brand-soft"
+          >
+            <Wallet className="h-4 w-4" />
+            Add funds
+          </button>
+        </div>
       </div>
 
       <div className="mt-7 flex gap-2">
@@ -328,26 +375,9 @@ export default function Payments() {
         <>
           <div className="mt-7 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div className="glass rounded-2xl p-6">
-              <div className="flex items-start justify-between">
-                <span className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border ${ACCENT.mint}`}>
-                  <Wallet className="h-4.5 w-4.5" />
-                </span>
-                <div className="flex gap-1.5">
-                  <button
-                    onClick={() => setShowDeposit(true)}
-                    className="rounded-lg border border-brand/40 bg-brand/10 px-3.5 py-1.5 text-[11.5px] font-bold text-brand-soft transition-all hover:bg-brand hover:text-ink"
-                  >
-                    Add funds
-                  </button>
-                  <button
-                    onClick={() => setShowWithdraw(true)}
-                    disabled={balance <= 0}
-                    className="rounded-lg border border-mint/40 bg-mint/10 px-3.5 py-1.5 text-[11.5px] font-bold text-mint transition-all hover:bg-mint hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    Withdraw
-                  </button>
-                </div>
-              </div>
+              <span className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border ${ACCENT.mint}`}>
+                <Wallet className="h-4.5 w-4.5" />
+              </span>
               <p className="mt-5 font-display text-3xl font-bold">${balance.toLocaleString("en-US")}</p>
               <p className="mt-1 text-[11px] font-medium uppercase tracking-wider text-white/40">Available balance</p>
             </div>
@@ -437,6 +467,7 @@ export default function Payments() {
 
       {showDeposit && (
         <DepositModal
+          payStatus={payStatus}
           onClose={() => setShowDeposit(false)}
           onDeposited={(newBalance, tx) => {
             setBalance(newBalance);

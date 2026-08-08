@@ -3,8 +3,10 @@ import { Search, Send, Info, X, AlertCircle, ShieldAlert, Phone, Video, MoreHori
 import { useNav } from "../../nav.jsx";
 import { getAccessToken, avatarSrc, API_BASE } from "../../lib/authApi.js";
 import { fetchConversations, startConversation, fetchThread, sendMessage, sendFile } from "../../lib/messagesApi.js";
-import { connectSocket } from "../../lib/socket.js";
+import { connectSocket, getSocket } from "../../lib/socket.js";
 import { useEscapeKey } from "../../hooks/useEscapeKey.js";
+import { useCall } from "../../lib/useCall.js";
+import CallOverlay from "../chat/CallOverlay.jsx";
 
 function fileSrc(fileUrl) {
   return fileUrl.startsWith("http") ? fileUrl : `${API_BASE}${fileUrl}`;
@@ -104,27 +106,27 @@ function Avatar({ name, avatarUrl, size = "md", online = false }) {
   return (
     <span className="relative shrink-0">
       <span className={`flex ${sizes[size] || sizes.md} items-center justify-center overflow-hidden rounded-full font-bold`}
-        style={{ background: "linear-gradient(135deg, rgba(0,211,149,0.4), rgba(100,200,255,0.3))", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)" }}>
+        style={{ background: "linear-gradient(135deg, rgba(201, 160, 99, 0.4), rgba(100,200,255,0.3))", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)" }}>
         {src ? <img src={src} alt="" className="h-full w-full object-cover" /> : initialsOf(name)}
       </span>
       {online && (
-        <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-[#0a0f0d]"
-          style={{ background: "#00d395" }} />
+        <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-[#1b1d20]"
+          style={{ background: "#C9A063" }} />
       )}
     </span>
   );
 }
 
-function DetailsPanel({ contact }) {
+function DetailsPanel({ contact, onVoiceCall, onVideoCall }) {
   const skills = ["UI/UX Design", "React", "Figma", "Branding"];
   return (
     <div className="h-full overflow-y-auto">
       {/* Profile Header */}
-      <div className="flex flex-col items-center px-5 py-8" style={{ background: "linear-gradient(180deg, rgba(0,211,149,0.06) 0%, transparent 100%)" }}>
+      <div className="flex flex-col items-center px-5 py-8" style={{ background: "linear-gradient(180deg, rgba(201, 160, 99, 0.06) 0%, transparent 100%)" }}>
         <Avatar name={contact.name} avatarUrl={contact.avatarUrl} size="lg" online />
         <p className="mt-3 text-[15px] font-bold tracking-tight">{contact.name}</p>
         <span className="mt-1 flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium"
-          style={{ background: "rgba(0,211,149,0.1)", color: "#00d395" }}>
+          style={{ background: "rgba(201, 160, 99, 0.1)", color: "#C9A063" }}>
           <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />
           Online
         </span>
@@ -153,7 +155,7 @@ function DetailsPanel({ contact }) {
       <div className="grid grid-cols-2 gap-3 p-5">
         {[["98%", "Success"], ["142", "Projects"], ["4.9★", "Rating"], ["<1h", "Response"]].map(([val, lbl]) => (
           <div key={lbl} className="rounded-xl p-3 text-center" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <p className="text-[15px] font-bold" style={{ color: "#00d395" }}>{val}</p>
+            <p className="text-[15px] font-bold" style={{ color: "#C9A063" }}>{val}</p>
             <p className="text-[10.5px] text-white/40">{lbl}</p>
           </div>
         ))}
@@ -161,11 +163,15 @@ function DetailsPanel({ contact }) {
 
       {/* Actions */}
       <div className="space-y-2 p-5 pt-0">
-        <button className="flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-[13px] font-semibold transition-all hover:brightness-110"
-          style={{ background: "rgba(0,211,149,0.15)", color: "#00d395", border: "1px solid rgba(0,211,149,0.25)" }}>
+        <button
+          onClick={onVoiceCall}
+          className="flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-[13px] font-semibold transition-all hover:brightness-110"
+          style={{ background: "rgba(201, 160, 99, 0.15)", color: "#C9A063", border: "1px solid rgba(201, 160, 99, 0.25)" }}>
           <Phone className="h-4 w-4" /> Voice Call
         </button>
-        <button className="flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-[13px] font-medium transition-all hover:bg-white/10"
+        <button
+          onClick={onVideoCall}
+          className="flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-[13px] font-medium transition-all hover:bg-white/10"
           style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.08)" }}>
           <Video className="h-4 w-4" /> Video Call
         </button>
@@ -215,6 +221,22 @@ export default function Messages() {
     return () => socket.off("message:new", onMessage);
   }, []);
 
+  // FR-2.2: connectSocket() дээрх useEffect-ийн ДАРАА дуудагдах ёстой —
+  // useCall дотор нь socket listener бүртгэдэг useEffect байгаа тул,
+  // өмнө нь байрлавал getSocket() socket холбогдохоос өмнө null буцааж,
+  // дуудлагын listener-үүд огт бүртгэгдэхгүй байх эрсдэлтэй.
+  // Дуудлагын нөгөө талыг харуулахдаа идэвхтэй харилцан яриа эсвэл (орж
+  // ирж буй дуудлагын хувьд) fromUserId-аар conversations жагсаалтаас хайна.
+  const call = useCall(myId);
+  const callOtherUser = call.incomingCall
+    ? (() => {
+        const c = conversations.find((c) => c.with.id === call.incomingCall.fromUserId);
+        return c ? { name: c.with.name, avatarUrl: avatarSrc(c.with.avatarUrl) } : { name: "Someone", avatarUrl: null };
+      })()
+    : active
+      ? { name: active.with.name, avatarUrl: avatarSrc(active.with.avatarUrl) }
+      : null;
+
   useEffect(() => {
     const token = getAccessToken();
     if (!token) return;
@@ -247,10 +269,15 @@ export default function Messages() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params?.withUserId]);
 
+  // Socket холбогдсон үед `message:new` нь жагсаалт болон нээлттэй яриаг
+  // хоёуланг нь шинэчилдэг тул давхар polling шаардлагагүй. Өмнө нь эдгээр
+  // нь 8с/4с тутам болзолгүй ажилладаг байсан — нэг минутад ~20 нэмэлт
+  // хүсэлт. Одоо зөвхөн socket тасарсан үед л нөөц зам болж ажиллана.
   useEffect(() => {
     const token = getAccessToken();
     if (!token) return;
     const t = setInterval(() => {
+      if (getSocket()?.connected) return;
       fetchConversations(token).then((res) => setConversations(res.conversations)).catch(() => {});
     }, 8000);
     return () => clearInterval(t);
@@ -261,8 +288,8 @@ export default function Messages() {
     if (!token || !activeId) { setThread([]); return; }
     let cancelled = false;
     const load = () => fetchThread(activeId, token).then((res) => { if (!cancelled) setThread(res.messages); }).catch(() => {});
-    load();
-    const t = setInterval(load, 4000);
+    load(); // яриа солигдоход эхний ачаалалт үргэлж хэрэгтэй
+    const t = setInterval(() => { if (!getSocket()?.connected) load(); }, 4000);
     return () => { cancelled = true; clearInterval(t); };
   }, [activeId]);
 
@@ -325,7 +352,7 @@ export default function Messages() {
         <div className="flex h-[560px] items-center justify-center rounded-2xl text-[13px] text-white/40"
           style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
           <div className="flex flex-col items-center gap-3">
-            <div className="h-8 w-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "rgba(0,211,149,0.5)", borderTopColor: "transparent" }} />
+            <div className="h-8 w-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "rgba(201, 160, 99, 0.5)", borderTopColor: "transparent" }} />
             <span>Loading conversations…</span>
           </div>
         </div>
@@ -337,6 +364,7 @@ export default function Messages() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 pb-16 pt-8">
+      <CallOverlay call={call} otherUser={callOtherUser} />
       {/* Page Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
@@ -385,8 +413,8 @@ export default function Messages() {
             {filteredConvos.length === 0 && (
               <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
                 <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl"
-                  style={{ background: "rgba(0,211,149,0.08)" }}>
-                  <Search className="h-5 w-5" style={{ color: "rgba(0,211,149,0.5)" }} />
+                  style={{ background: "rgba(201, 160, 99, 0.08)" }}>
+                  <Search className="h-5 w-5" style={{ color: "rgba(201, 160, 99, 0.5)" }} />
                 </div>
                 <p className="text-[12.5px] text-white/40">
                   {searchQuery ? "No results found" : "No conversations yet — message a freelancer or client to start one."}
@@ -401,8 +429,8 @@ export default function Messages() {
                   onClick={() => setActiveId(c.id)}
                   className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-all"
                   style={{
-                    background: isActive ? "rgba(0,211,149,0.08)" : "transparent",
-                    borderLeft: isActive ? "2px solid #00d395" : "2px solid transparent",
+                    background: isActive ? "rgba(201, 160, 99, 0.08)" : "transparent",
+                    borderLeft: isActive ? "2px solid #C9A063" : "2px solid transparent",
                     borderBottom: "1px solid rgba(255,255,255,0.04)",
                   }}
                 >
@@ -422,7 +450,7 @@ export default function Messages() {
                       </span>
                       {c.unread > 0 && (
                         <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-[9.5px] font-bold text-black"
-                          style={{ background: "#00d395", boxShadow: "0 0 10px rgba(0,211,149,0.5)" }}>
+                          style={{ background: "#C9A063", boxShadow: "0 0 10px rgba(201, 160, 99, 0.5)" }}>
                           {c.unread}
                         </span>
                       )}
@@ -444,13 +472,21 @@ export default function Messages() {
                 <Avatar name={active.with.name} avatarUrl={active.with.avatarUrl} size="sm" online />
                 <div className="flex-1 min-w-0">
                   <p className="text-[14px] font-bold truncate">{active.with.name}</p>
-                  <p className="text-[11px]" style={{ color: "#00d395" }}>● Online</p>
+                  <p className="text-[11px]" style={{ color: "#C9A063" }}>● Online</p>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button className="rounded-xl p-2 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
+                  <button
+                    onClick={() => call.startCall(active.with.id, activeId, false)}
+                    aria-label="Voice call"
+                    className="rounded-xl p-2 text-white/40 transition-colors hover:bg-white/5 hover:text-white"
+                  >
                     <Phone className="h-4 w-4" />
                   </button>
-                  <button className="rounded-xl p-2 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
+                  <button
+                    onClick={() => call.startCall(active.with.id, activeId, true)}
+                    aria-label="Video call"
+                    className="rounded-xl p-2 text-white/40 transition-colors hover:bg-white/5 hover:text-white"
+                  >
                     <Video className="h-4 w-4" />
                   </button>
                   <button className="rounded-xl p-2 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
@@ -468,7 +504,7 @@ export default function Messages() {
 
               {/* Messages */}
               <div className="flex-1 space-y-1 overflow-y-auto px-5 py-4"
-                style={{ background: "radial-gradient(ellipse at 30% 20%, rgba(0,211,149,0.03) 0%, transparent 60%)" }}>
+                style={{ background: "radial-gradient(ellipse at 30% 20%, rgba(201, 160, 99, 0.03) 0%, transparent 60%)" }}>
                 {grouped.map((item, i) => {
                   if (item.type === "date") {
                     return (
@@ -495,9 +531,9 @@ export default function Messages() {
                             m.fileType?.startsWith("image/")
                               ? undefined
                               : isMe ? {
-                                background: "linear-gradient(135deg, #00d395 0%, #00b87d 100%)",
+                                background: "linear-gradient(135deg, #C9A063 0%, #00b87d 100%)",
                                 color: "#0a1a12",
-                                boxShadow: "0 4px 20px rgba(0,211,149,0.25)",
+                                boxShadow: "0 4px 20px rgba(201, 160, 99, 0.25)",
                                 fontWeight: 500,
                               } : {
                                 background: "rgba(255,255,255,0.07)",
@@ -548,7 +584,7 @@ export default function Messages() {
                 </button>
                 <div className="flex flex-1 items-center gap-2 rounded-2xl px-4 py-2"
                   style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.09)", transition: "border-color 0.2s" }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = "rgba(0,211,149,0.4)"}
+                  onFocus={(e) => e.currentTarget.style.borderColor = "rgba(201, 160, 99, 0.4)"}
                   onBlur={(e) => e.currentTarget.style.borderColor = "rgba(255,255,255,0.09)"}
                 >
                   <input
@@ -569,9 +605,9 @@ export default function Messages() {
                   aria-label="Send message"
                   className="shrink-0 rounded-xl p-2.5 transition-all disabled:cursor-not-allowed disabled:opacity-40 hover:scale-105 active:scale-95"
                   style={{
-                    background: draft.trim() ? "linear-gradient(135deg, #00d395, #00b87d)" : "rgba(255,255,255,0.06)",
+                    background: draft.trim() ? "linear-gradient(135deg, #C9A063, #00b87d)" : "rgba(255,255,255,0.06)",
                     color: draft.trim() ? "#0a1a12" : "rgba(255,255,255,0.3)",
-                    boxShadow: draft.trim() ? "0 4px 16px rgba(0,211,149,0.35)" : "none",
+                    boxShadow: draft.trim() ? "0 4px 16px rgba(201, 160, 99, 0.35)" : "none",
                   }}
                 >
                   <Send className="h-4 w-4" />
@@ -582,8 +618,8 @@ export default function Messages() {
             /* Empty state */
             <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-3xl"
-                style={{ background: "rgba(0,211,149,0.08)", border: "1px solid rgba(0,211,149,0.15)" }}>
-                <Send className="h-7 w-7" style={{ color: "rgba(0,211,149,0.5)" }} />
+                style={{ background: "rgba(201, 160, 99, 0.08)", border: "1px solid rgba(201, 160, 99, 0.15)" }}>
+                <Send className="h-7 w-7" style={{ color: "rgba(201, 160, 99, 0.5)" }} />
               </div>
               <div>
                 <p className="text-[15px] font-semibold text-white/70">No conversation selected</p>
@@ -598,7 +634,11 @@ export default function Messages() {
         {/* ── Details Panel — persistent 3rd column on xl+ ── */}
         {active && (
           <div className="hidden xl:block w-[260px] shrink-0" style={{ borderLeft: "1px solid rgba(255,255,255,0.06)" }}>
-            <DetailsPanel contact={active.with} />
+            <DetailsPanel
+              contact={active.with}
+              onVoiceCall={() => call.startCall(active.with.id, activeId, false)}
+              onVideoCall={() => call.startCall(active.with.id, activeId, true)}
+            />
           </div>
         )}
       </div>
@@ -613,7 +653,7 @@ export default function Messages() {
           />
           <div
             className="fixed inset-y-0 right-0 z-50 w-[300px] max-w-[85vw] xl:hidden animate-feed-in overflow-hidden"
-            style={{ background: "#0a0f0d", borderLeft: "1px solid rgba(255,255,255,0.08)" }}
+            style={{ background: "#1b1d20", borderLeft: "1px solid rgba(255,255,255,0.08)" }}
           >
             <div className="flex items-center justify-between px-4 py-3.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
               <p className="text-[13px] font-bold">Contact Info</p>
@@ -625,7 +665,11 @@ export default function Messages() {
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <DetailsPanel contact={active.with} />
+            <DetailsPanel
+              contact={active.with}
+              onVoiceCall={() => call.startCall(active.with.id, activeId, false)}
+              onVideoCall={() => call.startCall(active.with.id, activeId, true)}
+            />
           </div>
         </>
       )}

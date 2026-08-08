@@ -1,60 +1,51 @@
-// Backend integration: Auth (register/login/Google OAuth callback) now goes
-// through the real API. The rest of the app still runs on local/mock state
-// (see src/data/*) until the wider Day 8 integration lands.
-export const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:4100";
+// Auth (register/login/Google OAuth/профайл) — бүх хүсэлт apiClient.js-ээр
+// дамжина, тиймээс access token хугацаа дуусахад автоматаар refresh хийгдэнэ.
+//
+// Token хадгалалт болон API_BASE нь apiClient.js руу нүүсэн (refresh логик
+// тэдгээрт хандах шаардлагатай бөгөөд circular import үүсгэхгүйн тулд). Аль
+// хэдийн 30 гаруй файл эдгээрийг ЭНДЭЭС import хийдэг тул нэрийг нь хэвээр
+// нь дамжуулан гаргаж, дуудагч талыг өөрчлөх шаардлагагүй болгов.
+import {
+  API_BASE,
+  apiJson,
+  apiRequest,
+  errorMessage,
+  ApiError,
+  saveTokens,
+  clearTokens,
+  getAccessToken,
+  getRefreshToken,
+  hasSession,
+  refreshAccessToken,
+  AUTH_EXPIRED_EVENT,
+  TOKEN_REFRESHED_EVENT,
+} from "./apiClient.js";
 
-const ACCESS_KEY = "kreativ:accessToken";
-const REFRESH_KEY = "kreativ:refreshToken";
+export {
+  API_BASE,
+  saveTokens,
+  clearTokens,
+  getAccessToken,
+  getRefreshToken,
+  hasSession,
+  refreshAccessToken,
+  ApiError,
+  AUTH_EXPIRED_EVENT,
+  TOKEN_REFRESHED_EVENT,
+};
 
-function errorMessage(data) {
-  if (Array.isArray(data?.error)) return data.error.join(", ");
-  return data?.error || "Алдаа гарлаа. Дахин оролдоно уу.";
-}
-
-async function postJson(path, body, token) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(errorMessage(data));
-  return data;
-}
+// Нэвтрэх/бүртгүүлэх нь токенгүй дуудагдана — 401 дээр refresh оролдох нь
+// утгагүй (мөн буруу нууц үг оруулсныг session дууссан мэт харагдуулна).
+const postPublic = (path, body) => apiJson(path, { method: "POST", body, authed: false });
 
 // { user, accessToken, refreshToken }
 export function registerUser({ email, password, name, phone }) {
-  return postJson("/auth/register", { email, password, name, phone: phone || undefined });
+  return postPublic("/auth/register", { email, password, name, phone: phone || undefined });
 }
 
 // { user, accessToken, refreshToken }
 export function loginUser({ email, password }) {
-  return postJson("/auth/login", { email, password });
-}
-
-export function saveTokens(accessToken, refreshToken) {
-  try {
-    localStorage.setItem(ACCESS_KEY, accessToken);
-    localStorage.setItem(REFRESH_KEY, refreshToken);
-  } catch { /* ignore */ }
-}
-
-export function clearTokens() {
-  try {
-    localStorage.removeItem(ACCESS_KEY);
-    localStorage.removeItem(REFRESH_KEY);
-  } catch { /* ignore */ }
-}
-
-export function getAccessToken() {
-  try { return localStorage.getItem(ACCESS_KEY); } catch { return null; }
-}
-
-export function getRefreshToken() {
-  try { return localStorage.getItem(REFRESH_KEY); } catch { return null; }
+  return postPublic("/auth/login", { email, password });
 }
 
 // Server-side session revocation + local cleanup. Best-effort: логаут UI-д
@@ -64,22 +55,17 @@ export async function logoutUser() {
   const refreshToken = getRefreshToken();
   if (refreshToken) {
     try {
-      await fetch(`${API_BASE}/auth/logout`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken }),
-      });
+      await apiJson("/auth/logout", { method: "POST", body: { refreshToken }, authed: false });
     } catch { /* ignore — local cleanup still proceeds */ }
   }
   clearTokens();
 }
 
-export async function fetchMe(accessToken) {
-  const res = await fetch(`${API_BASE}/auth/me`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-  if (!res.ok) throw new Error("Failed to fetch current user");
-  return res.json();
+// accessToken аргумент нь зөвхөн буцаж нийцтэй байхын тулд үлдсэн — бодит
+// токеныг apiClient localStorage-оос уншина. Refresh нь токеныг сольдог тул
+// React closure-т баригдсан хуучин утгыг ашиглах нь алдаатай болсон.
+export function fetchMe() {
+  return apiJson("/auth/me");
 }
 
 export function googleLoginUrl() {
@@ -95,38 +81,55 @@ export function avatarSrc(avatarUrl) {
 
 // Onboarding (Day 8): creates the real FreelancerProfile/ClientProfile row —
 // without this, requireClientProfile (Jobs API) 403s for every new signup.
-export function saveFreelancerProfile(data, accessToken) {
-  return postJson("/profile/freelancer", data, accessToken);
+export function saveFreelancerProfile(data) {
+  return apiJson("/profile/freelancer", { method: "POST", body: data });
 }
-export function saveClientProfile(data, accessToken) {
-  return postJson("/profile/client", data, accessToken);
+export function saveClientProfile(data) {
+  return apiJson("/profile/client", { method: "POST", body: data });
 }
 
 // Settings (Day 8/9): load the caller's own profile to edit — returns null
 // (not an error) when the user simply hasn't created that profile type yet.
-async function fetchOwnProfile(kind, accessToken) {
-  const res = await fetch(`${API_BASE}/profile/${kind}/me`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-  if (!res.ok) return null;
-  return res.json();
+async function fetchOwnProfile(kind) {
+  try {
+    return await apiJson(`/profile/${kind}/me`);
+  } catch (err) {
+    // 404 = ийм профайл байхгүй (хэвийн). Бусад алдааг нуувал "профайл
+    // байхгүй" мэт харагдаад Onboarding руу буруу шиднэ — тиймээс дамжуулна.
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
 }
-export const fetchFreelancerProfile = (accessToken) => fetchOwnProfile("freelancer", accessToken);
-export const fetchClientProfile = (accessToken) => fetchOwnProfile("client", accessToken);
+export const fetchFreelancerProfile = () => fetchOwnProfile("freelancer");
+export const fetchClientProfile = () => fetchOwnProfile("client");
 
 // Нэвтэрсний дараа хаашаа явахыг тодорхойлно — `user.role` нь зөвхөн
 // USER/ADMIN ялгаж өгдөг тул (freelancer/client профайлтай холбоогүй)
 // хуучин код бүх хэрэглэгчийг client-dashboard руу чиглүүлдэг байсан bug-ыг
 // засав. Хоёул профайлтай бол freelancer-ийг өгөгдмөлөөр, аль нь ч байхгүй
 // бол (onboarding дуусгаагүй хуучин акаунт) onboarding руу шилжүүлнэ.
-export async function resolveHomeRoute(user, accessToken) {
+export async function resolveHomeRoute(user) {
   if (user.role === "ADMIN") return { page: "admin" };
-  const [freelancer, client] = await Promise.all([
-    fetchFreelancerProfile(accessToken),
-    fetchClientProfile(accessToken),
-  ]);
-  if (freelancer) return { page: "freelancer-dashboard" };
-  if (client) return { page: "client-dashboard" };
+
+  // "Профайл БАЙХГҮЙ" (404) болон "мэдэх боломжгүй байлаа" (сүлжээ/сервер
+  // алдаа) хоёрыг заавал ялгана. Өмнө нь хоёуланг нь `.catch(() => null)`
+  // залгидаг байсан тул түр зуурын алдаа гарахад аль хэдийн профайлтай
+  // хэрэглэгчийг ОНБОАРДИНГ руу буцаадаг байв — fetchOwnProfile нь яг
+  // үүнээс сэргийлэхийн тулд 404-өөс бусдыг зориуд шиддэг байсныг
+  // утгагүй болгож байлаа.
+  const settled = await Promise.allSettled([fetchFreelancerProfile(), fetchClientProfile()]);
+  const [fl, cl] = settled;
+
+  if (fl.status === "fulfilled" && fl.value) return { page: "freelancer-dashboard" };
+  if (cl.status === "fulfilled" && cl.value) return { page: "client-dashboard" };
+
+  // Аль нэг нь эвдэрсэн бол профайл байхгүй гэж дүгнэж болохгүй — дахин
+  // онбоардинг хийлгэхээс дашбоард дээр нь үлдээх нь хамаагүй бага хор
+  // хөнөөлтэй (дараагийн ачаалалт зөв төлөвийг олно).
+  if (settled.some((r) => r.status === "rejected")) {
+    return { page: "freelancer-dashboard" };
+  }
+
   return { page: "onboarding", params: { role: "freelancer" } };
 }
 
@@ -136,8 +139,17 @@ const REDIRECT_KEY = "kreativ_redirect_after_login";
 // bar → Find Talent) gets bounced to /auth with zero context, and used to
 // lose whatever they were doing. sessionStorage (not in-memory JS state)
 // survives the real page navigation Google's OAuth redirect does.
+// Хадгалж БОЛОХГҮЙ хуудсууд:
+//   auth / auth-callback / onboarding — нэвтрэлтийн урсгалын өөрийнх нь
+//     алхмууд; өөрлүүгээ буцаах нь давталт үүсгэнэ.
+//   home — Auth.jsx нь stash-ыг хэрэглэгчийн ЖИНХЭНЭ дашбоардаас илүүд
+//     үздэг тул "home"-ыг хадгалбал нэвтэрсэн хүн дашбоард дээрээ очихын
+//     оронд landing page руу буцна. Home бол ямар ч тохиолдолд өгөгдмөл
+//     чиглэл тул хадгалах нь ашиггүй, харин хор нь бодитой.
+const NEVER_STASH = new Set(["auth", "auth-callback", "onboarding", "home"]);
+
 export function stashRedirect(page, params) {
-  if (page === "auth" || page === "auth-callback" || page === "onboarding") return;
+  if (NEVER_STASH.has(page)) return;
   sessionStorage.setItem(REDIRECT_KEY, JSON.stringify({ page, params }));
 }
 
@@ -146,7 +158,12 @@ export function consumeStashedRedirect() {
   if (!raw) return null;
   sessionStorage.removeItem(REDIRECT_KEY);
   try {
-    return JSON.parse(raw);
+    const stashed = JSON.parse(raw);
+    // Уншихдаа ч дахин шалгана: хуучин хувилбарын үлдэгдэл ("home" гэж
+    // хадгалагдсан) sessionStorage-д үлдсэн байж болно. Түүнийг хүлээн
+    // авбал энэ хэрэглэгч дахин нэг удаа landing page руу шидэгдэнэ.
+    if (!stashed?.page || NEVER_STASH.has(stashed.page)) return null;
+    return stashed;
   } catch {
     return null;
   }
@@ -154,23 +171,19 @@ export function consumeStashedRedirect() {
 
 // FR-1.1: утасны OTP (демо горим — backend хариултад demoCode-ыг шууд
 // буцаадаг тул жинхэнэ SMS gateway ирэх хүртэл UI дээр шууд харуулж болно)
-export function requestPhoneOtp(phone, accessToken) {
-  return postJson("/auth/phone/request-otp", { phone }, accessToken);
+export function requestPhoneOtp(phone) {
+  return apiJson("/auth/phone/request-otp", { method: "POST", body: { phone } });
 }
-export function verifyPhoneOtp(phone, code, accessToken) {
-  return postJson("/auth/phone/verify-otp", { phone, code }, accessToken);
+export function verifyPhoneOtp(phone, code) {
+  return apiJson("/auth/phone/verify-otp", { method: "POST", body: { phone, code } });
 }
 
 // { id, email, name, phone, avatarUrl, role }
-export async function uploadAvatar(file, accessToken) {
+export async function uploadAvatar(file) {
   const form = new FormData();
   form.append("avatar", file);
-  const res = await fetch(`${API_BASE}/profile/avatar`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${accessToken}` },
-    body: form,
-  });
+  const res = await apiRequest("/profile/avatar", { method: "POST", body: form });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(errorMessage(data));
+  if (!res.ok) throw new ApiError(errorMessage(data), res.status);
   return data;
 }

@@ -205,10 +205,23 @@ router.get('/me', requireAuth, async (req, res, next) => {
         avatarUrl: true,
         role: true,
         createdAt: true,
+        // Хэрэглэгч freelancer/client горимоо өөрөө сольдог болсон тул
+        // (AppShell-ийн "Switch to …") аль профайл нь аль хэдийн үүссэнийг
+        // мэдэх шаардлагатай. Профайл байхгүй горим руу шилжихэд эхлээд
+        // onboarding руу оруулна. `select` дотор тоолсноор нэмэлт хоёр
+        // round-trip хийхгүйгээр /auth/me-д шууд ирнэ.
+        freelancerProfile: { select: { id: true } },
+        clientProfile: { select: { id: true } },
       },
     });
     if (!user) return res.status(404).json({ error: 'Олдсонгүй' });
-    res.json(user);
+
+    const { freelancerProfile, clientProfile, ...rest } = user;
+    res.json({
+      ...rest,
+      hasFreelancerProfile: !!freelancerProfile,
+      hasClientProfile: !!clientProfile,
+    });
   } catch (err) {
     next(err);
   }

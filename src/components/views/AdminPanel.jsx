@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNav } from "../../nav.jsx";
+import { DASHBOARD_FOR, useNav } from "../../nav.jsx";
 import {
   Crown,
   Users,
@@ -51,15 +51,22 @@ const ROLE_BADGE = {
 };
 
 export default function AdminPanel() {
-  const { role, nav, user } = useNav();
+  const { role, nav, user, authReady, mode } = useNav();
 
   // Direct hash navigation (#/admin) bypasses the sidebar's gating, so guard
   // the view itself too. `nav` is a fresh closure every NavProvider render
   // (not memoized), so it's deliberately left out of the deps.
+  //
+  // `authReady`-г хүлээх нь чухал: /auth/me шийдэгдэх хүртэл role нь null
+  // байдаг тул өмнө нь ЖИНХЭНЭ админыг ч хуудас ачаалмагц шууд гаргаж
+  // хаядаг байв. Буцаах хаяг нь одоо горимоос хамаарна (хатуу
+  // "client-dashboard" биш) — freelancer админыг харь дашбоард руу
+  // шидэхгүй.
   useEffect(() => {
-    if (role !== "admin") nav("client-dashboard");
+    if (!authReady) return;
+    if (role !== "admin") nav(DASHBOARD_FOR[mode] || DASHBOARD_FOR.freelancer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [role]);
+  }, [role, authReady, mode]);
 
   const [tab, setTab] = useState("overview");
   const [stats, setStats] = useState(null);
@@ -245,7 +252,7 @@ export default function AdminPanel() {
                       <div
                         className={
                           last
-                            ? "w-full rounded-t-lg bg-gradient-to-t from-brand to-neon shadow-[0_0_18px_rgba(6,182,212,0.4)]"
+                            ? "w-full rounded-t-lg bg-brand"
                             : "w-full rounded-t-lg bg-white/12 transition-colors hover:bg-brand/40"
                         }
                         style={{ height: `${Math.max(4, Math.round((s.count / maxSignup) * 100))}%` }}
@@ -268,7 +275,7 @@ export default function AdminPanel() {
                     </div>
                     <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/8">
                       <div
-                        className="h-full rounded-full bg-gradient-to-r from-brand to-neon"
+                        className="h-full rounded-full bg-brand"
                         style={{ width: `${Math.max(3, Math.round((r.count / maxRole) * 100))}%` }}
                       />
                     </div>

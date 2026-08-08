@@ -34,6 +34,54 @@ const envSchema = z.object({
 
   // ── AI chat (заавал биш — тохируулаагүй бол frontend rule-based хариултаа ашиглана) ──
   ANTHROPIC_API_KEY: z.string().optional(),
+
+  // ── Google Gemini (заавал биш — prompt-оор ажил хайх) ──
+  // Түлхүүр: https://aistudio.google.com/api-keys
+  // Тохируулаагүй бол /ai/job-search нь энгийн түлхүүр үгийн хайлт руугаа
+  // унана — хэрэглэгчид хоосон дэлгэц харагдахгүй.
+  GEMINI_API_KEY: z.string().optional(),
+  GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
+  // Нэг хэрэглэгч өдөрт хэдэн удаа AI хайлт хийж болох вэ. LLM дуудлага
+  // бүр мөнгө тул хэрэглэгчийн түвшний хатуу таг — IP-д суурилсан
+  // rate limit нь нэг хүн олон IP-аас орох, эсвэл нэг NAT-ын ард олон
+  // хүн байх хоёуланг зөв шийддэггүй.
+  AI_SEARCH_DAILY_LIMIT: z.coerce.number().int().positive().default(40),
+
+  // ── Stripe (заавал биш) ──
+  // Escrow-ийн deposit болон Pro захиалгын аль алинд хэрэглэнэ.
+  // Test mode түлхүүр нь `sk_test_...` — жинхэнэ мөнгө хөдлөхгүй.
+  STRIPE_SECRET_KEY: z.string().optional(),
+  // Webhook signing secret (`whsec_...`). Үүнгүйгээр webhook-ийн гарын үсгийг
+  // шалгах боломжгүй тул route нь хүсэлтийг бүрмөсөн ТАТГАЛЗАНА — гарын
+  // үсэг шалгаагүй webhook нь хэн ч дурын төлбөрийг "төлөгдсөн" болгож
+  // чадна гэсэн үг.
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  // Pro багцын Stripe Price ID-ууд (Dashboard → Product → Pricing).
+  STRIPE_PRICE_PRO_MONTHLY: z.string().optional(),
+  STRIPE_PRICE_PRO_YEARLY: z.string().optional(),
+
+  // ── Төлбөрийн провайдер сонголт ──
+  // 'qpay' | 'stripe' | 'auto'. 'auto' үед тохируулагдсан нь сонгогдоно
+  // (Stripe нь QPay-аас түрүүлнэ), аль нь ч байхгүй бол демо горим.
+  PAYMENT_PROVIDER: z.enum(['qpay', 'stripe', 'auto']).default('auto'),
+
+  // Демо төлбөрийг ЗӨВХӨН энэ тугтай үед зөвшөөрнө. production дээр
+  // тохируулаагүй бол демо горим бүрмөсөн хаагдана (доор app-ийн
+  // шалгалтыг үзнэ үү) — эс тэгвээс жинхэнэ сайт дээр хэн ч үнэгүй
+  // үлдэгдэл үүсгэж чадна.
+  ALLOW_DEMO_PAYMENTS: z.coerce.boolean().default(false),
+
+  // ── Объект хадгалалт (заавал биш — S3_BUCKET + түлхүүр хоёулаа өгөгдсөн
+  //    үед л асна, үгүй бол локал диск рүү унана). Дэлгэрэнгүйг
+  //    src/lib/storage.js-ээс үзнэ үү. ──
+  S3_BUCKET: z.string().optional(),
+  S3_ACCESS_KEY_ID: z.string().optional(),
+  S3_SECRET_ACCESS_KEY: z.string().optional(),
+  S3_REGION: z.string().default('auto'),
+  // Cloudflare R2 / MinIO / Backblaze — AWS бус нийлүүлэгчийн эндпойнт.
+  S3_ENDPOINT: z.string().optional(),
+  // CDN эсвэл public bucket-ийн уншигдах хаяг (заагаагүй бол угсарна).
+  S3_PUBLIC_URL: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

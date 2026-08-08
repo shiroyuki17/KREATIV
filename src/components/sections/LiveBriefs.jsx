@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
-import { JOBS } from "../../data/mock.js";
 import { useNav } from "../../nav.jsx";
+import { useHomeJobs, toJobCard } from "../../lib/homeData.js";
 import Reveal from "../fx/Reveal.jsx";
 import TiltedCard from "../fx/TiltedCard.jsx";
 
@@ -16,10 +16,15 @@ const CAT_GRAD = {
   Marketing: "from-rose-400/55 to-violet/20",
 };
 
-const PICKED = [JOBS[0], JOBS[1], JOBS[3], JOBS[4]];
-
 export default function LiveBriefs() {
   const { nav } = useNav();
+  const jobs = useHomeJobs();
+  const picked = (jobs || []).slice(0, 4).map(toJobCard);
+
+  // Нээлттэй зар байхгүй бол хэсгийг бүхэлд нь харуулахгүй — хоосон
+  // "Worth applying to this week" гарчиг нь зохиомол зар харуулснаас
+  // дээр ч, утгагүй хэвээр.
+  if (jobs && picked.length === 0) return null;
 
   return (
     <section className="relative py-10 md:py-16">
@@ -42,7 +47,7 @@ export default function LiveBriefs() {
         </Reveal>
 
         <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {PICKED.map((job, i) => (
+          {picked.map((job, i) => (
             <motion.div
               key={job.id}
               initial={{ opacity: 0, y: 20 }}
@@ -52,10 +57,10 @@ export default function LiveBriefs() {
             >
               <TiltedCard maxTilt={6} className="aspect-[4/3]">
                 <button
-                  onClick={() => nav("project", job)}
-                  className={`group relative flex h-full w-full flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br p-4 text-left ${CAT_GRAD[job.cat]}`}
+                  onClick={() => nav("project", job.raw)}
+                  className={`group relative flex h-full w-full flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br p-4 text-left ${CAT_GRAD[job.cat] || CAT_GRAD.Dev}`}
                 >
-                  <span className="w-fit rounded-full bg-black/25 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white/90 backdrop-blur-sm">
+                  <span className="w-fit rounded-full bg-black/25 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white/90">
                     {job.cat}
                   </span>
                   <div>

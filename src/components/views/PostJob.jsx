@@ -55,9 +55,9 @@ function Steps({ step }) {
           <span
             className={
               i < step
-                ? "flex h-8 w-8 items-center justify-center rounded-full bg-brand text-[12px] font-bold shadow-[0_0_16px_rgba(0,211,149,0.6)]"
+                ? "flex h-8 w-8 items-center justify-center rounded-full bg-brand text-[12px] font-bold"
                 : i === step
-                  ? "flex h-8 w-8 items-center justify-center rounded-full border-2 border-neon bg-neon/10 text-[12px] font-bold text-neon shadow-[0_0_18px_rgba(6,182,212,0.5)]"
+                  ? "flex h-8 w-8 items-center justify-center rounded-full border-2 border-neon bg-neon/10 text-[12px] font-bold text-neon"
                   : "flex h-8 w-8 items-center justify-center rounded-full border border-white/15 text-[12px] font-semibold text-white/35"
             }
           >
@@ -66,7 +66,7 @@ function Steps({ step }) {
           {i < STEPS.length - 1 && (
             <div className="h-0.5 flex-1 overflow-hidden rounded-full bg-white/8">
               <div
-                className="h-full bg-gradient-to-r from-brand to-neon transition-all duration-500"
+                className="h-full bg-brand transition-all duration-500"
                 style={{ width: i < step ? "100%" : "0%" }}
               />
             </div>
@@ -84,7 +84,7 @@ function Chip({ active, children, onClick }) {
       onClick={onClick}
       className={
         active
-          ? "rounded-full border border-brand/60 bg-brand/15 px-4 py-2 text-[12.5px] font-semibold text-brand-soft shadow-[0_0_16px_rgba(0,211,149,0.25)]"
+          ? "rounded-full border border-brand/60 bg-brand/15 px-4 py-2 text-[12.5px] font-semibold text-brand-soft"
           : "rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12.5px] font-medium text-white/55 transition-colors hover:border-white/25 hover:text-white"
       }
     >
@@ -207,7 +207,7 @@ export default function PostJob() {
     return (
       <div className="mx-auto flex min-h-screen max-w-xl items-center px-6 py-28">
         <div className="glass w-full rounded-3xl p-10 text-center">
-          <span className={`mx-auto flex h-20 w-20 items-center justify-center rounded-full border-2 ${pendingReview ? "border-amber-400 bg-amber-400/10 text-amber-300 shadow-[0_0_44px_rgba(251,191,36,0.35)]" : "border-mint bg-mint/10 text-mint shadow-[0_0_44px_rgba(16,185,129,0.45)]"}`}>
+          <span className={`mx-auto flex h-20 w-20 items-center justify-center rounded-full border-2 ${pendingReview ? "border-amber-400 bg-amber-400/10 text-amber-300 shadow-[0_0_44px_rgba(251,191,36,0.35)]" : "border-mint bg-mint/10 text-mint"}`}>
             <Check className="h-9 w-9" />
           </span>
           <h1 className="mt-6 font-display text-2xl font-bold tracking-tight">
@@ -242,7 +242,7 @@ export default function PostJob() {
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <button
               onClick={() => nav("find-talent")}
-              className="flex-1 rounded-xl bg-gradient-to-r from-brand to-brand-soft py-3 text-[13.5px] font-semibold glow-brand transition-shadow hover:shadow-[0_0_40px_rgba(0,211,149,0.6)]"
+              className="flex-1 rounded-xl bg-brand py-3 text-[13.5px] font-semibold glow-brand transition-shadow"
             >
               Review matches
             </button>
@@ -302,7 +302,7 @@ export default function PostJob() {
                 <button
                   onClick={draftWithAi}
                   disabled={aiDrafting}
-                  className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-brand px-4 py-2.5 text-[12.5px] font-bold text-ink transition-shadow hover:shadow-[0_0_20px_rgba(0,211,149,0.4)] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-brand px-4 py-2.5 text-[12.5px] font-bold text-ink transition-shadow disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {aiDrafting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                   {aiDrafting ? "Drafting…" : "Draft"}
@@ -375,7 +375,7 @@ export default function PostJob() {
                     onClick={() => setType(id)}
                     className={
                       type === id
-                        ? "flex items-start gap-3 rounded-xl border border-brand/60 bg-brand/10 p-4 text-left shadow-[0_0_20px_rgba(0,211,149,0.2)]"
+                        ? "flex items-start gap-3 rounded-xl border border-brand/60 bg-brand/10 p-4 text-left"
                         : "flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-left transition-colors hover:border-white/25"
                     }
                   >
@@ -516,7 +516,7 @@ export default function PostJob() {
             type="button"
             onClick={() => (step < 2 ? setStep((s) => s + 1) : publish())}
             disabled={!canNext || submitting}
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand to-brand-soft px-6 py-3 text-[13.5px] font-semibold glow-brand transition-all hover:shadow-[0_0_44px_rgba(0,211,149,0.6)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+            className="inline-flex items-center gap-2 rounded-xl bg-brand px-6 py-3 text-[13.5px] font-semibold glow-brand transition-all disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
           >
             {step < 2 ? "Continue" : submitting ? "Publishing…" : "Publish brief"}
             <ArrowRight className="h-4 w-4" />

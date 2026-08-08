@@ -84,7 +84,7 @@ export default function TrustSafety() {
 
       {/* The #1 fear, solved */}
       <div className="mt-16 grid gap-5 md:grid-cols-2">
-        <SpotlightCard spotColor="rgba(16, 185, 129, 0.14)">
+        <SpotlightCard spotColor="rgba(127, 168, 138, 0.14)">
           <div className="p-7">
             <span className="inline-flex items-center gap-2 rounded-full border border-mint/30 bg-mint/10 px-3.5 py-1.5 text-[10.5px] font-bold uppercase tracking-widest text-mint">
               For freelancers
@@ -151,7 +151,7 @@ export default function TrustSafety() {
                 <span
                   className={
                     i === 0
-                      ? "flex h-10 w-10 items-center justify-center rounded-full bg-mint font-display text-[14px] font-bold text-ink shadow-[0_0_20px_rgba(16,185,129,0.55)]"
+                      ? "flex h-10 w-10 items-center justify-center rounded-full bg-mint font-display text-[14px] font-bold text-ink"
                       : "flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/[0.04] font-display text-[14px] font-bold text-white/60"
                   }
                 >
@@ -220,7 +220,7 @@ export default function TrustSafety() {
         <Magnet strength={0.15} className="mt-6">
           <button
             onClick={() => nav("auth")}
-            className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-mint to-emerald-400 px-8 py-3.5 text-[14px] font-bold text-ink glow-mint transition-shadow hover:shadow-[0_0_50px_rgba(16,185,129,0.6)]"
+            className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-mint to-emerald-400 px-8 py-3.5 text-[14px] font-bold text-ink glow-mint transition-shadow"
           >
             Get protected — it's free
             <ArrowRight className="h-4 w-4" />

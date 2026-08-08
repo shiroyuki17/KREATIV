@@ -1,24 +1,10 @@
-import { API_BASE } from "./authApi.js";
+// Хүсэлт бүр apiClient-ээр дамжина — access token хугацаа дуусахад 401 дээр
+// автоматаар refresh хийгээд хүсэлтийг давтана. Дуудагч талын `accessToken`
+// аргумент нь буцаж нийцтэй байхын тулд үлдсэн ба ашиглагдахаа больсон.
+// (apiJson нь 204-ийг null болгож буцаадаг — DELETE /tasks/:id үүнийг хэрэглэнэ.)
+import { apiJson } from "./apiClient.js";
 
-function errorMessage(data) {
-  if (Array.isArray(data?.error)) return data.error.join(", ");
-  return data?.error || "Алдаа гарлаа. Дахин оролдоно уу.";
-}
-
-async function authedJson(path, { method = "GET", body, accessToken } = {}) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method,
-    headers: {
-      ...(body ? { "Content-Type": "application/json" } : {}),
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  if (res.status === 204) return null;
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(errorMessage(data));
-  return data;
-}
+const authedJson = (path, { method = "GET", body } = {}) => apiJson(path, { method, body });
 
 // ── Kanban tasks (PRD FR-3.1) ──
 export const fetchTasks = (contractId, accessToken) =>

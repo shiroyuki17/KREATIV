@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
-import { JOBS, TALENT } from "../../data/mock.js";
 import { useNav } from "../../nav.jsx";
+import { useHomeJobs, toJobCard } from "../../lib/homeData.js";
 import Reveal from "../fx/Reveal.jsx";
 
 // Contra's "Trending topics" strip, adapted: instead of community challenges
@@ -16,10 +16,18 @@ const CAT_GRAD = {
   Marketing: "from-rose-400/25 via-transparent to-transparent",
 };
 
-const TRENDING = [...JOBS].sort((a, b) => b.proposals - a.proposals).slice(0, 4);
-
 export default function TrendingNow() {
   const { nav } = useNav();
+  const jobs = useHomeJobs();
+
+  // Хамгийн олон санал авсан 4 зар. Өмнө нь mock-ийн зохиомол `proposals`
+  // талбараар эрэмбэлдэг байсныг бодит /jobs-ийн proposalCount орлов.
+  const trending = [...(jobs || [])]
+    .sort((a, b) => (b.proposalCount || 0) - (a.proposalCount || 0))
+    .slice(0, 4)
+    .map(toJobCard);
+
+  if (jobs && trending.length === 0) return null;
 
   return (
     <section className="relative py-10">
@@ -36,9 +44,9 @@ export default function TrendingNow() {
           </button>
         </Reveal>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {TRENDING.map((job, i) => {
-            const applicants = TALENT.filter((t) => t.cat === job.cat).slice(0, 3);
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {trending.map((job, i) => {
+            const bids = job.raw.proposalCount || 0;
             return (
               <motion.button
                 key={job.id}
@@ -46,27 +54,29 @@ export default function TrendingNow() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-60px" }}
                 transition={{ duration: 0.45, delay: i * 0.07, ease: [0.22, 1, 0.36, 1] }}
-                whileHover={{ y: -4 }}
-                onClick={() => nav("project", job)}
-                className={`relative overflow-hidden rounded-2xl border border-white/8 bg-gradient-to-br p-4 text-left transition-colors hover:border-white/20 ${CAT_GRAD[job.cat]}`}
+                whileHover={{ y: -6, scale: 1.02 }}
+                onClick={() => nav("project", job.raw)}
+                className={`group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br p-5 text-left transition-all duration-300 hover:border-brand/50 ${CAT_GRAD[job.cat] || CAT_GRAD.Dev}`}
               >
-                <p className="line-clamp-2 text-[13px] font-semibold leading-snug text-white/90">
+                <div className="flex items-center justify-between">
+                  <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-soft">
+                    {job.cat}
+                  </span>
+                  <span className="text-[11px] font-medium text-white/40">
+                    {bids === 0 ? "No bids yet" : `${bids} ${bids === 1 ? "bid" : "bids"}`}
+                  </span>
+                </div>
+                <p className="mt-3 line-clamp-2 font-display text-[14.5px] font-bold leading-snug text-white group-hover:text-brand-soft transition-colors">
                   {job.title}
                 </p>
-                <div className="mt-4 flex items-center justify-between">
+                <div className="mt-5 flex items-center justify-between border-t border-white/10 pt-3.5">
                   <div>
-                    <p className="font-display text-[15px] font-bold text-white">{job.budget}</p>
-                    <p className="text-[10.5px] text-white/40">{job.proposals} proposals</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-white/40">Budget</p>
+                    <p className="font-display text-[16px] font-bold text-mint">{job.budget}</p>
                   </div>
-                  <div className="flex -space-x-2">
-                    {applicants.map((t) => (
-                      <span
-                        key={t.name}
-                        className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-brand/60 to-neon/50 text-[9px] font-bold ring-2 ring-[#04070a]"
-                      >
-                        {t.initials}
-                      </span>
-                    ))}
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-white/40">Posted</p>
+                    <p className="text-[12px] font-medium text-white/70">{job.posted}</p>
                   </div>
                 </div>
               </motion.button>

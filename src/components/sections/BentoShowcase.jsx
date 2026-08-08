@@ -67,7 +67,7 @@ export default function BentoShowcase() {
                 <Magnet>
                   <button
                     onClick={() => nav("project", featured)}
-                    className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-3 text-[13px] font-semibold glow-brand transition-shadow hover:shadow-[0_0_40px_rgba(0,211,149,0.6)]"
+                    className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-3 text-[13px] font-semibold glow-brand transition-shadow"
                   >
                     Apply Now
                     <ArrowRight className="h-4 w-4" />
@@ -80,7 +80,7 @@ export default function BentoShowcase() {
           {/* Medium: top talent */}
           <SpotlightCard
             className="md:col-span-2 transition-transform duration-300 hover:scale-[1.015]"
-            spotColor="rgba(6, 182, 212, 0.16)"
+            spotColor="rgba(201, 160, 99, 0.12)"
           >
             <div className="flex h-full flex-col p-6">
               <div className="flex items-center justify-between">
@@ -88,12 +88,12 @@ export default function BentoShowcase() {
                   <Users className="h-3.5 w-3.5 text-neon" />
                   Top rated this week
                 </p>
-                <a
-                  href="#jobs"
+                <button
+                  onClick={() => nav("find-talent")}
                   className="text-[12px] font-medium text-brand-soft hover:text-white"
                 >
                   View all →
-                </a>
+                </button>
               </div>
               <div className="mt-5 grid gap-3 sm:grid-cols-3">
                 {TALENT.slice(0, 3).map((f) => (
@@ -132,15 +132,18 @@ export default function BentoShowcase() {
           </SpotlightCard>
 
           {/* Small: live jobs counter */}
-          <SpotlightCard className="transition-transform duration-300 hover:scale-[1.02]" spotColor="rgba(16, 185, 129, 0.16)">
+          <SpotlightCard className="transition-transform duration-300 hover:scale-[1.02]" spotColor="rgba(201, 160, 99, 0.12)">
             <div className="flex h-full flex-col justify-between p-6">
               <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-mint/30 bg-mint/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-mint">
                 <span className="h-1.5 w-1.5 animate-pulse-soft rounded-full bg-mint" />
                 Live
               </span>
               <div>
+                {/* null = /analytics/public хараахан ирээгүй. Өмнөх кодын
+                    адил зохиомол тоо (1284) урьдчилж харуулахгүй — тоо нь
+                    ирэхээрээ л гарна. */}
                 <p className="font-display text-4xl font-bold tabular-nums">
-                  {openBriefs.toLocaleString("en-US")}
+                  {openBriefs == null ? "—" : openBriefs.toLocaleString("en-US")}
                 </p>
                 <p className="mt-1 text-[11.5px] text-white/45">
                   briefs open right now

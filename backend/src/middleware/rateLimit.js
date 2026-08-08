@@ -25,6 +25,19 @@ export const apiLimiter = rateLimit({
   message: { error: 'Хэт олон хүсэлт. Түр хүлээгээд дахин оролдоно уу.' },
 });
 
+// AI-аар ажил хайх — LLM дуудлага тул хатуу хязгаар, гэхдээ хайлт нь чатаас
+// илүү давтамжтай үйлдэл (хүн хайлтаа боловсронгуй болгож дахин бичдэг) тул
+// aiLimiter-ээс арай уужим. Хэрэглэгчийн ӨДРИЙН квот нь ai.routes.js дотор
+// тусад нь хэрэгждэг — энэ нь зөвхөн IP-ийн түвшний тэсрэлтээс хамгаална.
+export const aiSearchLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip,
+  message: { error: 'Хэт олон хайлт хийлээ. Түр хүлээгээд дахин оролдоно уу.' },
+});
+
 // LLM дуудлага бүр жинхэнэ мөнгөтэй холбоотой тул apiLimiter-ээс хамаагүй
 // хатуу хязгаар — нэвтрээгүй зочин ч ChatWidget-ийг зорьж spam хийж чадахгүй.
 export const aiLimiter = rateLimit({

@@ -110,4 +110,77 @@ router.get('/reviews/for/:userId', async (req, res, next) => {
   }
 });
 
+// ── GET /reviews/public ── (нийтийн "Success stories" хуудасны эх сурвалж)
+//
+// Өмнө нь Reviews.jsx нь src/data/appMock.js-ийн зохиомол сэтгэгдэл болон
+// hardcode хийсэн "4.9 үнэлгээ / 48,000+ төсөл / 98% дахин ажилладаг"
+// гэсэн тоог харуулдаг байсан — эдгээр нь ямар ч бодит өгөгдөлд
+// тулгуурлаагүй тул хэрэглэгчид худал мэдээлэл өгч байлаа. Энэ endpoint
+// нь зөвхөн бодитоор бүртгэгдсэн үнэлгээг буцаана: өгөгдөл байхгүй бол
+// тоо нь 0 байх бөгөөд UI нь "хараахан үнэлгээ алга" гэж илэн далангүй
+// хэлнэ.
+//
+// /reviews/for/:userId-тэй ижил double-blind дүрмийг мөрдөнө — нээгдээгүй
+// үнэлгээ нийтийн хуудсаар "гоожих" ёсгүй.
+router.get('/reviews/public', async (req, res, next) => {
+  try {
+    const reviews = await prisma.review.findMany({
+      where: { comment: { not: null } },
+      include: {
+        reviewer: { select: { name: true } },
+        reviewee: { select: { name: true, freelancerProfile: { select: { id: true } } } },
+        contract: { select: { id: true, completedAt: true, job: { select: { title: true } } } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+
+    const contractIds = [...new Set(reviews.map((r) => r.contract.id))];
+    const counts = contractIds.length
+      ? await prisma.review.groupBy({
+          by: ['contractId'],
+          where: { contractId: { in: contractIds } },
+          _count: true,
+        })
+      : [];
+    const countByContract = Object.fromEntries(counts.map((c) => [c.contractId, c._count]));
+
+    const now = Date.now();
+    const revealed = reviews.filter((r) => {
+      if (countByContract[r.contract.id] >= 2) return true;
+      const completedAt = r.contract.completedAt;
+      return completedAt && now - new Date(completedAt).getTime() >= REVEAL_AFTER_DAYS * 24 * 60 * 60 * 1000;
+    });
+
+    // Нэгтгэсэн тоог БҮХ үнэлгээн дээр (сэтгэгдэлгүйг нь оруулаад) бодно —
+    // дундаж оноо нь сэтгэгдэл бичсэн эсэхээс хамаарах ёсгүй.
+    const [agg, completedContracts] = await Promise.all([
+      prisma.review.aggregate({ _avg: { stars: true }, _count: { _all: true } }),
+      prisma.contract.count({ where: { status: 'COMPLETED' } }),
+    ]);
+
+    res.json({
+      stats: {
+        averageRating: agg._avg.stars ?? null,
+        totalReviews: agg._count._all,
+        completedContracts,
+      },
+      reviews: revealed.slice(0, 24).map((r) => ({
+        id: r.id,
+        stars: r.stars,
+        comment: r.comment,
+        createdAt: r.createdAt,
+        reviewerName: r.reviewer?.name || 'KREATIV user',
+        jobTitle: r.contract?.job?.title || null,
+        // Хэн хэнийг үнэлснийг ялгах нь "Clients / Freelancers" шүүлтүүрт
+        // хэрэгтэй: үнэлүүлэгч нь freelancer профайлтай бол уг сэтгэгдлийг
+        // ЗАХИАЛАГЧ бичсэн гэсэн үг.
+        authorSide: r.reviewee?.freelancerProfile ? 'client' : 'freelancer',
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

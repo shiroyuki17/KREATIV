@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { Search, Star, BadgeCheck, ChevronLeft, ChevronRight as ChevronRightIcon, Sparkles, SlidersHorizontal, X, ChevronRight, ChevronDown, AlertCircle } from "lucide-react";
+import { Search, Star, BadgeCheck, ChevronLeft, ChevronRight as ChevronRightIcon, Sparkles, SlidersHorizontal, X, ChevronRight, ChevronDown, AlertCircle, Loader2, Wand2 } from "lucide-react";
 import SpotlightCard from "../fx/SpotlightCard.jsx";
 import { useNav } from "../../nav.jsx";
-import { fetchJobs } from "../../lib/jobsApi.js";
+import { fetchJobs, searchJobsByPrompt } from "../../lib/jobsApi.js";
 import { useEscapeKey } from "../../hooks/useEscapeKey.js";
 import { CardGridSkeleton } from "../ui/Skeleton.jsx";
 
@@ -126,6 +126,16 @@ export default function FindWork() {
   useEscapeKey(() => setShowFilters(false), showFilters);
   const [page, setPage] = useState(1);
 
+  // ── AI-аар хайх ──
+  // AI нь ажлын жагсаалтыг өөрөө гаргадаггүй: зөвхөн ШҮҮЛТҮҮР сонгож өгнө,
+  // тэдгээрийг доорх энгийн хайлтын төлөв рүү тусгана. Ингэснээр хэрэглэгч
+  // AI юу сонгосныг ХАРЖ, гараар засаж чадна — далд "ид шид" биш.
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiInfo, setAiInfo] = useState(null);
+  // AI тодорхой төсвийн муж өгвөл (bucket биш) энд хадгална.
+  const [aiBudget, setAiBudget] = useState(null);
+
   const [jobs, setJobs] = useState([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -136,15 +146,53 @@ export default function FindWork() {
 
   const toggleSkill = (s) => { setSkills((a) => (a.includes(s) ? a.filter((x) => x !== s) : [...a, s])); setPage(1); };
   const toggleLang = (l) => setLangs((a) => (a.includes(l) ? a.filter((x) => x !== l) : [...a, l]));
-  const clear = () => { setCat("All"); setType("Any"); setBudget("any"); setSkills([]); setLangs([]); setQ(""); setPage(1); };
+  const clear = () => {
+    setCat("All"); setType("Any"); setBudget("any"); setSkills([]); setLangs([]); setQ(""); setPage(1);
+    setAiInfo(null); setAiBudget(null); setAiPrompt("");
+  };
+
+  async function runAiSearch() {
+    const prompt = aiPrompt.trim();
+    if (prompt.length < 3 || aiBusy) return;
+    setAiBusy(true);
+    setError("");
+    try {
+      const res = await searchJobsByPrompt(prompt);
+      const f = res.filters || {};
+      // Гарсан шүүлтүүрийг ЖИНХЭНЭ удирдлагууд руу тусгана — дараа нь доорх
+      // useEffect ердийн хайлтаа ажиллуулж, үр дүн нь давхардахгүй.
+      setQ(f.q || "");
+      setCat(f.category || "All");
+      setType(f.type === "HOURLY" ? "Hourly" : f.type === "FIXED" ? "Fixed" : "Any");
+      setSkills(f.skills ? f.skills.split(",").filter(Boolean) : []);
+      setBudget("any");
+      setAiBudget(
+        f.minBudget != null || f.maxBudget != null
+          ? { minBudget: f.minBudget, maxBudget: f.maxBudget }
+          : null
+      );
+      setPage(1);
+      setAiInfo({
+        interpretation: res.interpretation,
+        source: res.source,
+        quotaRemaining: res.quotaRemaining,
+      });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setAiBusy(false);
+    }
+  }
 
   // q-г бага зэрэг debounce хийж хэрэглэгч бичих бүрт хүсэлт илгээхээс сэргийлнэ
   useEffect(() => {
+    // AI-ийн өгсөн тодорхой муж нь bucket-аас давамгайлна (хэрэглэгч
+    // bucket-ыг гараар сонгосон бол тэр нь AI-г дарна).
     const budgetRange =
       budget === "low" ? { maxBudget: 4999 }
       : budget === "mid" ? { minBudget: 5000, maxBudget: 10000 }
       : budget === "high" ? { minBudget: 10001 }
-      : {};
+      : aiBudget || {};
 
     const t = setTimeout(async () => {
       setLoading(true);
@@ -155,13 +203,16 @@ export default function FindWork() {
           category: cat !== "All" ? cat : undefined,
           type: type !== "Any" ? type.toUpperCase() : undefined,
           skills: skills.length ? skills.join(",") : undefined,
+          // Хэлний шүүлтүүр одоо СЕРВЭР дээр хийгдэнэ. Өмнө нь буцаж ирсэн
+          // хуудсыг клиент дээр шүүдэг байсан тул зөвхөн тухайн 12 зараас
+          // шүүгдэж, "18 briefs found" гэж бичээд 3-ыг харуулах эсвэл
+          // бүтэн хуудас хоосон гарах алдаа өгдөг байв.
+          languages: langs.length ? langs.join(",") : undefined,
           page,
           pageSize: 12,
           ...budgetRange,
         });
-        let list = res.jobs;
-        if (langs.length) list = list.filter((j) => langs.some((l) => (j.languages || []).includes(l)));
-        setJobs(list);
+        setJobs(res.jobs);
         setTotal(res.total);
         setTotalPages(res.totalPages);
       } catch (err) {
@@ -172,7 +223,7 @@ export default function FindWork() {
       }
     }, 300);
     return () => clearTimeout(t);
-  }, [q, cat, type, budget, skills, langs, sort, page]);
+  }, [q, cat, type, budget, skills, langs, sort, page, aiBudget]);
 
   const activeCount = (cat !== "All") + (type !== "Any") + (budget !== "any") + skills.length + langs.length;
 
@@ -196,8 +247,59 @@ export default function FindWork() {
         </div>
       </div>
 
+      {/* AI-аар хайх — хэрэглэгч шаардлагаа өөрийн үгээр бичнэ, AI үүнийг
+          доорх шүүлтүүрүүд рүү хөрвүүлнэ (жагсаалтыг өөрөө зохиодоггүй). */}
+      <div className="glass mt-6 rounded-2xl p-4">
+        <label htmlFor="ai-prompt" className="inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-widest text-brand-soft">
+          <Wand2 className="h-3.5 w-3.5" /> Describe what you're looking for
+        </label>
+        <div className="mt-2.5 flex flex-col gap-2.5 sm:flex-row">
+          <textarea
+            id="ai-prompt"
+            value={aiPrompt}
+            onChange={(e) => setAiPrompt(e.target.value.slice(0, 400))}
+            onKeyDown={(e) => {
+              // Enter = хайх, Shift+Enter = мөр таслах (чат талбарын дадал).
+              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); runAiSearch(); }
+            }}
+            rows={2}
+            placeholder="Жишээ: React болон TypeScript-ийн цагийн ажил, сард $3000-аас дээш"
+            className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[14px] outline-none transition-colors placeholder:text-white/30 focus:border-brand/50"
+          />
+          <button
+            onClick={runAiSearch}
+            disabled={aiBusy || aiPrompt.trim().length < 3}
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-brand px-5 py-3 text-[13.5px] font-semibold text-ink glow-brand transition-all disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
+          >
+            {aiBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            {aiBusy ? "Searching…" : "Find matches"}
+          </button>
+        </div>
+        <div className="mt-1.5 flex items-center justify-between gap-3 text-[10.5px] text-white/30">
+          <span>{aiPrompt.length}/400</span>
+          {aiInfo?.quotaRemaining != null && (
+            <span>{aiInfo.quotaRemaining} AI searches left today</span>
+          )}
+        </div>
+
+        {aiInfo && (
+          <div className="mt-3 rounded-xl border border-brand/20 bg-brand/[0.06] px-4 py-3">
+            {/* AI юу сонгосныг ил хэлнэ — доорх шүүлтүүрүүд аль хэдийн
+                тохирсон байгаа тул хэрэглэгч гараар засаж болно. */}
+            <p className="text-[12.5px] leading-relaxed text-white/70">
+              {aiInfo.source === "ai" && aiInfo.interpretation
+                ? aiInfo.interpretation
+                : "AI matching is not enabled — searched by keywords instead."}
+            </p>
+            <p className="mt-1.5 text-[10.5px] text-white/35">
+              Filters below were set from your description — adjust them any time.
+            </p>
+          </div>
+        )}
+      </div>
+
       {/* Search bar */}
-      <div className="mt-6 flex flex-wrap items-center gap-3">
+      <div className="mt-4 flex flex-wrap items-center gap-3">
         <div className="flex min-w-[240px] flex-1 items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 focus-within:border-brand/50">
           <Search className="h-4.5 w-4.5 shrink-0 text-white/40" />
           <input
@@ -235,8 +337,8 @@ export default function FindWork() {
         {/* Filters — slide-in panel on mobile/tablet */}
         {showFilters && (
           <>
-            <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden" onClick={() => setShowFilters(false)} />
-            <div className="fixed inset-y-0 left-0 z-50 w-[300px] max-w-[85vw] animate-feed-in overflow-y-auto border-r border-white/10 bg-[#0a0f0d] lg:hidden">
+            <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setShowFilters(false)} />
+            <div className="fixed inset-y-0 left-0 z-50 w-[300px] max-w-[85vw] animate-feed-in overflow-y-auto border-r border-white/10 bg-[#1b1d20] lg:hidden">
               <div className="flex items-center justify-between border-b border-white/8 p-4">
                 <p className="text-[13px] font-bold">Filters</p>
                 <button onClick={() => setShowFilters(false)} aria-label="Close filters" className="rounded-lg p-1.5 text-white/50 hover:text-white">
@@ -308,7 +410,7 @@ export default function FindWork() {
                     </p>
                     <button
                       onClick={(e) => { e.stopPropagation(); nav("project", job); }}
-                      className="rounded-xl bg-brand px-5 py-2.5 text-[12.5px] font-bold text-ink glow-brand transition-shadow hover:shadow-[0_0_30px_rgba(0,211,149,0.5)]"
+                      className="rounded-xl bg-brand px-5 py-2.5 text-[12.5px] font-bold text-ink glow-brand transition-shadow"
                     >
                       Apply
                     </button>

@@ -271,7 +271,7 @@ export default function ProjectDetail() {
                     <button
                       onClick={sendProposal}
                       disabled={submitting}
-                      className="w-full rounded-xl bg-gradient-to-r from-brand to-brand-soft py-3 text-[13.5px] font-semibold glow-brand transition-shadow hover:shadow-[0_0_44px_rgba(0,211,149,0.6)] disabled:opacity-50"
+                      className="w-full rounded-xl bg-brand py-3 text-[13.5px] font-semibold glow-brand transition-shadow disabled:opacity-50"
                     >
                       {submitting ? "Илгээж байна…" : "Send Proposal"}
                     </button>

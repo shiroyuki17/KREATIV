@@ -16,7 +16,7 @@ export default function NotFound() {
           The page you're after doesn't exist or has moved. Let's get you back to work.
         </p>
         <div className="mt-7 flex flex-wrap justify-center gap-3">
-          <button onClick={() => nav("home")} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand to-brand-soft px-6 py-3 text-[13.5px] font-semibold text-ink glow-brand transition-shadow hover:shadow-[0_0_40px_rgba(0,211,149,0.6)]">
+          <button onClick={() => nav("home")} className="inline-flex items-center gap-2 rounded-xl bg-brand px-6 py-3 text-[13.5px] font-semibold text-ink glow-brand transition-shadow">
             <Home className="h-4 w-4" /> Back home
           </button>
           <button onClick={() => nav("find-work")} className="glass inline-flex items-center gap-2 rounded-xl px-6 py-3 text-[13.5px] font-semibold text-white/85 transition-colors hover:border-white/25">

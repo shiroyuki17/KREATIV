@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import prisma from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
+import { emitToUser } from '../lib/socket.js';
 
 const router = Router();
 
@@ -8,7 +9,17 @@ const router = Router();
 // үүсгэнэ — fire-and-forget байдлаар дуудна (эх үйлдлийг блоклохгүй).
 export async function createNotification({ userId, type, text, link }) {
   try {
-    await prisma.notification.create({ data: { userId, type, text, link } });
+    const notification = await prisma.notification.create({ data: { userId, type, text, link } });
+
+    // Socket-оор шууд түлхэнэ. Өмнө нь frontend-ийн LiveProvider нь 12
+    // секунд тутам /notifications + /messages/unread-count руу poll хийдэг
+    // байсан — socket холболт аль хэдийн байгаа мөртлөө нэвтэрсэн
+    // хэрэглэгч бүр цагт 600 хүсэлт үүсгэдэг, гэхдээ мэдэгдэл нь 12
+    // секунд хүртэл хоцордог гэсэн хамгийн муу хослол байв.
+    const unreadCount = await prisma.notification.count({
+      where: { userId, read: false },
+    });
+    emitToUser(userId, 'notification:new', { notification, unreadCount });
   } catch (err) {
     console.error('[notification] үүсгэхэд алдаа гарлаа:', err.message);
   }
