@@ -112,11 +112,44 @@ const DEMO_PASSWORD = 'password123';
 // Frontend-ийн Auth.jsx өмнө нь "admin@kreativ.mn" имэйлээр нэвтэрвэл
 // role=admin болгодог demo hack ашигладаг байсан (no backend). Day 8
 // интеграцийн дараа энэ нь бодит backend Role.ADMIN акаунт болно.
-const ADMIN = { email: 'admin@kreativ.mn', name: 'Ulaanaa' };
+const ADMIN = { email: process.env.ADMIN_EMAIL || 'admin@kreativ.mn', name: 'Ulaanaa' };
+
+// ⚠️ Энэ seed нь БҮХ акаунтыг нэг мэдэгдэж буй нууц үгтэй ("password123")
+// үүсгэдэг бөгөөд тэдгээрийн нэг нь ADMIN эрхтэй. Энэ файл нийтийн repo-д
+// байгаа тул production дээр ажиллуулбал хэн ч админаар нэвтэрч чадна.
+//
+// Иймд production-д:
+//   • демо акаунтуудыг ОГТ үүсгэхгүй;
+//   • админыг зөвхөн ADMIN_EMAIL + ADMIN_PASSWORD хоёуланг нь өгсөн үед,
+//     тэр нууц үгээр үүсгэнэ.
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 async function main() {
   console.log('🌱 Seeding...');
   const passwordHash = await hashPassword(DEMO_PASSWORD);
+
+  if (IS_PRODUCTION) {
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    if (!adminPassword) {
+      console.log('  admin: алгаслаа (ADMIN_PASSWORD өгөөгүй)');
+    } else {
+      await prisma.user.upsert({
+        where: { email: ADMIN.email },
+        update: { role: 'ADMIN' },
+        create: {
+          email: ADMIN.email,
+          passwordHash: await hashPassword(adminPassword),
+          name: ADMIN.name,
+          role: 'ADMIN',
+        },
+      });
+      console.log(`  admin: ${ADMIN.email}`);
+    }
+
+    // Демо хэрэглэгч/зар production-д хэрэггүй — мөн аюултай.
+    console.log('✅ Production seed дууслаа (демо өгөгдөл алгасав).');
+    return;
+  }
 
   await prisma.user.upsert({
     where: { email: ADMIN.email },

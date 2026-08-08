@@ -36,6 +36,17 @@ services:
         value: "4100"
       - key: NODE_ENV
         value: production
+      # ⚠️ Контейнер асах бүрд seed ажилладаг. NODE_ENV=production үед
+      # демо акаунтууд (бүгд "password123" нууц үгтэй) ОГТ үүсэхгүй —
+      # энэ файлууд нийтийн repo-д байгаа тул тэдгээр нь нээлттэй хаалга
+      # болох байсан.
+      #
+      # Админ акаунт зөвхөн ДООРХ ХОЁУЛАНГ нь өгсөн үед үүснэ. Хүчтэй,
+      # санамсаргүй нууц үг ашиглана уу — үүнийг өөр хаана ч бүү давтана.
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
       - key: FRONTEND_URL
         sync: false
       - key: GOOGLE_CLIENT_ID
