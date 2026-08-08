@@ -100,3 +100,47 @@ Rules:
   draft.budgetType = draft.budgetType === 'HOURLY' ? 'HOURLY' : 'FIXED';
   return draft;
 }
+
+// FR-5.2: AI Dispute Auditor — анхны brief, Kanban явц, чат түүхийг уншиж
+// админд шийдвэрийн ЗӨВЛӨМЖ өгнө. Эцсийн шийдвэрийг ЗААВАЛ хүн (админ)
+// гаргана — энэ функц юуг ч автоматаар шийдэхгүй, зөвхөн admin.routes.js-ийн
+// /admin/disputes/:id/resolve дуудлагыг хүн хийхэд туслах зөвлөмж бэлдэнэ.
+export async function analyzeDispute({ brief, milestone, tasks, chatTranscript, reason }) {
+  const system = `You are an impartial dispute-resolution assistant for the KREATIV freelance marketplace. A client and freelancer disagree over whether a milestone deliverable meets the agreed brief. You will be given the original job brief, the milestone details, the contract's Kanban task history, the chat transcript between the two parties, and the dispute reason.
+
+Analyze the evidence fairly and objectively. Cite specific evidence from the chat or task history to support your reasoning — never invent facts not present in the evidence.
+
+Respond with ONLY valid JSON, no markdown fences, no commentary, matching exactly this shape:
+{"recommendation": "FREELANCER" | "CLIENT" | "SPLIT", "confidence": "low" | "medium" | "high", "reasoning": string, "keyEvidence": string[]}
+
+- recommendation: "FREELANCER" if the deliverable substantially meets the brief and escrow should release to the freelancer; "CLIENT" if the work clearly falls short and the client should be refunded; "SPLIT" if evidence is genuinely mixed or partial work was delivered.
+- reasoning: 3-5 sentences, specific to this case, referencing the actual evidence given.
+- keyEvidence: 2-4 short quotes or facts (from the chat/tasks/brief) that most influenced the recommendation.`;
+
+  const payload = {
+    originalBrief: brief,
+    milestone,
+    kanbanTasks: tasks,
+    chatTranscript,
+    disputeReason: reason,
+  };
+
+  const text = await callAnthropic({
+    system,
+    messages: [{ role: 'user', content: JSON.stringify(payload) }],
+    maxTokens: 700,
+  });
+
+  let analysis;
+  try {
+    analysis = JSON.parse(text.replace(/^```json\s*|\s*```$/g, ''));
+  } catch {
+    throw new Error('AI-ийн хариуг боловсруулж чадсангүй. Дахин оролдоно уу.');
+  }
+  if (!['FREELANCER', 'CLIENT', 'SPLIT'].includes(analysis.recommendation)) {
+    throw new Error('AI-ийн хариу дутуу байна. Дахин оролдоно уу.');
+  }
+  if (!['low', 'medium', 'high'].includes(analysis.confidence)) analysis.confidence = 'medium';
+  if (!Array.isArray(analysis.keyEvidence)) analysis.keyEvidence = [];
+  return analysis;
+}

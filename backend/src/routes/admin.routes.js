@@ -10,6 +10,7 @@ import { releaseMilestonePayment, maybeCompleteContract } from './contract.route
 import { createNotification } from './notification.routes.js';
 import { runReconciliation } from '../lib/reconcile.js';
 import { PENDING_HOLD_DAYS } from '../lib/wallet.js';
+import * as ai from '../lib/ai.js';
 
 const router = Router();
 router.use(requireAuth, requireRole('ADMIN'));
@@ -174,6 +175,80 @@ router.get('/disputes', async (req, res, next) => {
   }
 });
 
+// ── GET /admin/disputes/:id/ai-analysis ── (FR-5.2: зөвлөмж, эцсийн шийдвэр биш)
+router.get('/disputes/:id/ai-analysis', async (req, res, next) => {
+  try {
+    if (!ai.isConfigured()) {
+      return res.status(503).json({ error: 'AI тохируулагдаагүй байна' });
+    }
+
+    const dispute = await prisma.dispute.findUnique({
+      where: { id: req.params.id },
+      include: {
+        milestone: {
+          include: {
+            contract: {
+              include: {
+                job: { select: { title: true, description: true, skills: true } },
+                tasks: { select: { title: true, status: true } },
+                client: { select: { userId: true } },
+                freelancer: { select: { userId: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!dispute) return res.status(404).json({ error: 'Олдсонгүй' });
+
+    const { milestone } = dispute;
+    const { contract } = milestone;
+    const { userId: clientUserId } = contract.client;
+    const { userId: freelancerUserId } = contract.freelancer;
+
+    const conversation = await prisma.conversation.findFirst({
+      where: {
+        OR: [
+          { userAId: clientUserId, userBId: freelancerUserId },
+          { userAId: freelancerUserId, userBId: clientUserId },
+        ],
+      },
+      include: {
+        messages: {
+          orderBy: { createdAt: 'asc' },
+          take: 200,
+          select: { senderId: true, text: true, fileName: true, createdAt: true },
+        },
+      },
+    });
+
+    const chatTranscript = (conversation?.messages || [])
+      .filter((m) => m.text || m.fileName)
+      .map((m) => `${m.senderId === clientUserId ? 'Client' : 'Freelancer'}: ${m.text || `[файл: ${m.fileName}]`}`)
+      .join('\n');
+
+    const analysis = await ai.analyzeDispute({
+      brief: contract.job,
+      milestone: {
+        title: milestone.title,
+        amount: milestone.amount,
+        status: milestone.status,
+        deliveryNote: milestone.deliveryNote,
+        deliveryLink: milestone.deliveryLink,
+        revisionsUsed: milestone.revisionsUsed,
+      },
+      tasks: contract.tasks,
+      chatTranscript: chatTranscript || '(чат түүх хоосон байна)',
+      reason: dispute.reason,
+    });
+
+    res.json({ analysis });
+  } catch (err) {
+    if (err.upstream) return res.status(503).json({ error: 'AI түр боломжгүй байна' });
+    next(err);
+  }
+});
+
 // ── POST /admin/disputes/:id/resolve ──
 // FREELANCER — milestone-ийн бүтэн дүн (комисс хассан) freelancer рүү.
 // CLIENT — бүтэн дүн client-ийн балансад буцаана.
@@ -235,6 +310,56 @@ router.post('/disputes/:id/resolve', async (req, res, next) => {
     res.json(updated);
     createNotification({ userId: freelancerProfile.userId, type: 'system', text: `"${milestone.title}" маргаан шийдэгдлээ (${data.resolution})`, link: 'my-projects' });
     createNotification({ userId: clientProfile.userId, type: 'system', text: `"${milestone.title}" маргаан шийдэгдлээ (${data.resolution})`, link: 'my-projects' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── Freelancer verification (FR-5.1) ──
+
+// ── GET /admin/verifications ──
+router.get('/verifications', async (req, res, next) => {
+  try {
+    const status = ['PENDING', 'VERIFIED', 'REJECTED'].includes(req.query.status) ? req.query.status : 'PENDING';
+    const profiles = await prisma.freelancerProfile.findMany({
+      where: { verificationStatus: status },
+      include: { user: { select: { id: true, name: true, email: true, avatarUrl: true } } },
+      orderBy: { verificationRequestedAt: 'desc' },
+    });
+    res.json({ profiles });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /admin/verifications/:id/decide ── (:id = FreelancerProfile.id)
+router.post('/verifications/:id/decide', async (req, res, next) => {
+  try {
+    const approve = req.body?.approve === true;
+    const note = req.body?.note ? String(req.body.note).slice(0, 500) : null;
+
+    const profile = await prisma.freelancerProfile.findUnique({ where: { id: req.params.id } });
+    if (!profile) return res.status(404).json({ error: 'Олдсонгүй' });
+    if (profile.verificationStatus !== 'PENDING') {
+      return res.status(409).json({ error: 'Энэ хүсэлт аль хэдийн шийдэгдсэн байна' });
+    }
+
+    const updated = await prisma.freelancerProfile.update({
+      where: { id: profile.id },
+      data: {
+        verificationStatus: approve ? 'VERIFIED' : 'REJECTED',
+        verificationNote: note,
+        verifiedAt: approve ? new Date() : null,
+      },
+    });
+
+    res.json(updated);
+    createNotification({
+      userId: profile.userId,
+      type: 'system',
+      text: approve ? 'Таны профайл баталгаажлаа — Verified badge идэвхжлээ.' : `Таны баталгаажуулах хүсэлт татгалзагдлаа${note ? `: ${note}` : ''}`,
+      link: 'settings',
+    });
   } catch (err) {
     next(err);
   }

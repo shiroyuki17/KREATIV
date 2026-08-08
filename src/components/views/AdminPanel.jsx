@@ -16,6 +16,8 @@ import {
   ClipboardCheck,
   Check,
   X,
+  Sparkles,
+  BadgeCheck,
 } from "lucide-react";
 import { getAccessToken } from "../../lib/authApi.js";
 import {
@@ -24,6 +26,7 @@ import {
   setUserActive,
   fetchAdminTransactions,
   fetchAdminDisputes,
+  fetchDisputeAiAnalysis,
   resolveDispute,
   fetchModerationQueue,
   moderateJob,
@@ -31,6 +34,8 @@ import {
   approvePayout,
   rejectPayout,
   fetchReconciliation,
+  fetchVerificationQueue,
+  decideVerification,
 } from "../../lib/adminApi.js";
 
 const TABS = [
@@ -38,6 +43,7 @@ const TABS = [
   { id: "users", label: "Users & Roles", Icon: Users },
   { id: "transactions", label: "Transactions", Icon: Wallet },
   { id: "disputes", label: "Disputes", Icon: Scale },
+  { id: "verifications", label: "Verifications", Icon: BadgeCheck },
   { id: "moderation", label: "Moderation", Icon: ShieldAlert },
   { id: "payouts", label: "Payouts", Icon: Banknote },
   { id: "ledger", label: "Ledger check", Icon: ClipboardCheck },
@@ -76,12 +82,14 @@ export default function AdminPanel() {
   const [moderationQueue, setModerationQueue] = useState([]);
   const [payoutQueue, setPayoutQueue] = useState([]);
   const [reconciliation, setReconciliation] = useState(null);
+  const [verifications, setVerifications] = useState([]);
   const [roleFilter, setRoleFilter] = useState("All");
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
   const [resolving, setResolving] = useState(false);
   const [moderating, setModerating] = useState(false);
   const [payoutBusy, setPayoutBusy] = useState(false);
+  const [verifyBusy, setVerifyBusy] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -96,8 +104,9 @@ export default function AdminPanel() {
       fetchModerationQueue(token),
       fetchPayoutQueue(token),
       fetchReconciliation(token),
+      fetchVerificationQueue("PENDING"),
     ])
-      .then(([s, u, t, d, mod, payouts, recon]) => {
+      .then(([s, u, t, d, mod, payouts, recon, verif]) => {
         setStats(s);
         setUsers(u.users);
         setTransactions(t.transactions);
@@ -105,6 +114,7 @@ export default function AdminPanel() {
         setModerationQueue(mod.jobs);
         setPayoutQueue(payouts.payouts);
         setReconciliation(recon);
+        setVerifications(verif.profiles);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -121,6 +131,19 @@ export default function AdminPanel() {
       setError(err.message);
     } finally {
       setModerating(false);
+    }
+  };
+
+  const handleVerify = async (profileId, approve) => {
+    setVerifyBusy(true);
+    setError("");
+    try {
+      await decideVerification(profileId, approve);
+      setVerifications((arr) => arr.filter((p) => p.id !== profileId));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setVerifyBusy(false);
     }
   };
 
@@ -146,6 +169,18 @@ export default function AdminPanel() {
       setUsers((arr) => arr.map((x) => (x.id === u.id ? { ...x, isActive: !x.isActive } : x)));
     } catch (err) {
       setError(err.message);
+    }
+  };
+
+  const [aiAnalyses, setAiAnalyses] = useState({}); // disputeId -> { loading, error, data }
+
+  const handleAiAnalyze = async (disputeId) => {
+    setAiAnalyses((m) => ({ ...m, [disputeId]: { loading: true, error: "", data: null } }));
+    try {
+      const { analysis } = await fetchDisputeAiAnalysis(disputeId);
+      setAiAnalyses((m) => ({ ...m, [disputeId]: { loading: false, error: "", data: analysis } }));
+    } catch (err) {
+      setAiAnalyses((m) => ({ ...m, [disputeId]: { loading: false, error: err.message, data: null } }));
     }
   };
 
@@ -431,6 +466,14 @@ export default function AdminPanel() {
                 {!resolved && (
                   <div className="mt-4 flex flex-wrap gap-2">
                     <button
+                      onClick={() => handleAiAnalyze(d.id)}
+                      disabled={aiAnalyses[d.id]?.loading}
+                      className="flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/[0.04] px-3.5 py-2 text-[11.5px] font-bold text-white/70 transition-all hover:bg-white/10 disabled:opacity-50"
+                    >
+                      <Sparkles className="h-3.5 w-3.5" />
+                      {aiAnalyses[d.id]?.loading ? "Шинжилж байна…" : "AI-ийн зөвлөмж авах"}
+                    </button>
+                    <button
                       onClick={() => handleResolve(d.id, "FREELANCER")}
                       disabled={resolving}
                       className="rounded-lg border border-mint/40 bg-mint/10 px-3.5 py-2 text-[11.5px] font-bold text-mint transition-all hover:bg-mint hover:text-ink disabled:opacity-50"
@@ -453,11 +496,80 @@ export default function AdminPanel() {
                     </button>
                   </div>
                 )}
+                {aiAnalyses[d.id]?.error && (
+                  <p className="mt-3 text-[12px] text-red-400">{aiAnalyses[d.id].error}</p>
+                )}
+                {aiAnalyses[d.id]?.data && (
+                  <div className="mt-4 rounded-xl border border-neon/25 bg-neon/[0.06] p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-neon">
+                        <Sparkles className="h-3.5 w-3.5" /> AI зөвлөмж — эцсийн шийдвэр биш
+                      </p>
+                      <span className="rounded-full border border-white/15 px-2.5 py-1 text-[10px] font-bold uppercase text-white/50">
+                        {aiAnalyses[d.id].data.confidence} confidence
+                      </span>
+                    </div>
+                    <p className="mt-2 text-[13px] font-bold text-white">
+                      Санал: {{ FREELANCER: "Freelancer-д бүтнээр нь олгох", CLIENT: "Client-д бүтнээр нь буцаах", SPLIT: "Тэнцүү хуваах" }[aiAnalyses[d.id].data.recommendation]}
+                    </p>
+                    <p className="mt-1.5 text-[12.5px] leading-relaxed text-white/65">{aiAnalyses[d.id].data.reasoning}</p>
+                    {aiAnalyses[d.id].data.keyEvidence?.length > 0 && (
+                      <ul className="mt-2.5 space-y-1">
+                        {aiAnalyses[d.id].data.keyEvidence.map((ev, i) => (
+                          <li key={i} className="flex gap-2 text-[12px] text-white/45">
+                            <span className="text-neon">•</span>
+                            <span>{ev}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
           {disputes.length === 0 && (
             <div className="glass rounded-2xl p-10 text-center text-[13px] text-white/40">Одоогоор маргаан алга.</div>
+          )}
+        </div>
+      )}
+
+      {/* ================= VERIFICATIONS (FR-5.1) ================= */}
+      {!loading && tab === "verifications" && (
+        <div className="mt-7 space-y-3">
+          {verifications.map((p) => (
+            <div key={p.id} className="glass rounded-2xl p-6">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-[14.5px] font-semibold">{p.user?.name}</p>
+                  <p className="mt-0.5 text-[12px] text-white/40">
+                    {p.user?.email} · {p.headline || "Профайл гарчиггүй"} · хүсэлт {new Date(p.verificationRequestedAt).toLocaleDateString()}
+                  </p>
+                  <p className="mt-2.5 whitespace-pre-wrap rounded-lg border border-white/8 bg-white/[0.03] p-3 text-[12.5px] text-white/65">
+                    {p.verificationEvidence}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  onClick={() => handleVerify(p.id, true)}
+                  disabled={verifyBusy}
+                  className="flex items-center gap-1.5 rounded-lg border border-mint/40 bg-mint/10 px-3.5 py-2 text-[11.5px] font-bold text-mint transition-all hover:bg-mint hover:text-ink disabled:opacity-50"
+                >
+                  <Check className="h-3.5 w-3.5" /> Баталгаажуулах
+                </button>
+                <button
+                  onClick={() => handleVerify(p.id, false)}
+                  disabled={verifyBusy}
+                  className="flex items-center gap-1.5 rounded-lg border border-red-400/40 bg-red-400/10 px-3.5 py-2 text-[11.5px] font-bold text-red-300 transition-all hover:bg-red-400 hover:text-ink disabled:opacity-50"
+                >
+                  <X className="h-3.5 w-3.5" /> Татгалзах
+                </button>
+              </div>
+            </div>
+          ))}
+          {verifications.length === 0 && (
+            <div className="glass rounded-2xl p-10 text-center text-[13px] text-white/40">Хүлээгдэж буй хүсэлт алга.</div>
           )}
         </div>
       )}

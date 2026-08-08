@@ -12,6 +12,7 @@ import {
   saveClientProfile,
   requestPhoneOtp,
   verifyPhoneOtp,
+  requestFreelancerVerification,
 } from "../../lib/authApi.js";
 
 // FR-1.1 — жинхэнэ SMS gateway байхгүй тул демо горим: backend хариултад
@@ -98,6 +99,67 @@ function PhoneVerify({ me, onVerified }) {
   );
 }
 
+// FR-5.1: Verified badge — freelancer portfolio/ажлын жишээгээ илгээж, админ
+// гараар хянаж баталгаажуулна (шууд/автомат баталгаажуулалт биш).
+function VerificationBadge({ profile, onUpdated }) {
+  const [evidence, setEvidence] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const status = profile?.verificationStatus || "NONE";
+
+  if (status === "VERIFIED") {
+    return (
+      <p className="mt-2 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-mint">
+        <ShieldCheck className="h-4 w-4" /> Verified badge идэвхтэй — профайл дээр харагдана
+      </p>
+    );
+  }
+  if (status === "PENDING") {
+    return (
+      <p className="mt-2 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-amber-300">
+        <Loader2 className="h-4 w-4" /> Хүсэлт хянагдаж байна — админ шалгаад мэдэгдэнэ
+      </p>
+    );
+  }
+
+  const submit = async () => {
+    if (evidence.trim().length < 20) { setError("Дор хаяж 20 тэмдэгт бичнэ үү (portfolio холбоос + богино тайлбар)"); return; }
+    setBusy(true);
+    setError("");
+    try {
+      const res = await requestFreelancerVerification(evidence);
+      onUpdated({ ...profile, verificationStatus: res.verificationStatus });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mt-2 rounded-xl border border-white/8 bg-white/[0.03] p-4">
+      {status === "REJECTED" && (
+        <p className="mb-3 text-[12px] text-red-400">
+          Өмнөх хүсэлт татгалзагдсан{profile?.verificationNote ? `: ${profile.verificationNote}` : ""} — дахин илгээж болно.
+        </p>
+      )}
+      <p className="text-[12.5px] font-semibold text-white/70">Portfolio холбоос болон товч тайлбараа бичнэ үү</p>
+      <textarea
+        value={evidence}
+        onChange={(e) => setEvidence(e.target.value)}
+        rows={3}
+        placeholder="жишээ нь: behance.net/miniy-huudas — сүүлийн 2 жил UI/UX хийж байна, X, Y, Z төслүүд..."
+        className="mt-2 w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] outline-none focus:border-brand/50"
+      />
+      <button onClick={submit} disabled={busy} className="mt-2 rounded-lg bg-brand px-3.5 py-2 text-[11.5px] font-bold text-ink glow-brand disabled:opacity-50">
+        {busy ? "Илгээж байна…" : "Баталгаажуулахыг хүсэх"}
+      </button>
+      {error && <p className="mt-2 text-[11.5px] font-medium text-red-400">{error}</p>}
+    </div>
+  );
+}
+
 const TABS = [
   { id: "profile", label: "Profile", Icon: User },
   { id: "notifications", label: "Notifications", Icon: Bell },
@@ -167,6 +229,7 @@ export default function Settings() {
   const [rate, setRate] = useState("");
   const [bio, setBio] = useState("");
   const [orgName, setOrgName] = useState("");
+  const [freelancerProfile, setFreelancerProfile] = useState(null);
 
   useEffect(() => {
     const token = getAccessToken();
@@ -181,6 +244,7 @@ export default function Settings() {
       // whichever one exists; freelancer wins if somehow both do.
       setIsFreelancer(!!freelancer || !client);
       if (freelancer) {
+        setFreelancerProfile(freelancer);
         setHeadline(freelancer.headline || "");
         setBio(freelancer.bio || "");
         setRate(
@@ -389,6 +453,14 @@ export default function Settings() {
               </span>
               <PhoneVerify me={me} onVerified={(user) => setMe(user)} />
             </div>
+            {isFreelancer && freelancerProfile && (
+              <div>
+                <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
+                  Verified badge
+                </span>
+                <VerificationBadge profile={freelancerProfile} onUpdated={setFreelancerProfile} />
+              </div>
+            )}
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label="Current password" type="password" placeholder="••••••••" />
               <Field label="New password" type="password" placeholder="Min. 12 characters" />

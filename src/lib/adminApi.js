@@ -21,8 +21,17 @@ export const fetchAdminTransactions = (params) => apiJson(`/admin/transactions${
 
 export const fetchAdminDisputes = () => apiJson("/admin/disputes");
 
+// FR-5.2: AI Dispute Auditor — зөвлөмж авах (эцсийн шийдвэр биш, зөвхөн санал)
+export const fetchDisputeAiAnalysis = (id) => apiJson(`/admin/disputes/${id}/ai-analysis`);
+
 export const resolveDispute = (id, resolution) =>
   apiJson(`/admin/disputes/${id}/resolve`, { method: "POST", body: { resolution } });
+
+// FR-5.1: freelancer verification queue
+export const fetchVerificationQueue = (status) => apiJson(`/admin/verifications${query({ status })}`);
+
+export const decideVerification = (freelancerProfileId, approve, note) =>
+  apiJson(`/admin/verifications/${freelancerProfileId}/decide`, { method: "POST", body: { approve, note } });
 
 // FR-2.3: job moderation queue
 export const fetchModerationQueue = () => apiJson("/admin/jobs/moderation");

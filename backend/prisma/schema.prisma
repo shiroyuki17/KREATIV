@@ -81,6 +81,16 @@ model FreelancerProfile {
   ratingAvg     Float    @default(0)
   jobsCompleted Int      @default(0)
 
+  // FR-5.1: Verified badge — freelancer нотолгоо (portfolio/ID холбоос)
+  // илгээж, админ гараар хянаж баталгаажуулдаг бодит урсгал (decorative
+  // mock badge биш). AI-аар автоматаар баталгаажуулдаггүй — луйврын эрсдэл
+  // өндөр тул зөвхөн хүн шийддэг.
+  verificationStatus      VerificationStatus @default(NONE)
+  verificationEvidence     String?
+  verificationNote        String?
+  verificationRequestedAt DateTime?
+  verifiedAt               DateTime?
+
   portfolio PortfolioItem[]
   proposals Proposal[]
   contracts Contract[]
@@ -89,6 +99,13 @@ model FreelancerProfile {
   updatedAt DateTime @updatedAt
 
   @@index([category])
+}
+
+enum VerificationStatus {
+  NONE
+  PENDING
+  VERIFIED
+  REJECTED
 }
 
 model ClientProfile {

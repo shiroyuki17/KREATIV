@@ -38,6 +38,9 @@ function publicFreelancer(profile) {
     priceMax: profile.priceMax,
     ratingAvg: profile.ratingAvg,
     jobsCompleted: profile.jobsCompleted,
+    // FR-5.1: зөвхөн "VERIFIED" эсэхийг л нийтэд харуулна — evidence/note нь
+    // хувийн (зөвхөн эзэн нь болон админ харна).
+    verified: profile.verificationStatus === 'VERIFIED',
     portfolio: (profile.portfolio || []).slice(0, 4).map((p) => ({
       id: p.id,
       title: p.title,
@@ -210,7 +213,15 @@ router.get('/freelancer/:userId', async (req, res, next) => {
       },
     });
     if (!profile) return res.status(404).json({ error: 'Олдсонгүй' });
-    res.json({ ...profile, completeness: freelancerCompleteness(profile), disputeRate: await freelancerDisputeRate(profile.id) });
+    // verificationEvidence/verificationNote нь хувийн (эзэн+админ л харна) —
+    // нийтэд харагдах endpoint-оос заавал хасна, зөвхөн эцсийн "verified" bool-ыг үлдээнэ.
+    const { verificationEvidence, verificationNote, ...publicProfile } = profile;
+    res.json({
+      ...publicProfile,
+      verified: profile.verificationStatus === 'VERIFIED',
+      completeness: freelancerCompleteness(profile),
+      disputeRate: await freelancerDisputeRate(profile.id),
+    });
   } catch (err) {
     next(err);
   }
@@ -248,6 +259,37 @@ router.delete('/freelancer/portfolio/:id', requireAuth, async (req, res, next) =
     }
     await prisma.portfolioItem.delete({ where: { id: item.id } });
     res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /profile/freelancer/verification ── (FR-5.1: badge хүсэх)
+router.post('/freelancer/verification', requireAuth, async (req, res, next) => {
+  try {
+    const evidence = String(req.body?.evidence || '').trim();
+    if (evidence.length < 20) {
+      return res.status(400).json({ error: 'Portfolio холбоос болон тайлбараа дор хаяж 20 тэмдэгтээр бичнэ үү' });
+    }
+    const profile = await prisma.freelancerProfile.findUnique({ where: { userId: req.user.id } });
+    if (!profile) return res.status(400).json({ error: 'Эхлээд freelancer профайлаа үүсгэнэ үү' });
+    if (profile.verificationStatus === 'VERIFIED') {
+      return res.status(409).json({ error: 'Та аль хэдийн баталгаажсан байна' });
+    }
+    if (profile.verificationStatus === 'PENDING') {
+      return res.status(409).json({ error: 'Таны хүсэлт хянагдаж байна' });
+    }
+
+    const updated = await prisma.freelancerProfile.update({
+      where: { userId: req.user.id },
+      data: {
+        verificationStatus: 'PENDING',
+        verificationEvidence: evidence,
+        verificationNote: null,
+        verificationRequestedAt: new Date(),
+      },
+    });
+    res.json({ verificationStatus: updated.verificationStatus, verificationRequestedAt: updated.verificationRequestedAt });
   } catch (err) {
     next(err);
   }

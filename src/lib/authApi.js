@@ -88,6 +88,11 @@ export function saveClientProfile(data) {
   return apiJson("/profile/client", { method: "POST", body: data });
 }
 
+// FR-5.1: Verified badge — evidence нь portfolio холбоос + богино тайлбар
+export function requestFreelancerVerification(evidence) {
+  return apiJson("/profile/freelancer/verification", { method: "POST", body: { evidence } });
+}
+
 // Settings (Day 8/9): load the caller's own profile to edit — returns null
 // (not an error) when the user simply hasn't created that profile type yet.
 async function fetchOwnProfile(kind) {

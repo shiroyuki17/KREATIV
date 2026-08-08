@@ -40,6 +40,7 @@ function normalizeReal(profile, userId) {
     tagline: profile.bio,
     portfolio: profile.portfolio || [],
     disputeRate: profile.disputeRate || 0,
+    verified: !!profile.verified,
   };
 }
 
@@ -131,7 +132,7 @@ export default function FreelancerProfile() {
               </span>
               <p className="mt-4 flex items-center gap-2 font-display text-xl font-bold">
                 {f.name}
-                {!isReal && f.verified && <BadgeCheck className="h-5 w-5 text-neon" />}
+                {f.verified && <BadgeCheck className="h-5 w-5 text-neon" />}
               </p>
               <p className="mt-0.5 text-[13px] text-white/50">{f.role}</p>
 
