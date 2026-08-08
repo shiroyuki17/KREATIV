@@ -36,9 +36,13 @@ export const PLANS = {
     key: 'pro',
     name: 'Pro',
     tagline: 'For serious freelancers & teams',
-    monthlyUsd: 29,
-    // Жилээр 2 сарын хөнгөлөлт — Pricing.jsx-ийн "Yearly" сэлгүүртэй таарна.
-    yearlyUsd: 290,
+    // ⚠️ Эдгээр дүн нь Stripe дээрх БОДИТ Price-тай яг таарах ЁСТОЙ
+    // (STRIPE_PRICE_PRO_MONTHLY / _YEARLY). Зөрвөл хэрэглэгч нэг дүн харчихаад
+    // өөр дүнгээр төлөгдөнө — Checkout нь Stripe-ийн Price-аар төлбөр авдаг,
+    // энд бичсэн тоо нь зөвхөн харуулах зорилготой.
+    // Одоогийн Stripe Price: $29.99/сар, $287.99/жил.
+    monthlyUsd: 29.99,
+    yearlyUsd: 287.99,
     commissionPct: 5,
     maxActiveProposals: null, // хязгааргүй
     features: [
@@ -78,6 +82,12 @@ export const DEFAULT_PLAN_KEY = 'starter';
 
 /** Тухайн багц + мөчлөгт харгалзах Stripe Price ID (тохируулаагүй бол null). */
 export function stripePriceIdFor(planKey, interval) {
+  // Тестэд Stripe-ыг үргэлж идэвхгүй гэж үзнэ — stripe.isConfigured()-тэй
+  // ижил шалтгаанаар. `.env.test` нь энэ хоёр хувьсагчийг тодорхойлдоггүй
+  // тул `dotenv/config` тэдгээрийг `.env`-ээс нөхөж, хөгжүүлэгчийн бодит
+  // price_… ID тестэд алдардаг. Тэгвэл "Stripe тохируулаагүй үед Pro
+  // худалдаж авах боломжгүй" гэсэн тест хуурамчаар унана.
+  if (config.NODE_ENV === 'test') return null;
   if (planKey !== 'pro') return null;
   return interval === 'yearly'
     ? config.STRIPE_PRICE_PRO_YEARLY || null

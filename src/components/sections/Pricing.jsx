@@ -150,6 +150,13 @@ export default function Pricing() {
 
   const disabledReason = billingEnabled ? "" : "Online billing is not configured yet.";
 
+  // Хөнгөлөлтийг серверийн үнээс тооцоолно — гараар бичсэн хувь нь Stripe
+  // дээрх бодит үнэ солигдоход чимээгүй худал болно.
+  const pro = plans.find((p) => p.key === "pro");
+  const savings = pro?.monthlyUsd && pro?.yearlyUsd
+    ? Math.max(0, Math.round((1 - pro.yearlyUsd / (pro.monthlyUsd * 12)) * 100)) || null
+    : null;
+
   return (
     <section id="pricing" className="relative py-12 md:py-24">
       <div
@@ -179,9 +186,9 @@ export default function Pricing() {
                   }
                 >
                   {mode}
-                  {mode === "Yearly" && (
+                  {mode === "Yearly" && savings && (
                     <span className="ml-1.5 text-[10px] font-bold text-mint">
-                      −20%
+                      −{savings}%
                     </span>
                   )}
                 </button>

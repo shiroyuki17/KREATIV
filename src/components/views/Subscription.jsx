@@ -26,6 +26,17 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 }
 
+// Жилийн хөнгөлөлтийг ТООЦООЛНО, гараар бичихгүй. Өмнө нь энд "−17%",
+// Pricing.jsx дээр "−20%" гэж зөрүүтэй бичээстэй байсан бөгөөд хоёул
+// Stripe дээрх бодит үнэтэй таарахгүй байв.
+function yearlySavings(plans) {
+  const pro = plans.find((p) => p.key === "pro");
+  if (!pro?.monthlyUsd || !pro?.yearlyUsd) return null;
+  const full = pro.monthlyUsd * 12;
+  const pct = Math.round((1 - pro.yearlyUsd / full) * 100);
+  return pct > 0 ? pct : null;
+}
+
 function priceFor(plan, yearly) {
   if (plan.monthlyUsd === null) return { text: "Custom", sub: "Talk to sales" };
   if (plan.monthlyUsd === 0) return { text: "Free", sub: "No card required" };
@@ -105,6 +116,7 @@ export default function Subscription() {
 
   const status = STATUS_META[sub?.status] || STATUS_META.NONE;
   const periodEnd = formatDate(sub?.currentPeriodEnd);
+  const savings = yearlySavings(plans);
 
   return (
     <div className="mx-auto max-w-4xl px-6 pb-16 pt-8">
@@ -196,7 +208,9 @@ export default function Subscription() {
                   : "rounded-full px-5 py-2 text-[12.5px] font-medium text-white/50 hover:text-white"}
               >
                 {mode}
-                {mode === "Yearly" && <span className="ml-1.5 text-[10px] font-bold text-mint">−17%</span>}
+                {mode === "Yearly" && savings && (
+                  <span className="ml-1.5 text-[10px] font-bold text-mint">−{savings}%</span>
+                )}
               </button>
             );
           })}
