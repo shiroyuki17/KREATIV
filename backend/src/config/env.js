@@ -40,7 +40,11 @@ const envSchema = z.object({
   // Тохируулаагүй бол /ai/job-search нь энгийн түлхүүр үгийн хайлт руугаа
   // унана — хэрэглэгчид хоосон дэлгэц харагдахгүй.
   GEMINI_API_KEY: z.string().optional(),
-  GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
+  // Тодорхой хувилбар бус ALIAS-ыг өгөгдмөлөөр сонгосон: "gemini-2.5-flash"
+  // гэж тогтоосон байсныг Google шинэ хэрэглэгчдэд хаасан бөгөөд
+  // generateContent нь 404 "no longer available to new users" буцааж эхэлсэн.
+  // Alias нь ийм хуучралтаас хамгаална.
+  GEMINI_MODEL: z.string().default('gemini-flash-latest'),
   // Нэг хэрэглэгч өдөрт хэдэн удаа AI хайлт хийж болох вэ. LLM дуудлага
   // бүр мөнгө тул хэрэглэгчийн түвшний хатуу таг — IP-д суурилсан
   // rate limit нь нэг хүн олон IP-аас орох, эсвэл нэг NAT-ын ард олон

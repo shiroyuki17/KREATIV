@@ -12,6 +12,11 @@ import { config } from '../config/env.js';
 const BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 export function isConfigured() {
+  // Тестэд Gemini-г ҮРГЭЛЖ идэвхгүй гэж үзнэ. `.env.test` нь GEMINI_API_KEY-г
+  // тодорхойлдоггүй тул `dotenv/config` түүнийг `.env`-ээс нөхдөг — өөрөөр
+  // хэлбэл тест ажиллуулах бүрд бодит API руу залгаж, квот зарцуулж,
+  // сүлжээнээс хамааралтай болно. Stripe-д хийсэнтэй ижил хамгаалалт.
+  if (config.NODE_ENV === 'test') return false;
   return !!config.GEMINI_API_KEY;
 }
 
@@ -107,8 +112,18 @@ export async function generateJson({
     throw err;
   }
 
+  // Зарим загвар responseSchema-г үл тоомсорлож JSON-оо markdown хашилтад
+  // ороож, өмнө нь "Here is the JSON requested:" гэх мэт текст нэмдэг
+  // (gemini-3.5-flash дээр ажиглагдсан). Гаралт нь өөрөө зөв JSON байхад
+  // зөвхөн боолт нь саад болох тул эхний `{`-ээс сүүлийн `}` хүртэлхийг
+  // сугалж авна.
+  const cleaned = text.replace(/^```(?:json)?\s*|\s*```$/g, '').trim();
+  const candidate = cleaned.startsWith('{')
+    ? cleaned
+    : cleaned.slice(cleaned.indexOf('{'), cleaned.lastIndexOf('}') + 1);
+
   try {
-    return JSON.parse(text);
+    return JSON.parse(candidate);
   } catch {
     const err = new Error('Gemini-ийн хариуг JSON болгож задалж чадсангүй');
     err.upstream = true;
