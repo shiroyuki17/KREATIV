@@ -82,7 +82,7 @@ export default function Navbar() {
           </button>
           <button
             onClick={() => nav("post-job")}
-            className="hidden rounded-xl bg-brand px-4 py-2 text-[13px] font-semibold text-ink transition-shadow glow-brand sm:block"
+            className="hidden rounded-xl bg-brand px-4 py-2 text-[13px] font-semibold text-fg-1 transition-shadow glow-brand sm:block"
           >
             Post a Job
           </button>
@@ -135,7 +135,7 @@ export default function Navbar() {
               </button>
               <button
                 onClick={() => go("post-job")}
-                className="rounded-xl bg-brand py-3 text-[13.5px] font-semibold text-ink glow-brand"
+                className="rounded-xl bg-brand py-3 text-[13.5px] font-semibold text-fg-1 glow-brand"
               >
                 Post a Job
               </button>

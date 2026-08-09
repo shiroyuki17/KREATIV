@@ -40,13 +40,15 @@ export default function DatacoreHero() {
       {/* Агуулга. pt-28 нь дээрх fixed Navbar-ын доогуур орохоос сэргийлнэ. */}
       <div className="relative z-10 flex flex-col items-center px-6 pb-20 pt-28 text-center">
         <div className="glass inline-flex h-[38px] items-center gap-2 rounded-[10px] px-3">
-          <span className="rounded-[6px] bg-brand px-2 py-0.5 text-[12px] font-bold text-ink">New</span>
+          <span className="rounded-[6px] bg-brand px-2 py-0.5 text-[12px] font-bold text-fg-1">New</span>
           <span className="text-[14px] font-medium text-white">AI matching now live on KREATIV</span>
         </div>
 
-        <h1 className="mt-6 max-w-4xl font-display text-[clamp(2.4rem,7vw,5.5rem)] font-bold leading-[1.05] text-white">
+        {/* Instrument Serif: static English marketing copy only (never
+            Cyrillic user content), per the site-wide font token comment. */}
+        <h1 className="mt-6 max-w-4xl font-serif text-[clamp(2.6rem,7.5vw,6rem)] font-normal leading-[1.05] text-white">
           Elite work meets{" "}
-          <span className="bg-gradient-to-r from-brand-soft via-neon to-mint bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-brand-soft via-neon to-violet-soft bg-clip-text italic text-transparent">
             elite talent
           </span>
         </h1>
@@ -59,7 +61,7 @@ export default function DatacoreHero() {
         <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
           <button
             onClick={() => nav("find-talent")}
-            className="inline-flex items-center gap-2 rounded-xl bg-brand px-7 py-3.5 text-[15px] font-semibold text-ink glow-brand transition-transform hover:scale-[1.03]"
+            className="inline-flex items-center gap-2 rounded-xl bg-brand px-7 py-3.5 text-[15px] font-semibold text-fg-1 glow-brand transition-transform hover:scale-[1.03]"
           >
             Find Talent
             <ArrowRight className="h-4 w-4" />

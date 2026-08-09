@@ -104,7 +104,7 @@ export default function FreelancerDashboard() {
           </p>
           <button
             onClick={() => nav("settings")}
-            className="shrink-0 rounded-lg bg-brand px-4 py-2.5 text-[12.5px] font-bold text-ink glow-brand transition-shadow"
+            className="shrink-0 rounded-lg bg-brand px-4 py-2.5 text-[12.5px] font-bold text-fg-1 glow-brand transition-shadow"
           >
             Set up profile
           </button>

@@ -217,7 +217,7 @@ export default function Hero() {
               />
               <button
                 onClick={() => searchTalent(query)}
-                className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-brand px-5 py-3 text-[13.5px] font-bold text-ink glow-brand transition-all hover:scale-105"
+                className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-brand px-5 py-3 text-[13.5px] font-bold text-fg-1 glow-brand transition-all hover:scale-105"
               >
                 Search
                 <ArrowRight className="h-4 w-4" />
@@ -244,7 +244,7 @@ export default function Hero() {
             <button
               onClick={() => nav("find-talent")}
               style={{ opacity: 0 }}
-              className="hero-cta rounded-2xl bg-brand px-7 py-3.5 text-[14px] font-semibold text-ink glow-brand transition-all duration-200 hover:scale-[1.03]"
+              className="hero-cta rounded-2xl bg-brand px-7 py-3.5 text-[14px] font-semibold text-fg-1 glow-brand transition-all duration-200 hover:scale-[1.03]"
             >
               Find Talent
             </button>

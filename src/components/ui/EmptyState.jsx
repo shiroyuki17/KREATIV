@@ -13,7 +13,7 @@ export default function EmptyState({ Icon, title, desc, actionLabel, onAction, c
       {actionLabel && (
         <button
           onClick={onAction}
-          className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-brand/40 bg-brand/10 px-4 py-2 text-[12px] font-bold text-brand-soft transition-all hover:bg-brand hover:text-ink"
+          className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-brand/40 bg-brand/10 px-4 py-2 text-[12px] font-bold text-brand-soft transition-all hover:bg-brand hover:text-fg-1"
         >
           {actionLabel}
         </button>

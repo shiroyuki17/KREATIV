@@ -60,7 +60,7 @@ function TalentCard({ f, nav, style }) {
           </button>
           <button
             onClick={() => nav("messages", { withUserId: f.userId })}
-            className="rounded-full bg-brand px-5 py-2.5 text-[13px] font-bold text-ink glow-brand transition-shadow"
+            className="rounded-full bg-brand px-5 py-2.5 text-[13px] font-bold text-fg-1 glow-brand transition-shadow"
           >
             Message
           </button>
@@ -247,7 +247,7 @@ export default function FindTalent() {
             </p>
             <button
               onClick={() => { setQ(""); setCat("All"); setPage(1); }}
-              className="mt-5 rounded-xl bg-brand px-5 py-2.5 text-[12.5px] font-bold text-ink glow-brand"
+              className="mt-5 rounded-xl bg-brand px-5 py-2.5 text-[12.5px] font-bold text-fg-1 glow-brand"
             >
               Reset filters
             </button>

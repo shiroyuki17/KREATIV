@@ -1,38 +1,42 @@
 @import "tailwindcss";
 
 @theme {
-  /* Ground — near-neutral with a faint cool cast, so it reads chosen not muddy.
-     Token names are unchanged on purpose: every component keeps working and the
-     whole app repalettes from here. */
-  --color-ink: #141517;
-  --color-panel: #1b1d20;
-  --color-raised: #25282c;
-  --color-line: #33373c;
-  --color-line-2: #454a51;
+  /* Ground — purple-black cast (2026-08-09 rebrand). Token names are
+     unchanged on purpose: every component keeps working and the whole app
+     repalettes from here — 47 files reference these tokens directly. */
+  --color-ink: #17112a;
+  --color-panel: #221a3a;
+  --color-raised: #2b2344;
+  --color-line: #3d3355;
+  --color-line-2: #554a72;
 
   /* The only accent in the system — actions only, never decoration. */
-  --color-brand: #c9a063;
-  --color-brand-soft: #d9b683;
+  --color-brand: #7b39fc;
+  --color-brand-soft: #a374fd;
 
   /* Status. Never used as decoration. */
   --color-mint: #7fa88a;
   --color-bad: #d07e75;
 
-  /* Formerly cyan/purple decoration — neutralised rather than removed so the
-     29 files still referencing them degrade to grey instead of breaking. */
-  --color-neon: #c9a063;
-  --color-violet: #82878f;
-  --color-violet-soft: #b4b8be;
+  /* Secondary accents — used for gradients alongside brand (e.g.
+     `from-brand-soft via-neon to-mint`), kept a distinct hue from brand so
+     those gradients still read as gradients. */
+  --color-neon: #b06bfb;
+  --color-violet: #6b2fd6;
+  --color-violet-soft: #b795fa;
 
   /* Text ramp */
   --color-fg-1: #edeef0;
   --color-fg-2: #b4b8be;
   --color-fg-3: #82878f;
 
-  /* Cyrillic-capable throughout — Space Grotesk and Plus Jakarta Sans are not. */
+  /* Cyrillic-capable throughout — Instrument Serif/Cabin are Latin-only, so
+     they're loaded separately and used only for guaranteed-English marketing
+     copy (DatacoreHero), never as these site-wide defaults. */
   --font-display: "Roboto Flex", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "Onest", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-serif: "Instrument Serif", ui-serif, serif;
 
   --animate-float: float 7s ease-in-out infinite;
   --animate-float-slow: float 11s ease-in-out infinite;
@@ -59,8 +63,8 @@
   to { opacity: 1; transform: translateY(0); filter: blur(0); }
 }
 @keyframes pulse-soft {
-  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(201, 160, 99, 0.4); }
-  50% { opacity: 0.75; box-shadow: 0 0 0 6px rgba(201, 160, 99, 0); }
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(123, 57, 252, 0.4); }
+  50% { opacity: 0.75; box-shadow: 0 0 0 6px rgba(123, 57, 252, 0); }
 }
 @keyframes badge-pop {
   0% { transform: scale(0.6); }
@@ -126,11 +130,15 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Brass is a light accent, so anything filled with it must take ink text —
-   white on #c9a063 measures 2.42:1 and is unreadable. This sits in the base
-   layer so any explicit text-* utility on the element still wins. */
+/* Brand (#7b39fc) is dark/saturated enough that it needs LIGHT text — white
+   on brand measures ~5.5:1, dark ink on brand only ~3.3:1 (fails AA for
+   normal-weight button text). brand-soft and mint are pale, so they still
+   need dark ink text. This sits in the base layer so any explicit text-*
+   utility on the element still wins. */
 @layer base {
-  .bg-brand,
+  .bg-brand {
+    color: var(--color-fg-1);
+  }
   .bg-brand-soft,
   .bg-mint {
     color: var(--color-ink);

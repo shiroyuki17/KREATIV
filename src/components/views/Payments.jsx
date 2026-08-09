@@ -119,7 +119,7 @@ function DepositModal({ onClose, onDeposited, payStatus }) {
             <button
               onClick={createInvoice}
               disabled={busy}
-              className="mt-5 w-full rounded-xl bg-brand py-3 text-[13.5px] font-bold text-ink glow-brand transition-shadow disabled:opacity-50"
+              className="mt-5 w-full rounded-xl bg-brand py-3 text-[13.5px] font-bold text-fg-1 glow-brand transition-shadow disabled:opacity-50"
             >
               {busy ? "Түр хүлээнэ үү…" : "Invoice үүсгэх"}
             </button>
@@ -344,7 +344,7 @@ export default function Payments() {
           </button>
           <button
             onClick={() => setShowDeposit(true)}
-            className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-[12.5px] font-bold text-ink transition-colors hover:bg-brand-soft"
+            className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-[12.5px] font-bold text-fg-1 transition-colors hover:bg-brand-soft"
           >
             <Wallet className="h-4 w-4" />
             Add funds

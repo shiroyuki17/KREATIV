@@ -119,7 +119,7 @@ export default function Reviews() {
           </p>
           <button
             onClick={() => nav("auth")}
-            className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-brand px-6 py-3 text-[13.5px] font-semibold text-ink glow-brand"
+            className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-brand px-6 py-3 text-[13.5px] font-semibold text-fg-1 glow-brand"
           >
             Get started free <ArrowRight className="h-4 w-4" />
           </button>
@@ -200,7 +200,7 @@ export default function Reviews() {
       <div className="mt-14 flex flex-col items-center gap-4 text-center">
         <h2 className="font-display text-2xl font-bold tracking-tight">Join them</h2>
         <div className="flex flex-wrap justify-center gap-3">
-          <button onClick={() => nav("auth")} className="inline-flex items-center gap-2 rounded-2xl bg-brand px-7 py-3.5 text-[14px] font-semibold text-ink glow-brand transition-shadow">
+          <button onClick={() => nav("auth")} className="inline-flex items-center gap-2 rounded-2xl bg-brand px-7 py-3.5 text-[14px] font-semibold text-fg-1 glow-brand transition-shadow">
             Get started free <ArrowRight className="h-4 w-4" />
           </button>
           <button onClick={() => nav("how")} className="glass rounded-2xl px-7 py-3.5 text-[14px] font-semibold text-white/85 transition-colors hover:border-white/25">

@@ -302,7 +302,7 @@ export default function PostJob() {
                 <button
                   onClick={draftWithAi}
                   disabled={aiDrafting}
-                  className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-brand px-4 py-2.5 text-[12.5px] font-bold text-ink transition-shadow disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-brand px-4 py-2.5 text-[12.5px] font-bold text-fg-1 transition-shadow disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {aiDrafting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                   {aiDrafting ? "Drafting…" : "Draft"}

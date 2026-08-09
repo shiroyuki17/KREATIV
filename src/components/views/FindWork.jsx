@@ -269,7 +269,7 @@ export default function FindWork() {
           <button
             onClick={runAiSearch}
             disabled={aiBusy || aiPrompt.trim().length < 3}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-brand px-5 py-3 text-[13.5px] font-semibold text-ink glow-brand transition-all disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-brand px-5 py-3 text-[13.5px] font-semibold text-fg-1 glow-brand transition-all disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
           >
             {aiBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             {aiBusy ? "Searching…" : "Find matches"}
@@ -315,7 +315,7 @@ export default function FindWork() {
           className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[13px] font-medium text-white/70 lg:hidden"
         >
           <SlidersHorizontal className="h-4 w-4" /> Filters
-          {activeCount > 0 && <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-ink">{activeCount}</span>}
+          {activeCount > 0 && <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-fg-1">{activeCount}</span>}
         </button>
         <select
           value={sort}
@@ -410,7 +410,7 @@ export default function FindWork() {
                     </p>
                     <button
                       onClick={(e) => { e.stopPropagation(); nav("project", job); }}
-                      className="rounded-xl bg-brand px-5 py-2.5 text-[12.5px] font-bold text-ink glow-brand transition-shadow"
+                      className="rounded-xl bg-brand px-5 py-2.5 text-[12.5px] font-bold text-fg-1 glow-brand transition-shadow"
                     >
                       Apply
                     </button>
@@ -425,7 +425,7 @@ export default function FindWork() {
               <Search className="mx-auto h-9 w-9 text-white/20" />
               <p className="mt-4 text-[14.5px] font-semibold">No briefs match those filters</p>
               <p className="mt-1.5 text-[12.5px] text-white/45">Try a broader category, clear the budget range, or remove some skills.</p>
-              <button onClick={clear} className="mt-5 rounded-xl bg-brand px-5 py-2.5 text-[12.5px] font-bold text-ink glow-brand">
+              <button onClick={clear} className="mt-5 rounded-xl bg-brand px-5 py-2.5 text-[12.5px] font-bold text-fg-1 glow-brand">
                 Reset filters
               </button>
             </div>

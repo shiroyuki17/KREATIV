@@ -113,7 +113,7 @@ export default function BentoShowcase() {
           {/* Medium: top talent */}
           <SpotlightCard
             className="md:col-span-2 transition-transform duration-300 hover:scale-[1.015]"
-            spotColor="rgba(201, 160, 99, 0.12)"
+            spotColor="rgba(123, 57, 252, 0.12)"
           >
             <div className="flex h-full flex-col p-6">
               <div className="flex items-center justify-between">
@@ -163,7 +163,7 @@ export default function BentoShowcase() {
           </SpotlightCard>
 
           {/* Small: live jobs counter */}
-          <SpotlightCard className="transition-transform duration-300 hover:scale-[1.02]" spotColor="rgba(201, 160, 99, 0.12)">
+          <SpotlightCard className="transition-transform duration-300 hover:scale-[1.02]" spotColor="rgba(123, 57, 252, 0.12)">
             <div className="flex h-full flex-col justify-between p-6">
               <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-mint/30 bg-mint/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-mint">
                 <span className="h-1.5 w-1.5 animate-pulse-soft rounded-full bg-mint" />

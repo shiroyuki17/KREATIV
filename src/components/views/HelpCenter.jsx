@@ -100,7 +100,7 @@ export default function HelpCenter() {
         <MessageSquare className="h-8 w-8 text-brand-soft" />
         <h2 className="font-display text-xl font-bold">Still need a hand?</h2>
         <p className="max-w-sm text-[13px] text-white/50">Our team replies within a few hours — every day of the week.</p>
-        <button onClick={() => nav("contact")} className="mt-2 rounded-xl bg-brand px-6 py-3 text-[13.5px] font-bold text-ink glow-brand">
+        <button onClick={() => nav("contact")} className="mt-2 rounded-xl bg-brand px-6 py-3 text-[13.5px] font-bold text-fg-1 glow-brand">
           Contact support
         </button>
       </div>

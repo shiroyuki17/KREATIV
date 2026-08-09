@@ -168,7 +168,7 @@ export default function ChatWidget() {
         <div className="glass fixed bottom-[168px] right-6 z-50 flex w-[min(370px,calc(100vw-3rem))] animate-feed-in flex-col overflow-hidden rounded-3xl shadow-[0_24px_70px_rgba(0,0,0,0.55)] lg:bottom-24">
           <div className="relative flex items-center justify-between border-b border-white/10 bg-gradient-to-r from-brand/15 via-neon/10 to-transparent p-4">
             <div className="flex items-center gap-2.5">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-ink glow-brand">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-fg-1 glow-brand">
                 <Sparkles className="h-4.5 w-4.5" />
               </span>
               <div>

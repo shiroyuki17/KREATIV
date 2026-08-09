@@ -75,7 +75,7 @@ export default function AiPanel({ title, chips, onRefine }) {
         <button
           type="submit"
           aria-label="Send"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand text-ink transition-shadow"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand text-fg-1 transition-shadow"
         >
           <Send className="h-3.5 w-3.5" />
         </button>

@@ -150,7 +150,7 @@ function NavRow({ page: p, label, Icon, active, badge, collapsed, onClick }) {
       <span className="relative shrink-0">
         <Icon className="h-[18px] w-[18px]" />
         {collapsed && badge > 0 && (
-          <span key={badge} className="absolute -right-1.5 -top-1.5 flex h-3.5 min-w-3.5 animate-badge-pop items-center justify-center rounded-full bg-brand px-0.5 text-[8.5px] font-bold text-ink">
+          <span key={badge} className="absolute -right-1.5 -top-1.5 flex h-3.5 min-w-3.5 animate-badge-pop items-center justify-center rounded-full bg-brand px-0.5 text-[8.5px] font-bold text-fg-1">
             {badge}
           </span>
         )}
@@ -159,7 +159,7 @@ function NavRow({ page: p, label, Icon, active, badge, collapsed, onClick }) {
         <>
           <span className="flex-1">{label}</span>
           {badge > 0 && (
-            <span key={badge} className="flex h-5 min-w-5 animate-badge-pop items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-ink">
+            <span key={badge} className="flex h-5 min-w-5 animate-badge-pop items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-fg-1">
               {badge}
             </span>
           )}
@@ -771,14 +771,14 @@ function MobileTabBar({ page, go, user, mode }) {
             }`}
           >
             {isPost ? (
-              <span className="-mt-6 flex h-11 w-11 items-center justify-center rounded-full bg-brand text-ink">
+              <span className="-mt-6 flex h-11 w-11 items-center justify-center rounded-full bg-brand text-fg-1">
                 <Icon className="h-5 w-5" />
               </span>
             ) : (
               <span className="relative">
                 <Icon className="h-5 w-5" />
                 {badge > 0 && (
-                  <span className="absolute -right-1.5 -top-1.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-brand px-0.5 text-[8px] font-bold text-ink">
+                  <span className="absolute -right-1.5 -top-1.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-brand px-0.5 text-[8px] font-bold text-fg-1">
                     {badge}
                   </span>
                 )}

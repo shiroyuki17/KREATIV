@@ -264,7 +264,7 @@ export default function Auth() {
           <button
             onClick={handleSubmit}
             disabled={!canSubmit}
-            className="mt-6 w-full rounded-xl bg-brand py-3.5 text-[14px] font-semibold text-ink glow-brand transition-all disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+            className="mt-6 w-full rounded-xl bg-brand py-3.5 text-[14px] font-semibold text-fg-1 glow-brand transition-all disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
           >
             {submitting ? "Түр хүлээнэ үү…" : mode === "signup" ? "Create account" : "Log in"}
           </button>

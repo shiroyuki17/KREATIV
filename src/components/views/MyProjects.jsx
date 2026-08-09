@@ -54,7 +54,7 @@ function DeliverForm({ onSubmit, busy }) {
       <button
         onClick={() => onSubmit({ note, link: link || undefined })}
         disabled={busy}
-        className="rounded-lg bg-brand px-3.5 py-2 text-[11.5px] font-bold text-ink glow-brand disabled:opacity-50"
+        className="rounded-lg bg-brand px-3.5 py-2 text-[11.5px] font-bold text-fg-1 glow-brand disabled:opacity-50"
       >
         Хүлээлгэн өгөх
       </button>
@@ -114,7 +114,7 @@ function ReviewForm({ onSubmit, busy, done }) {
       <button
         onClick={() => onSubmit({ stars, comment: comment || undefined })}
         disabled={busy}
-        className="rounded-lg bg-brand px-3.5 py-2 text-[11.5px] font-bold text-ink glow-brand disabled:opacity-50"
+        className="rounded-lg bg-brand px-3.5 py-2 text-[11.5px] font-bold text-fg-1 glow-brand disabled:opacity-50"
       >
         Үнэлгээ илгээх
       </button>
@@ -155,12 +155,12 @@ function MilestoneCard({ milestone: m, myRole, revisionLimit, onFund, onDeliver,
 
       <div className="mt-3 flex flex-wrap gap-2">
         {myRole === "client" && m.status === "PENDING_FUNDING" && (
-          <button onClick={() => onFund(m.id)} disabled={busy} className="rounded-lg border border-brand/40 bg-brand/10 px-3.5 py-1.5 text-[11.5px] font-bold text-brand-soft transition-all hover:bg-brand hover:text-ink disabled:opacity-50">
+          <button onClick={() => onFund(m.id)} disabled={busy} className="rounded-lg border border-brand/40 bg-brand/10 px-3.5 py-1.5 text-[11.5px] font-bold text-brand-soft transition-all hover:bg-brand hover:text-fg-1 disabled:opacity-50">
             Escrow-д санхүүжүүлэх
           </button>
         )}
         {myRole === "freelancer" && m.status === "FUNDED" && !showDeliver && (
-          <button onClick={() => setShowDeliver(true)} className="rounded-lg border border-brand/40 bg-brand/10 px-3.5 py-1.5 text-[11.5px] font-bold text-brand-soft transition-all hover:bg-brand hover:text-ink">
+          <button onClick={() => setShowDeliver(true)} className="rounded-lg border border-brand/40 bg-brand/10 px-3.5 py-1.5 text-[11.5px] font-bold text-brand-soft transition-all hover:bg-brand hover:text-fg-1">
             Хүлээлгэн өгөх
           </button>
         )}

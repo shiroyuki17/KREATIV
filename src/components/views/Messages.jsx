@@ -106,12 +106,12 @@ function Avatar({ name, avatarUrl, size = "md", online = false }) {
   return (
     <span className="relative shrink-0">
       <span className={`flex ${sizes[size] || sizes.md} items-center justify-center overflow-hidden rounded-full font-bold`}
-        style={{ background: "linear-gradient(135deg, rgba(201, 160, 99, 0.4), rgba(100,200,255,0.3))", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)" }}>
+        style={{ background: "linear-gradient(135deg, rgba(123, 57, 252, 0.4), rgba(100,200,255,0.3))", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)" }}>
         {src ? <img src={src} alt="" className="h-full w-full object-cover" /> : initialsOf(name)}
       </span>
       {online && (
         <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-[#1b1d20]"
-          style={{ background: "#C9A063" }} />
+          style={{ background: "#7B39FC" }} />
       )}
     </span>
   );
@@ -122,11 +122,11 @@ function DetailsPanel({ contact, onVoiceCall, onVideoCall }) {
   return (
     <div className="h-full overflow-y-auto">
       {/* Profile Header */}
-      <div className="flex flex-col items-center px-5 py-8" style={{ background: "linear-gradient(180deg, rgba(201, 160, 99, 0.06) 0%, transparent 100%)" }}>
+      <div className="flex flex-col items-center px-5 py-8" style={{ background: "linear-gradient(180deg, rgba(123, 57, 252, 0.06) 0%, transparent 100%)" }}>
         <Avatar name={contact.name} avatarUrl={contact.avatarUrl} size="lg" online />
         <p className="mt-3 text-[15px] font-bold tracking-tight">{contact.name}</p>
         <span className="mt-1 flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium"
-          style={{ background: "rgba(201, 160, 99, 0.1)", color: "#C9A063" }}>
+          style={{ background: "rgba(123, 57, 252, 0.1)", color: "#7B39FC" }}>
           <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />
           Online
         </span>
@@ -155,7 +155,7 @@ function DetailsPanel({ contact, onVoiceCall, onVideoCall }) {
       <div className="grid grid-cols-2 gap-3 p-5">
         {[["98%", "Success"], ["142", "Projects"], ["4.9★", "Rating"], ["<1h", "Response"]].map(([val, lbl]) => (
           <div key={lbl} className="rounded-xl p-3 text-center" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <p className="text-[15px] font-bold" style={{ color: "#C9A063" }}>{val}</p>
+            <p className="text-[15px] font-bold" style={{ color: "#7B39FC" }}>{val}</p>
             <p className="text-[10.5px] text-white/40">{lbl}</p>
           </div>
         ))}
@@ -166,7 +166,7 @@ function DetailsPanel({ contact, onVoiceCall, onVideoCall }) {
         <button
           onClick={onVoiceCall}
           className="flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-[13px] font-semibold transition-all hover:brightness-110"
-          style={{ background: "rgba(201, 160, 99, 0.15)", color: "#C9A063", border: "1px solid rgba(201, 160, 99, 0.25)" }}>
+          style={{ background: "rgba(123, 57, 252, 0.15)", color: "#7B39FC", border: "1px solid rgba(123, 57, 252, 0.25)" }}>
           <Phone className="h-4 w-4" /> Voice Call
         </button>
         <button
@@ -352,7 +352,7 @@ export default function Messages() {
         <div className="flex h-[560px] items-center justify-center rounded-2xl text-[13px] text-white/40"
           style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
           <div className="flex flex-col items-center gap-3">
-            <div className="h-8 w-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "rgba(201, 160, 99, 0.5)", borderTopColor: "transparent" }} />
+            <div className="h-8 w-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "rgba(123, 57, 252, 0.5)", borderTopColor: "transparent" }} />
             <span>Loading conversations…</span>
           </div>
         </div>
@@ -413,8 +413,8 @@ export default function Messages() {
             {filteredConvos.length === 0 && (
               <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
                 <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl"
-                  style={{ background: "rgba(201, 160, 99, 0.08)" }}>
-                  <Search className="h-5 w-5" style={{ color: "rgba(201, 160, 99, 0.5)" }} />
+                  style={{ background: "rgba(123, 57, 252, 0.08)" }}>
+                  <Search className="h-5 w-5" style={{ color: "rgba(123, 57, 252, 0.5)" }} />
                 </div>
                 <p className="text-[12.5px] text-white/40">
                   {searchQuery ? "No results found" : "No conversations yet — message a freelancer or client to start one."}
@@ -429,8 +429,8 @@ export default function Messages() {
                   onClick={() => setActiveId(c.id)}
                   className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-all"
                   style={{
-                    background: isActive ? "rgba(201, 160, 99, 0.08)" : "transparent",
-                    borderLeft: isActive ? "2px solid #C9A063" : "2px solid transparent",
+                    background: isActive ? "rgba(123, 57, 252, 0.08)" : "transparent",
+                    borderLeft: isActive ? "2px solid #7B39FC" : "2px solid transparent",
                     borderBottom: "1px solid rgba(255,255,255,0.04)",
                   }}
                 >
@@ -450,7 +450,7 @@ export default function Messages() {
                       </span>
                       {c.unread > 0 && (
                         <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-[9.5px] font-bold text-black"
-                          style={{ background: "#C9A063", boxShadow: "0 0 10px rgba(201, 160, 99, 0.5)" }}>
+                          style={{ background: "#7B39FC", boxShadow: "0 0 10px rgba(123, 57, 252, 0.5)" }}>
                           {c.unread}
                         </span>
                       )}
@@ -472,7 +472,7 @@ export default function Messages() {
                 <Avatar name={active.with.name} avatarUrl={active.with.avatarUrl} size="sm" online />
                 <div className="flex-1 min-w-0">
                   <p className="text-[14px] font-bold truncate">{active.with.name}</p>
-                  <p className="text-[11px]" style={{ color: "#C9A063" }}>● Online</p>
+                  <p className="text-[11px]" style={{ color: "#7B39FC" }}>● Online</p>
                 </div>
                 <div className="flex items-center gap-1">
                   <button
@@ -504,7 +504,7 @@ export default function Messages() {
 
               {/* Messages */}
               <div className="flex-1 space-y-1 overflow-y-auto px-5 py-4"
-                style={{ background: "radial-gradient(ellipse at 30% 20%, rgba(201, 160, 99, 0.03) 0%, transparent 60%)" }}>
+                style={{ background: "radial-gradient(ellipse at 30% 20%, rgba(123, 57, 252, 0.03) 0%, transparent 60%)" }}>
                 {grouped.map((item, i) => {
                   if (item.type === "date") {
                     return (
@@ -531,9 +531,9 @@ export default function Messages() {
                             m.fileType?.startsWith("image/")
                               ? undefined
                               : isMe ? {
-                                background: "linear-gradient(135deg, #C9A063 0%, #00b87d 100%)",
+                                background: "linear-gradient(135deg, #7B39FC 0%, #00b87d 100%)",
                                 color: "#0a1a12",
-                                boxShadow: "0 4px 20px rgba(201, 160, 99, 0.25)",
+                                boxShadow: "0 4px 20px rgba(123, 57, 252, 0.25)",
                                 fontWeight: 500,
                               } : {
                                 background: "rgba(255,255,255,0.07)",
@@ -584,7 +584,7 @@ export default function Messages() {
                 </button>
                 <div className="flex flex-1 items-center gap-2 rounded-2xl px-4 py-2"
                   style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.09)", transition: "border-color 0.2s" }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = "rgba(201, 160, 99, 0.4)"}
+                  onFocus={(e) => e.currentTarget.style.borderColor = "rgba(123, 57, 252, 0.4)"}
                   onBlur={(e) => e.currentTarget.style.borderColor = "rgba(255,255,255,0.09)"}
                 >
                   <input
@@ -605,9 +605,9 @@ export default function Messages() {
                   aria-label="Send message"
                   className="shrink-0 rounded-xl p-2.5 transition-all disabled:cursor-not-allowed disabled:opacity-40 hover:scale-105 active:scale-95"
                   style={{
-                    background: draft.trim() ? "linear-gradient(135deg, #C9A063, #00b87d)" : "rgba(255,255,255,0.06)",
+                    background: draft.trim() ? "linear-gradient(135deg, #7B39FC, #00b87d)" : "rgba(255,255,255,0.06)",
                     color: draft.trim() ? "#0a1a12" : "rgba(255,255,255,0.3)",
-                    boxShadow: draft.trim() ? "0 4px 16px rgba(201, 160, 99, 0.35)" : "none",
+                    boxShadow: draft.trim() ? "0 4px 16px rgba(123, 57, 252, 0.35)" : "none",
                   }}
                 >
                   <Send className="h-4 w-4" />
@@ -618,8 +618,8 @@ export default function Messages() {
             /* Empty state */
             <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-3xl"
-                style={{ background: "rgba(201, 160, 99, 0.08)", border: "1px solid rgba(201, 160, 99, 0.15)" }}>
-                <Send className="h-7 w-7" style={{ color: "rgba(201, 160, 99, 0.5)" }} />
+                style={{ background: "rgba(123, 57, 252, 0.08)", border: "1px solid rgba(123, 57, 252, 0.15)" }}>
+                <Send className="h-7 w-7" style={{ color: "rgba(123, 57, 252, 0.5)" }} />
               </div>
               <div>
                 <p className="text-[15px] font-semibold text-white/70">No conversation selected</p>

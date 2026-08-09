@@ -76,7 +76,7 @@ function PhoneVerify({ me, onVerified }) {
           className="w-40 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] outline-none focus:border-brand/50 disabled:opacity-50"
         />
         {stage === "idle" ? (
-          <button onClick={sendOtp} disabled={busy} className="rounded-lg bg-brand px-3.5 py-2 text-[11.5px] font-bold text-ink glow-brand disabled:opacity-50">
+          <button onClick={sendOtp} disabled={busy} className="rounded-lg bg-brand px-3.5 py-2 text-[11.5px] font-bold text-fg-1 glow-brand disabled:opacity-50">
             {busy ? "Илгээж байна…" : "Код авах"}
           </button>
         ) : (
@@ -152,7 +152,7 @@ function VerificationBadge({ profile, onUpdated }) {
         placeholder="жишээ нь: behance.net/miniy-huudas — сүүлийн 2 жил UI/UX хийж байна, X, Y, Z төслүүд..."
         className="mt-2 w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] outline-none focus:border-brand/50"
       />
-      <button onClick={submit} disabled={busy} className="mt-2 rounded-lg bg-brand px-3.5 py-2 text-[11.5px] font-bold text-ink glow-brand disabled:opacity-50">
+      <button onClick={submit} disabled={busy} className="mt-2 rounded-lg bg-brand px-3.5 py-2 text-[11.5px] font-bold text-fg-1 glow-brand disabled:opacity-50">
         {busy ? "Илгээж байна…" : "Баталгаажуулахыг хүсэх"}
       </button>
       {error && <p className="mt-2 text-[11.5px] font-medium text-red-400">{error}</p>}
