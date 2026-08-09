@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Avatar from "../ui/Avatar.jsx";
 import { Star, Quote, ArrowRight, AlertCircle } from "lucide-react";
 import BlurText from "../fx/BlurText.jsx";
 import SpotlightCard from "../fx/SpotlightCard.jsx";
@@ -134,9 +135,7 @@ export default function Reviews() {
               “{featured.comment}”
             </p>
             <div className="mt-7 flex items-center gap-3">
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-brand/50 to-neon/40 font-display text-[14px] font-bold ring-1 ring-white/15">
-                {initialsOf(featured.reviewerName)}
-              </span>
+              <Avatar name={featured.reviewerName} seed={featured.id} size="h-12 w-12 text-[31px]" />
               <div>
                 <p className="text-[15px] font-semibold">{featured.reviewerName}</p>
                 <p className="text-[12.5px] text-white/45">
@@ -182,9 +181,7 @@ export default function Reviews() {
                     </div>
                     <p className="mt-3.5 flex-1 text-[13.5px] leading-relaxed text-white/70">“{r.comment}”</p>
                     <div className="mt-5 flex items-center gap-3 border-t border-white/8 pt-4">
-                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand/50 to-neon/40 font-display text-[11px] font-bold ring-1 ring-white/15">
-                        {initialsOf(r.reviewerName)}
-                      </span>
+                      <Avatar name={r.reviewerName} seed={r.id} size="h-9 w-9 text-[23px]" />
                       <div className="min-w-0">
                         <p className="truncate text-[13px] font-semibold">{r.reviewerName}</p>
                         <p className="truncate text-[11px] text-white/40">

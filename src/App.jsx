@@ -13,7 +13,7 @@ import AuroraBackground from "./components/fx/AuroraBackground.jsx";
 // ── Нүүр хуудас: шууд (eager) import ──
 // Эдгээр нь анхны дэлгэцэнд ЯГ ОДОО хэрэгтэй тул тусад нь хуваавал
 // зөвхөн нэмэлт round-trip нэмнэ.
-import Hero from "./components/sections/Hero.jsx";
+import DatacoreHero from "./components/sections/DatacoreHero.jsx";
 import StandoutWork from "./components/sections/StandoutWork.jsx";
 import Categories from "./components/sections/Categories.jsx";
 import BentoShowcase from "./components/sections/BentoShowcase.jsx";
@@ -84,7 +84,7 @@ const PROTECTED_PAGES = APP_PAGES;
 function HomePage() {
   return (
     <>
-      <Hero />
+      <DatacoreHero />
       <Categories />
       <BentoShowcase />
       <AISection />

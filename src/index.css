@@ -34,14 +34,6 @@
   --font-sans: "Onest", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
-  /* DatacoreHero-д зориулсан тусдаа фонт (Cyrillic дэмждэггүй тул зөвхөн
-     англи текстэй тухайн component дотор л ашиглана, site-wide фонтуудыг
-     орлохгүй). */
-  --font-manrope: "Manrope", ui-sans-serif, system-ui, sans-serif;
-  --font-cabin: "Cabin", ui-sans-serif, system-ui, sans-serif;
-  --font-instrument-serif: "Instrument Serif", serif;
-  --font-inter: "Inter", ui-sans-serif, system-ui, sans-serif;
-
   --animate-float: float 7s ease-in-out infinite;
   --animate-float-slow: float 11s ease-in-out infinite;
   --animate-feed-in: feed-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;

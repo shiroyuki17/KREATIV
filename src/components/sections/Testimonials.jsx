@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Avatar from "../ui/Avatar.jsx";
 import { Star, ArrowRight } from "lucide-react";
 import SpotlightCard from "../fx/SpotlightCard.jsx";
 import BlurText from "../fx/BlurText.jsx";
@@ -58,9 +59,7 @@ export default function Testimonials() {
                 </div>
                 <p className="mt-4 flex-1 text-[14px] leading-relaxed text-white/75">“{t.comment}”</p>
                 <div className="mt-5 flex items-center gap-3 border-t border-white/8 pt-4">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-brand/50 to-neon/40 font-display text-[12px] font-bold ring-1 ring-white/15">
-                    {initialsOf(t.reviewerName)}
-                  </span>
+                  <Avatar name={t.reviewerName} seed={t.id} size="h-10 w-10 text-[26px]" />
                   <div className="min-w-0">
                     <p className="truncate text-[13.5px] font-semibold">{t.reviewerName}</p>
                     <p className="truncate text-[11.5px] text-white/40">

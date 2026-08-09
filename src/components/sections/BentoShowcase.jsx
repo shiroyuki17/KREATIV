@@ -1,4 +1,5 @@
 import { Flame, Star, BadgeCheck, ArrowRight, Users, Zap } from "lucide-react";
+import Avatar from "../ui/Avatar.jsx";
 import SpotlightCard from "../fx/SpotlightCard.jsx";
 import Magnet from "../fx/Magnet.jsx";
 import CountUp from "../fx/CountUp.jsx";
@@ -137,9 +138,7 @@ export default function BentoShowcase() {
                     className="cursor-pointer rounded-xl border border-white/8 bg-white/[0.03] p-3.5 transition-colors hover:border-neon/40"
                   >
                     <div className="flex items-center gap-2.5">
-                      <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand/50 to-neon/40 font-display text-[11px] font-bold ring-1 ring-white/20">
-                        {f.initials}
-                      </span>
+                      <Avatar src={f.avatarUrl} name={f.name} seed={f.userId} size="h-9 w-9 text-[23px]" />
                       <div className="min-w-0">
                         <p className="truncate text-[12.5px] font-semibold">
                           {f.name}
