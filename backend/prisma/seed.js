@@ -84,6 +84,69 @@ const FREELANCERS = [
     skills: ['Blender', 'WebGL', '3D'], priceMin: 70, priceMax: 125,
     portfolio: { title: 'Nova Studio landing scene', description: 'Interactive WebGL hero for an AI product launch.', link: 'https://example.com/omar' },
   },
+  // Ангилал бүрт хайлт, шүүлтүүр, "Top rated" зэргийг утгатай туршихад
+  // хангалттай гүн байхаар нэмэв — өмнө нь зарим ангилалд ганц хүнтэй
+  // байсан тул шүүхэд бараг хоосон болдог байв.
+  {
+    email: 'noah@demo.kreativ.mn', name: 'Noah Bergstrom', category: 'Dev',
+    headline: 'Backend & Infrastructure Engineer', bio: 'Distributed systems, Postgres tuning and zero-downtime migrations.',
+    skills: ['Node.js', 'PostgreSQL', 'GraphQL'], priceMin: 80, priceMax: 150,
+    portfolio: { title: 'Payments ledger rebuild', description: 'Double-entry ledger handling 4M events a day.', link: 'https://example.com/noah' },
+  },
+  {
+    email: 'irene@demo.kreativ.mn', name: 'Irene Costa', category: 'Dev',
+    headline: 'Mobile Engineer', bio: 'React Native apps with a focus on offline-first behaviour.',
+    skills: ['React', 'TypeScript', 'iOS'], priceMin: 65, priceMax: 115,
+    portfolio: { title: 'Field inspection app', description: 'Offline-capable app used by 900 site inspectors.', link: 'https://example.com/irene' },
+  },
+  {
+    email: 'tomas@demo.kreativ.mn', name: 'Tomas Neary', category: 'Design',
+    headline: 'Brand & Identity Designer', bio: 'Naming, logo systems and packaging for consumer brands.',
+    skills: ['Branding', 'Illustration', 'Figma'], priceMin: 55, priceMax: 110,
+    portfolio: { title: 'Kettle & Co identity', description: 'Full brand identity and packaging for a coffee roaster.', link: 'https://example.com/tomas' },
+  },
+  {
+    email: 'hana@demo.kreativ.mn', name: 'Hana Sato', category: 'Design',
+    headline: 'UX Researcher & Designer', bio: 'Turns messy user interviews into flows teams can actually build.',
+    skills: ['Figma', 'Design Systems'], priceMin: 60, priceMax: 120,
+    portfolio: { title: 'Onboarding redesign', description: 'Cut signup drop-off for a B2B analytics tool.', link: 'https://example.com/hana' },
+  },
+  {
+    email: 'victor@demo.kreativ.mn', name: 'Victor Almeida', category: 'AI',
+    headline: 'ML Engineer', bio: 'Retrieval pipelines and evaluation harnesses for LLM products.',
+    skills: ['Python', 'LLM', 'Analytics'], priceMin: 90, priceMax: 170,
+    portfolio: { title: 'Support answer engine', description: 'RAG assistant grounded in 40k help articles.', link: 'https://example.com/victor' },
+  },
+  {
+    email: 'zara@demo.kreativ.mn', name: 'Zara Malik', category: 'AI',
+    headline: 'Data Scientist', bio: 'Forecasting and experiment design for subscription businesses.',
+    skills: ['Python', 'Analytics', 'D3'], priceMin: 75, priceMax: 140,
+    portfolio: { title: 'Churn early-warning model', description: 'Flagged at-risk accounts three weeks ahead.', link: 'https://example.com/zara' },
+  },
+  {
+    email: 'felix@demo.kreativ.mn', name: 'Felix Warren', category: 'Writing',
+    headline: 'Technical Writer', bio: 'API references and developer guides that people finish reading.',
+    skills: ['Copywriting', 'ContentStrategy'], priceMin: 45, priceMax: 90,
+    portfolio: { title: 'Developer docs rewrite', description: 'Restructured docs for a payments API.', link: 'https://example.com/felix' },
+  },
+  {
+    email: 'lucia@demo.kreativ.mn', name: 'Lucia Ferrer', category: 'Marketing',
+    headline: 'Lifecycle Marketing Lead', bio: 'Email and retention programmes for subscription products.',
+    skills: ['ContentStrategy', 'Analytics', 'SEO'], priceMin: 60, priceMax: 115,
+    portfolio: { title: 'Retention email programme', description: 'Lifecycle series for a fitness subscription.', link: 'https://example.com/lucia' },
+  },
+  {
+    email: 'kwame@demo.kreativ.mn', name: 'Kwame Boateng', category: 'Marketing',
+    headline: 'Performance Marketer', bio: 'Paid acquisition with a bias toward payback period, not vanity reach.',
+    skills: ['PaidAds', 'Analytics', 'SEO'], priceMin: 55, priceMax: 105,
+    portfolio: { title: 'Paid acquisition rebuild', description: 'Restructured spend across search and social.', link: 'https://example.com/kwame' },
+  },
+  {
+    email: 'sofia@demo.kreativ.mn', name: 'Sofia Lindqvist', category: 'Motion',
+    headline: 'Video Editor & Motion Designer', bio: 'Product films and launch trailers, script through final grade.',
+    skills: ['AfterEffects', 'Motion', 'Lottie'], priceMin: 50, priceMax: 95,
+    portfolio: { title: 'Product launch film', description: '90-second launch film for a hardware startup.', link: 'https://example.com/sofia' },
+  },
 ];
 
 const JOBS = [
