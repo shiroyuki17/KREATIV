@@ -124,6 +124,22 @@ export function NavProvider({ children }) {
    * хүсэлт 403 буцаана. Иймд эхлээд onboarding руу оруулж профайлыг нь
    * үүсгүүлнэ; буцаж ирэхэд горим аль хэдийн сонгогдсон байна.
    */
+  /**
+   * Горимын сонголтыг ЗӨВХӨН хадгална — хаашаа ч шилжүүлэхгүй.
+   *
+   * Бүртгүүлэхэд сонгосон "I'm hiring" / "I'm freelancing" нь ҮНДСЭН горим
+   * байх ёстой. Өмнө нь тэр сонголт зөвхөн харгалзах профайлыг үүсгэхэд
+   * хэрэглэгдээд хаягддаг байсан: `resolveMode` нь юу ч хадгалагдаагүй үед
+   * freelancer руу унадаг тул хэрэглэгч хоёр дахь профайлаа үүсгэмэгц
+   * сонголт нь чимээгүй freelancer болж хувирдаг байв. Нэг профайлтай
+   * байхад л санамсаргүй зөв ажиллаж байсан.
+   */
+  const setPreferredMode = useCallback((next) => {
+    if (next !== "freelancer" && next !== "client") return;
+    setModePref(next);
+    try { localStorage.setItem(MODE_KEY, next); } catch { /* private mode */ }
+  }, []);
+
   const switchMode = useCallback(
     (next) => {
       if (next !== "freelancer" && next !== "client") return;
@@ -150,7 +166,7 @@ export function NavProvider({ children }) {
 
   return (
     <NavCtx.Provider
-      value={{ ...route, nav, user, setUser, role, authReady, mode, switchMode }}
+      value={{ ...route, nav, user, setUser, role, authReady, mode, switchMode, setPreferredMode }}
     >
       {children}
     </NavCtx.Provider>

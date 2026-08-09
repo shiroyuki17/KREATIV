@@ -67,7 +67,7 @@ function Steps({ step }) {
 }
 
 export default function Onboarding() {
-  const { params, nav, setUser } = useNav();
+  const { params, nav, setUser, setPreferredMode } = useNav();
   const role = params?.role || "freelancer";
   const isFl = role === "freelancer";
 
@@ -120,6 +120,12 @@ export default function Onboarding() {
       } else {
         await saveClientProfile({ orgName: companyName || undefined }, token);
       }
+      // Бүртгүүлэхэд сонгосон тал (I'm hiring / I'm freelancing) нь ҮНДСЭН
+      // горим болно. Үүнийг хадгалахгүй бол resolveMode нь өгөгдмөлөөр
+      // freelancer руу унадаг тул хэрэглэгч хоёр дахь профайлаа үүсгэмэгц
+      // анхны сонголт нь чимээгүй алдагддаг.
+      setPreferredMode(isFl ? "freelancer" : "client");
+
       // Профайл шинээр үүссэн тул /auth/me-ийн hasFreelancerProfile /
       // hasClientProfile өөрчлөгдсөн. Дахин татаж авахгүй бол sidebar-ийн
       // горим солигч "профайл байхгүй" гэж үзсээр байгаад дахин onboarding
