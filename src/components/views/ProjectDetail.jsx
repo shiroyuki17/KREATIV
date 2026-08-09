@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, Star, BadgeCheck, ShieldCheck, Clock, Users, Check, AlertCircle } from "lucide-react";
 import SpotlightCard from "../fx/SpotlightCard.jsx";
 import Magnet from "../fx/Magnet.jsx";
-import { JOBS, MILESTONES } from "../../data/mock.js";
 import { useNav } from "../../nav.jsx";
 import { fetchJobs } from "../../lib/jobsApi.js";
 import { submitProposal } from "../../lib/contractApi.js";
@@ -15,43 +14,32 @@ function timeAgo(iso) {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-// Jobs can arrive here two ways: a real record from the Jobs API (Find Work,
-// which is wired to the backend) or a mock record from the still-mock Home
-// showcases (BentoShowcase/LiveBriefs/TrendingNow). Normalize both into one
-// display shape rather than picking a single source of truth prematurely.
+// Зар нь Jobs API-аас ирнэ. Өмнө нь нүүр хуудасны mock үзүүлбэрүүдээс ч
+// ирдэг байсан тул хоёр өөр хэлбэрийг зэрэг зохицуулдаг байв — тэдгээр
+// хэсгүүд бодит өгөгдөлд шилжсэн тул ганц хэлбэр үлдлээ.
 function normalize(job) {
-  const isReal = "budgetType" in job;
-  if (!isReal) {
-    return {
-      isReal, id: job.id, cat: job.cat, type: job.type, posted: job.posted,
-      clientName: job.client, verified: job.verified, rating: job.rating,
-      tags: job.tags, budget: job.budget, proposals: job.proposals,
-      description: null,
-    };
-  }
   return {
-    isReal, id: job.id, cat: job.category, type: job.budgetType === "FIXED" ? "Fixed" : "Hourly",
+    id: job.id, cat: job.category, type: job.budgetType === "FIXED" ? "Fixed" : "Hourly",
     posted: timeAgo(job.createdAt), clientName: job.client?.name || job.client?.orgName || "Client",
     verified: !!job.client?.verifiedPayer, rating: job.client?.ratingAvg > 0 ? job.client.ratingAvg : null,
-    tags: job.skills || [], proposals: null, description: job.description,
+    tags: job.skills || [], proposals: job.proposalCount ?? null, description: job.description,
     budget: job.budgetMin ? `$${job.budgetMin.toLocaleString("en-US")}${job.budgetType === "HOURLY" ? "/hr" : ""}` : "—",
   };
 }
 
 export default function ProjectDetail() {
   const { params, nav } = useNav();
-  const raw = params || JOBS[0];
-  const job = normalize(raw);
+  const raw = params;
+  const job = raw ? normalize(raw) : null;
   const [bid, setBid] = useState("");
   const [coverLetter, setCoverLetter] = useState("");
   const [sent, setSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [proposalError, setProposalError] = useState("");
   const [proposalWarning, setProposalWarning] = useState(null);
-  const [similar, setSimilar] = useState(job.isReal ? [] : JOBS.filter((j) => j.id !== raw.id && j.cat === raw.cat).slice(0, 2));
+  const [similar, setSimilar] = useState([]);
 
   const sendProposal = async () => {
-    if (!job.isReal) { setSent(true); return; } // mock briefs stay decorative — no real job to attach a proposal to
     const token = getAccessToken();
     if (!token) { nav("auth"); return; }
     const price = parseInt(bid.replace(/[^0-9]/g, ""), 10);
@@ -71,12 +59,33 @@ export default function ProjectDetail() {
   };
 
   useEffect(() => {
-    if (!job.isReal) return;
+    if (!job) return;
     fetchJobs({ category: job.cat, pageSize: 3 })
       .then((res) => setSimilar(res.jobs.filter((j) => j.id !== raw.id).slice(0, 2)))
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Энэ хуудас руу зарын өгөгдөлгүйгээр орж ирж болно (шууд #/project бичих,
+  // хуучин хавчуургаар орох). Өмнө нь ийм үед mock зар харуулдаг байсан —
+  // байхгүй ажилд өргөдөл гаргах гэж оролдох боломж үүсгэдэг байв.
+  if (!job) {
+    return (
+      <div className="mx-auto flex max-w-lg flex-col items-center px-6 py-24 text-center">
+        <AlertCircle className="h-8 w-8 text-white/30" />
+        <h1 className="mt-4 font-display text-xl font-bold">Brief not found</h1>
+        <p className="mt-2 text-[13.5px] leading-relaxed text-white/50">
+          This link doesn't point to an open brief. It may have been closed or filled.
+        </p>
+        <button
+          onClick={() => nav("find-work")}
+          className="mt-6 rounded-xl bg-brand px-6 py-3 text-[13.5px] font-semibold text-ink glow-brand"
+        >
+          Browse open briefs
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-6xl px-6 pb-24 pt-8">
@@ -149,31 +158,6 @@ export default function ProjectDetail() {
             </div>
           </div>
 
-          {!job.isReal && (
-            <div className="glass rounded-2xl p-7">
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
-                Milestone plan
-              </p>
-              <div className="mt-4 divide-y divide-white/6">
-                {MILESTONES.map((m, i) => (
-                  <div key={m.label} className="flex items-center justify-between py-3.5">
-                    <span className="flex items-center gap-3 text-[13.5px] text-white/75">
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full border border-brand/40 bg-brand/10 text-[10.5px] font-bold text-brand-soft">
-                        {i + 1}
-                      </span>
-                      {m.label}
-                    </span>
-                    <span className="font-display text-[14px] font-bold">{m.amount}</span>
-                  </div>
-                ))}
-              </div>
-              <p className="mt-4 inline-flex items-center gap-2 text-[11.5px] text-mint">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Funds locked in escrow before each milestone starts
-              </p>
-            </div>
-          )}
-
           {similar.length > 0 && (
             <div>
               <p className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-white/40">
@@ -181,10 +165,10 @@ export default function ProjectDetail() {
               </p>
               <div className="grid gap-4 sm:grid-cols-2">
                 {similar.map((s) => {
-                  const sCat = job.isReal ? s.category : s.cat;
-                  const sBudget = job.isReal
-                    ? (s.budgetMin ? `$${s.budgetMin.toLocaleString("en-US")}${s.budgetType === "HOURLY" ? "/hr" : ""}` : "—")
-                    : s.budget;
+                  const sCat = s.category;
+                  const sBudget = s.budgetMin
+                    ? `$${s.budgetMin.toLocaleString("en-US")}${s.budgetType === "HOURLY" ? "/hr" : ""}`
+                    : "—";
                   return (
                     <SpotlightCard key={s.id} onClick={() => nav("project", s)} className="cursor-pointer">
                       <div className="p-5">
@@ -224,7 +208,7 @@ export default function ProjectDetail() {
             </div>
           </div>
 
-          {(!job.isReal || raw.status === "OPEN") && (
+          {raw.status === "OPEN" && (
             <div className="glass rounded-2xl p-6">
               <p className="font-display text-[15px] font-semibold">Submit a proposal</p>
               {sent ? (

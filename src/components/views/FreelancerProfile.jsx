@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, BadgeCheck, Star, MapPin, Globe, MessageSquare, Zap, Sparkles, Loader2, AlertCircle, Pencil } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Star, MessageSquare, Sparkles, Loader2, AlertCircle, Pencil } from "lucide-react";
 import Magnet from "../fx/Magnet.jsx";
-import { TALENT } from "../../data/mock.js";
-import { REVIEWS } from "../../data/appMock.js";
 import { useNav } from "../../nav.jsx";
 import { avatarSrc } from "../../lib/authApi.js";
 import { fetchFreelancerByUserId } from "../../lib/talentApi.js";
@@ -62,7 +60,23 @@ export default function FreelancerProfile() {
     fetchReviewsFor(params.userId).then((r) => setReviews(r.reviews)).catch(() => {});
   }, [params?.userId]);
 
-  if (params?.userId) {
+  // Профайл руу орох бүх зам userId дамжуулдаг (FindTalent, BentoShowcase,
+  // StandoutWork, dashboard, mobile tab). Өмнө нь userId байхгүй үед mock
+  // хүн (TALENT[1]) харуулдаг байсан — DB-д байхгүй хүний профайл, зохиомол
+  // "112 ажил, 98% цагтаа, 64% давтан захиалагч" гэсэн тоонуудтай.
+  if (!params?.userId) {
+    return (
+      <div className="mx-auto max-w-xl px-6 pb-24 pt-20 text-center">
+        <AlertCircle className="mx-auto h-8 w-8 text-white/30" />
+        <p className="mt-4 text-[14px] text-white/60">Профайл сонгогдоогүй байна.</p>
+        <button onClick={() => nav("find-talent")} className="mt-5 text-[13px] font-semibold text-brand-soft hover:text-white">
+          ← Back to talent
+        </button>
+      </div>
+    );
+  }
+
+  {
     if (loading) {
       return (
         <div className="flex min-h-[60vh] items-center justify-center">
@@ -92,23 +106,15 @@ export default function FreelancerProfile() {
     }
   }
 
-  const isReal = !!params?.userId;
-  const f = isReal ? normalizeReal(real, params.userId) : (params || TALENT[1]);
-  const topRated = isReal ? f.rating >= 4.8 : f.rating >= 4.9;
-  const isNew = isReal && f.rating === 0 && f.hired === 0;
-  const isOwn = isReal && user?.id === f.userId;
-
-  const stats = [
-    { label: "Jobs completed", value: 112 },
-    { label: "On-time delivery", value: 98, suffix: "%" },
-    { label: "Repeat clients", value: 64, suffix: "%" },
-    { label: "Response time", value: 1.4, suffix: "h", decimals: 1 },
-  ];
+  const f = normalizeReal(real, params.userId);
+  const topRated = f.rating >= 4.8;
+  const isNew = f.rating === 0 && f.hired === 0;
+  const isOwn = user?.id === f.userId;
 
   return (
     <div className="mx-auto max-w-6xl px-6 pb-24 pt-8">
       <button
-        onClick={() => nav(isReal ? "find-talent" : "home")}
+        onClick={() => nav("find-talent")}
         className="inline-flex items-center gap-2 text-[13px] font-medium text-white/50 transition-colors hover:text-white"
       >
         <ArrowLeft className="h-4 w-4" />
@@ -121,13 +127,10 @@ export default function FreelancerProfile() {
           <div className="glass rounded-2xl p-7">
             <div className="flex flex-col items-center text-center">
               <span className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand font-display text-xl font-bold ring-1 ring-white/15">
-                {isReal && f.avatarUrl ? (
+                {f.avatarUrl ? (
                   <img src={f.avatarUrl} alt="" className="h-full w-full object-cover" />
                 ) : (
                   f.initials
-                )}
-                {!isReal && f.available && (
-                  <span className="absolute -bottom-0.5 -right-0.5 h-5 w-5 rounded-full border-2 border-[#1b1d20] bg-mint" />
                 )}
               </span>
               <p className="mt-4 flex items-center gap-2 font-display text-xl font-bold">
@@ -147,20 +150,14 @@ export default function FreelancerProfile() {
                     <Sparkles className="h-3 w-3" /> Top Rated
                   </span>
                 )}
-                {(!isReal || f.rating > 0) && (
+                {f.rating > 0 && (
                   <span className="inline-flex items-center gap-1 text-[12.5px] font-bold text-amber-400">
-                    <Star className="h-3.5 w-3.5 fill-amber-400" /> {isReal ? f.rating.toFixed(1) : f.rating}
+                    <Star className="h-3.5 w-3.5 fill-amber-400" /> {f.rating.toFixed(1)}
                   </span>
                 )}
               </div>
 
               <p className="mt-4 font-display text-3xl font-bold">{f.rate}</p>
-              {!isReal && (
-                <span className="mt-1 inline-flex items-center gap-1.5 text-[11.5px] text-brand-soft">
-                  <Zap className="h-3.5 w-3.5" />
-                  98% AI match for your brief
-                </span>
-              )}
               {isOwn && (
                 <span className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.03] px-2.5 py-1 text-[10.5px] font-semibold text-white/50">
                   This is how clients see you
@@ -188,7 +185,7 @@ export default function FreelancerProfile() {
                   </Magnet>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => nav("messages", isReal ? { withUserId: f.userId } : undefined)}
+                      onClick={() => nav("messages", { withUserId: f.userId })}
                       className="glass inline-flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-[13.5px] font-semibold text-white/85 transition-colors hover:border-white/25"
                     >
                       <MessageSquare className="h-4 w-4" />
@@ -202,33 +199,11 @@ export default function FreelancerProfile() {
               )}
             </div>
 
-            {!isReal && (
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-4 border-t border-white/8 pt-5 text-[12.5px] text-white/50">
-                <span className="inline-flex items-center gap-1.5">
-                  <MapPin className="h-3.5 w-3.5" /> {f.location}
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <Globe className="h-3.5 w-3.5" /> English
-                </span>
-              </div>
-            )}
 
             <div className="mt-5 space-y-2.5 border-t border-white/8 pt-5 text-[12px] text-white/50">
-              {isReal ? (
-                <>
-                  <p className="flex justify-between"><span>Jobs completed</span><b className="text-white/80">{f.hired}</b></p>
-                  {f.disputeRate > 0 && (
-                    <p className="flex justify-between"><span>Dispute rate</span><b className={f.disputeRate > 20 ? "text-red-400" : "text-amber-300"}>{f.disputeRate}%</b></p>
-                  )}
-                </>
-              ) : (
-                <>
-                  <p className="flex justify-between"><span>Response time</span><b className="text-white/80">~1.4 hours</b></p>
-                  <p className="flex justify-between"><span>Member since</span><b className="text-white/80">2019</b></p>
-                  <p className="flex justify-between"><span>Last active</span><b className="text-mint">Online now</b></p>
-                  <p className="flex justify-between"><span>Followers</span><b className="text-white/80">{f.followers}</b></p>
-                  <p className="flex justify-between"><span>Hired</span><b className="text-white/80">{f.hired}x</b></p>
-                </>
+              <p className="flex justify-between"><span>Jobs completed</span><b className="text-white/80">{f.hired}</b></p>
+              {f.disputeRate > 0 && (
+                <p className="flex justify-between"><span>Dispute rate</span><b className={f.disputeRate > 20 ? "text-red-400" : "text-amber-300"}>{f.disputeRate}%</b></p>
               )}
             </div>
           </div>
@@ -247,120 +222,58 @@ export default function FreelancerProfile() {
               ))}
             </div>
 
-            {!isReal && (
-              <>
-                <p className="mt-6 max-w-2xl text-[14px] leading-relaxed text-white/60">
-                  I help ambitious teams ship polished products fast. Over the past
-                  8 years I've built design systems, storefronts, and real-time
-                  dashboards for fintech and AI startups — always milestone-driven,
-                  always transparent, always on time.
-                </p>
-                <div className="mt-7 grid grid-cols-2 gap-4 border-t border-white/8 pt-6 sm:grid-cols-4">
-                  {stats.map((s) => (
-                    <div key={s.label}>
-                      <p className="font-display text-2xl font-bold">
-                        {s.value}{s.suffix || ""}
-                      </p>
-                      <p className="mt-1 text-[10.5px] font-medium uppercase tracking-wider text-white/40">
-                        {s.label}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
           </div>
 
           <div>
             <p className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-white/40">
               Selected work
             </p>
-            {isReal ? (
-              f.portfolio.length > 0 ? (
-                <div className="space-y-2.5">
-                  {f.portfolio.map((p) => (
-                    <div key={p.id} className="glass rounded-2xl p-5">
-                      <p className="text-[14px] font-semibold">{p.title}</p>
-                      {p.description && <p className="mt-1 text-[12.5px] text-white/50">{p.description}</p>}
-                      {p.link && (
-                        <a href={p.link} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-[12px] font-semibold text-brand-soft hover:text-white">
-                          {p.link} →
-                        </a>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="glass rounded-2xl p-6 text-[13px] text-white/45">No portfolio items yet.</p>
-              )
-            ) : (
-              <div className="grid gap-1.5 overflow-hidden rounded-2xl sm:grid-cols-2 lg:grid-cols-4">
-                {f.portfolio.map((tile, i) => (
-                  <div key={i} className={`relative h-40 bg-gradient-to-br ${tile.grad} transition-transform duration-300 hover:scale-[1.02]`}>
-                    {tile.label && (
-                      <span className="absolute inset-x-3 bottom-3 line-clamp-2 text-[11.5px] font-semibold leading-tight text-white/90">
-                        {tile.label}
-                      </span>
+            {f.portfolio.length > 0 ? (
+              <div className="space-y-2.5">
+                {f.portfolio.map((p) => (
+                  <div key={p.id} className="glass rounded-2xl p-5">
+                    <p className="text-[14px] font-semibold">{p.title}</p>
+                    {p.description && <p className="mt-1 text-[12.5px] text-white/50">{p.description}</p>}
+                    {p.link && (
+                      <a href={p.link} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-[12px] font-semibold text-brand-soft hover:text-white">
+                        {p.link} →
+                      </a>
                     )}
                   </div>
                 ))}
               </div>
+            ) : (
+              <p className="glass rounded-2xl p-6 text-[13px] text-white/45">No portfolio items yet.</p>
             )}
           </div>
 
-          {isReal ? (
-            <div>
-              <p className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-white/40">
-                Client reviews
-              </p>
-              {reviews.length > 0 ? (
-                <div className="space-y-4">
-                  {reviews.map((r) => (
-                    <div key={r.id} className="glass rounded-2xl p-6 transition-transform duration-300 hover:scale-[1.01]">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-[13.5px] font-semibold">
-                          {r.reviewerName}
-                          {r.jobTitle && <span className="ml-2 font-normal text-white/40">· {r.jobTitle}</span>}
-                        </p>
-                        <span className="inline-flex items-center gap-1.5 text-[12.5px] font-bold text-amber-400">
-                          <Star className="h-3.5 w-3.5 fill-amber-400" />
-                          {r.stars.toFixed(1)}
-                        </span>
-                      </div>
-                      {r.comment && <p className="mt-3 text-[13.5px] leading-relaxed text-white/60">"{r.comment}"</p>}
-                      <p className="mt-3 text-[11px] text-white/30">{new Date(r.createdAt).toLocaleDateString()}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="glass rounded-2xl p-6 text-[13px] text-white/45">Одоогоор review алга.</p>
-              )}
-            </div>
-          ) : (
-            <div>
-              <p className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-white/40">
-                Client reviews
-              </p>
+          <div>
+            <p className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-white/40">
+              Client reviews
+            </p>
+            {reviews.length > 0 ? (
               <div className="space-y-4">
-                {REVIEWS.map((r) => (
-                  <div key={r.name} className="glass rounded-2xl p-6 transition-transform duration-300 hover:scale-[1.01]">
+                {reviews.map((r) => (
+                  <div key={r.id} className="glass rounded-2xl p-6 transition-transform duration-300 hover:scale-[1.01]">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <p className="text-[13.5px] font-semibold">
-                        {r.name}
-                        <span className="ml-2 font-normal text-white/40">· {r.project}</span>
+                        {r.reviewerName}
+                        {r.jobTitle && <span className="ml-2 font-normal text-white/40">· {r.jobTitle}</span>}
                       </p>
                       <span className="inline-flex items-center gap-1.5 text-[12.5px] font-bold text-amber-400">
                         <Star className="h-3.5 w-3.5 fill-amber-400" />
-                        {r.rating.toFixed(1)}
+                        {r.stars.toFixed(1)}
                       </span>
                     </div>
-                    <p className="mt-3 text-[13.5px] leading-relaxed text-white/60">"{r.text}"</p>
-                    <p className="mt-3 text-[11px] text-white/30">{r.date}</p>
+                    {r.comment && <p className="mt-3 text-[13.5px] leading-relaxed text-white/60">"{r.comment}"</p>}
+                    <p className="mt-3 text-[11px] text-white/30">{new Date(r.createdAt).toLocaleDateString()}</p>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            ) : (
+              <p className="glass rounded-2xl p-6 text-[13px] text-white/45">Одоогоор review алга.</p>
+            )}
+          </div>
         </div>
       </div>
     </div>
