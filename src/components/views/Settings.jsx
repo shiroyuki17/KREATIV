@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { User, Bell, Lock, Check, AlertCircle, Loader2, ShieldCheck, Smartphone } from "lucide-react";
+import { User, Bell, Lock, Check, AlertCircle, Loader2, ShieldCheck, Smartphone, Image as ImageIcon, Plus, X, Link as LinkIcon } from "lucide-react";
 import Magnet from "../fx/Magnet.jsx";
 import {
   fetchMe,
@@ -13,6 +13,10 @@ import {
   requestPhoneOtp,
   verifyPhoneOtp,
   requestFreelancerVerification,
+  uploadPortfolioImage,
+  createPortfolioItem,
+  deletePortfolioItem,
+  avatarSrc as fileSrc,
 } from "../../lib/authApi.js";
 
 // FR-1.1 — жинхэнэ SMS gateway байхгүй тул демо горим: backend хариултад
@@ -160,8 +164,166 @@ function VerificationBadge({ profile, onUpdated }) {
   );
 }
 
+// Portfolio удирдлага — жагсаалт + шинэ ажлын жишээ нэмэх (зураг эхлээд
+// тусад нь upload хийгээд URL авна, дараа нь item үүсгэхэд дамжуулна).
+function PortfolioManager({ items, onAdd, onRemove }) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [link, setLink] = useState("");
+  const [imageUrls, setImageUrls] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [removingId, setRemovingId] = useState(null);
+  const fileRef = useRef(null);
+
+  const pickImage = () => fileRef.current?.click();
+
+  const onImageSelected = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploading(true);
+    setError("");
+    try {
+      const { url } = await uploadPortfolioImage(file);
+      setImageUrls((arr) => [...arr, url]);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const submit = async () => {
+    if (!title.trim()) { setError("Гарчиг оруулна уу"); return; }
+    setSaving(true);
+    setError("");
+    try {
+      const item = await createPortfolioItem({
+        title: title.trim(),
+        description: description.trim() || undefined,
+        link: link.trim() || undefined,
+        images: imageUrls,
+      });
+      onAdd(item);
+      setTitle("");
+      setDescription("");
+      setLink("");
+      setImageUrls([]);
+    } catch (err) {
+      setError(Array.isArray(err.message) ? err.message.join(", ") : err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const remove = async (id) => {
+    setRemovingId(id);
+    try {
+      await deletePortfolioItem(id);
+      onRemove(id);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setRemovingId(null);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {items.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {items.map((p) => (
+            <div key={p.id} className="group relative overflow-hidden rounded-xl border border-white/8 bg-white/[0.03]">
+              <button
+                onClick={() => remove(p.id)}
+                disabled={removingId === p.id}
+                aria-label="Устгах"
+                className="absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white opacity-0 backdrop-blur transition-opacity hover:bg-red-500 disabled:opacity-100 group-hover:opacity-100"
+              >
+                {removingId === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+              </button>
+              {p.images?.[0] ? (
+                <img src={fileSrc(p.images[0])} alt="" className="h-36 w-full object-cover" />
+              ) : (
+                <div className="flex h-36 w-full items-center justify-center bg-white/[0.02] text-white/20">
+                  <ImageIcon className="h-8 w-8" />
+                </div>
+              )}
+              <div className="p-3.5">
+                <p className="text-[13px] font-semibold">{p.title}</p>
+                {p.description && <p className="mt-1 line-clamp-2 text-[11.5px] text-white/45">{p.description}</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="rounded-xl border border-white/8 bg-white/[0.03] p-5">
+        <p className="text-[12.5px] font-semibold text-white/70">Шинэ ажлын жишээ нэмэх</p>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          {imageUrls.map((url, i) => (
+            <div key={i} className="relative h-16 w-16 overflow-hidden rounded-lg border border-white/10">
+              <img src={fileSrc(url)} alt="" className="h-full w-full object-cover" />
+              <button
+                onClick={() => setImageUrls((arr) => arr.filter((_, j) => j !== i))}
+                className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity hover:opacity-100"
+              >
+                <X className="h-4 w-4 text-white" />
+              </button>
+            </div>
+          ))}
+          <input ref={fileRef} type="file" accept="image/png,image/jpeg" onChange={onImageSelected} className="hidden" />
+          <button
+            onClick={pickImage}
+            disabled={uploading || imageUrls.length >= 10}
+            className="flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-white/15 text-white/40 transition-colors hover:border-brand/40 hover:text-brand-soft disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+          </button>
+        </div>
+
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Гарчиг — e.g. Checkout flow revamp"
+          className="mt-3 w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] outline-none focus:border-brand/50"
+        />
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={2}
+          placeholder="Товч тайлбар (заавал биш)"
+          className="mt-2 w-full resize-none rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] outline-none focus:border-brand/50"
+        />
+        <div className="mt-2 flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2">
+          <LinkIcon className="h-3.5 w-3.5 shrink-0 text-white/30" />
+          <input
+            value={link}
+            onChange={(e) => setLink(e.target.value)}
+            placeholder="Холбоос (заавал биш) — https://…"
+            className="w-full bg-transparent text-[13px] outline-none"
+          />
+        </div>
+
+        <button
+          onClick={submit}
+          disabled={saving || uploading}
+          className="mt-3 rounded-lg bg-brand px-4 py-2 text-[12.5px] font-bold text-fg-1 glow-brand disabled:opacity-50"
+        >
+          {saving ? "Хадгалж байна…" : "Portfolio-д нэмэх"}
+        </button>
+        {error && <p className="mt-2 text-[11.5px] font-medium text-red-400">{error}</p>}
+      </div>
+    </div>
+  );
+}
+
 const TABS = [
   { id: "profile", label: "Profile", Icon: User },
+  { id: "portfolio", label: "Portfolio", Icon: ImageIcon, freelancerOnly: true },
   { id: "notifications", label: "Notifications", Icon: Bell },
   { id: "security", label: "Security", Icon: Lock },
 ];
@@ -328,7 +490,7 @@ export default function Settings() {
       <h1 className="font-display text-3xl font-bold tracking-tight">Settings</h1>
 
       <div className="mt-7 flex flex-wrap gap-2">
-        {TABS.map(({ id, label, Icon }) => (
+        {TABS.filter((t) => !t.freelancerOnly || isFreelancer).map(({ id, label, Icon }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
@@ -434,6 +596,18 @@ export default function Settings() {
               </label>
             )}
           </div>
+        )}
+
+        {tab === "portfolio" && isFreelancer && (
+          freelancerProfile ? (
+            <PortfolioManager
+              items={freelancerProfile.portfolio || []}
+              onAdd={(item) => setFreelancerProfile((p) => ({ ...p, portfolio: [...(p.portfolio || []), item] }))}
+              onRemove={(id) => setFreelancerProfile((p) => ({ ...p, portfolio: (p.portfolio || []).filter((i) => i.id !== id) }))}
+            />
+          ) : (
+            <p className="text-[13px] text-white/45">Эхлээд "Profile" tab дээрээ мэдээллээ хадгална уу.</p>
+          )
         )}
 
         {tab === "notifications" && (

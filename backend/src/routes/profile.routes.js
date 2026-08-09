@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import prisma from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
-import { uploadAvatar } from '../middleware/upload.js';
+import { uploadAvatar, uploadPortfolioImage } from '../middleware/upload.js';
 import { saveUpload, deleteUpload } from '../lib/storage.js';
 import {
   freelancerProfileSchema,
@@ -46,6 +46,7 @@ function publicFreelancer(profile) {
       title: p.title,
       description: p.description,
       link: p.link,
+      images: p.images || [],
     })),
   };
 }
@@ -225,6 +226,25 @@ router.get('/freelancer/:userId', async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+});
+
+// ── POST /profile/freelancer/portfolio/image ── (portfolio-д зориулсан зураг оруулах, URL буцаана)
+router.post('/freelancer/portfolio/image', requireAuth, (req, res, next) => {
+  uploadPortfolioImage(req, res, async (err) => {
+    if (err) {
+      const message = err.code === 'LIMIT_FILE_SIZE'
+        ? 'Зургийн хэмжээ 5MB-с ихгүй байх ёстой'
+        : err.message || 'Зураг оруулахад алдаа гарлаа';
+      return res.status(400).json({ error: message });
+    }
+    if (!req.file) return res.status(400).json({ error: 'Зураг сонгогдоогүй байна' });
+    try {
+      const url = await saveUpload('portfolio', req.user.id, req.file);
+      res.json({ url });
+    } catch (e) {
+      next(e);
+    }
+  });
 });
 
 // ── POST /profile/freelancer/portfolio ── (portfolio item нэмэх)

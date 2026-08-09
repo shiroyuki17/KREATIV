@@ -31,9 +31,18 @@ export const clientProfileSchema = z.object({
   orgName: z.string().max(120).optional(),
 });
 
+// Манай өөрийн /profile/freelancer/portfolio/image endpoint нь харьцангуй
+// зам буцаадаг (аватартай ижил хэв маяг, avatarSrc() frontend дээр бүтэн
+// URL болгодог) — z.url() үүнийг татгалзах тул харьцангуй/бүтэн хоёуланг
+// зөвшөөрнө.
+const imageUrl = z.string().refine(
+  (v) => v.startsWith('/uploads/') || /^https?:\/\//.test(v),
+  'images нь зөв URL байх ёстой'
+);
+
 export const portfolioItemSchema = z.object({
   title: z.string().min(1, 'Гарчиг шаардлагатай').max(160),
   description: z.string().max(2000).optional(),
-  images: z.array(z.url('images нь URL байх ёстой')).max(10).optional(),
+  images: z.array(imageUrl).max(10).optional(),
   link: z.url('link буруу байна').optional(),
 });

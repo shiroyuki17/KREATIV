@@ -1,10 +1,21 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, BadgeCheck, Star, MessageSquare, Sparkles, Loader2, AlertCircle, Pencil } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Star, MessageSquare, Sparkles, Loader2, AlertCircle, Pencil, Image as ImageIcon } from "lucide-react";
 import Magnet from "../fx/Magnet.jsx";
 import { useNav } from "../../nav.jsx";
 import { avatarSrc } from "../../lib/authApi.js";
 import { fetchFreelancerByUserId } from "../../lib/talentApi.js";
 import { fetchReviewsFor } from "../../lib/contractApi.js";
+
+// StandoutWork.jsx-ийн CAT_GRAD-тай ижил санаа — категори бүр өөрийн өнгөтэй
+// тул декоратив cover зурган оронд категориороо л ялгаатай харагдана.
+const CAT_COVER = {
+  Design: "from-brand/60 via-brand-soft/25 to-transparent",
+  Dev: "from-neon/55 via-brand/25 to-transparent",
+  AI: "from-violet/55 via-violet-soft/20 to-transparent",
+  Motion: "from-mint/50 via-neon/20 to-transparent",
+  Writing: "from-amber-400/45 via-rose-400/15 to-transparent",
+  Marketing: "from-rose-400/45 via-violet/15 to-transparent",
+};
 
 function initialsOf(name) {
   return (name || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
@@ -48,6 +59,7 @@ export default function FreelancerProfile() {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(!!params?.userId);
   const [error, setError] = useState("");
+  const [activeTab, setActiveTab] = useState("about");
 
   useEffect(() => {
     if (!params?.userId) return;
@@ -110,6 +122,7 @@ export default function FreelancerProfile() {
   const topRated = f.rating >= 4.8;
   const isNew = f.rating === 0 && f.hired === 0;
   const isOwn = user?.id === f.userId;
+  const cover = CAT_COVER[f.category] || CAT_COVER.Dev;
 
   return (
     <div className="mx-auto max-w-6xl px-6 pb-24 pt-8">
@@ -124,9 +137,11 @@ export default function FreelancerProfile() {
       <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_1.65fr]">
         {/* Identity + hire — left column, sticky */}
         <div className="space-y-5 lg:sticky lg:top-28 lg:self-start">
-          <div className="glass rounded-2xl p-7">
-            <div className="flex flex-col items-center text-center">
-              <span className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand font-display text-xl font-bold ring-1 ring-white/15">
+          <div className="glass overflow-hidden rounded-2xl">
+            {/* Category-тонтой cover — декоратив зураггүйгээр л профайлыг тодруулна. */}
+            <div className={`h-24 bg-gradient-to-br ${cover}`} />
+            <div className="-mt-12 flex flex-col items-center px-7 text-center">
+              <span className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand font-display text-2xl font-bold ring-4 ring-panel">
                 {f.avatarUrl ? (
                   <img src={f.avatarUrl} alt="" className="h-full w-full object-cover" />
                 ) : (
@@ -165,7 +180,7 @@ export default function FreelancerProfile() {
               )}
             </div>
 
-            <div className="mt-6 space-y-3">
+            <div className="mt-6 space-y-3 px-7">
               {isOwn ? (
                 <Magnet strength={0.15} className="w-full">
                   <button
@@ -200,7 +215,7 @@ export default function FreelancerProfile() {
             </div>
 
 
-            <div className="mt-5 space-y-2.5 border-t border-white/8 pt-5 text-[12px] text-white/50">
+            <div className="mt-5 space-y-2.5 border-t border-white/8 px-7 pb-7 pt-5 text-[12px] text-white/50">
               <p className="flex justify-between"><span>Jobs completed</span><b className="text-white/80">{f.hired}</b></p>
               {f.disputeRate > 0 && (
                 <p className="flex justify-between"><span>Dispute rate</span><b className={f.disputeRate > 20 ? "text-red-400" : "text-amber-300"}>{f.disputeRate}%</b></p>
@@ -209,69 +224,105 @@ export default function FreelancerProfile() {
           </div>
         </div>
 
-        {/* Portfolio, skills, reviews — right column */}
-        <div className="space-y-6">
-          <div className="glass rounded-2xl p-7">
-            {f.tagline && <p className="max-w-2xl text-[13.5px] leading-relaxed text-white/60">{f.tagline}</p>}
-
-            <div className="mt-5 flex flex-wrap gap-2">
-              {f.skills.map((s) => (
-                <span key={s} className="rounded-full border border-brand/25 bg-brand/8 px-3.5 py-1.5 text-[12px] font-medium text-brand-soft">
-                  {s}
-                </span>
-              ))}
-            </div>
-
+        {/* Portfolio, skills, reviews — right column, tabbed */}
+        <div>
+          <div className="flex gap-2 border-b border-white/8">
+            {[
+              { id: "about", label: "About" },
+              { id: "portfolio", label: `Portfolio${f.portfolio.length ? ` (${f.portfolio.length})` : ""}` },
+              { id: "reviews", label: `Reviews${reviews.length ? ` (${reviews.length})` : ""}` },
+            ].map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setActiveTab(t.id)}
+                className={`relative px-4 py-3 text-[13px] font-semibold transition-colors ${
+                  activeTab === t.id ? "text-white" : "text-white/45 hover:text-white/70"
+                }`}
+              >
+                {t.label}
+                {activeTab === t.id && (
+                  <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-brand" />
+                )}
+              </button>
+            ))}
           </div>
 
-          <div>
-            <p className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-white/40">
-              Selected work
-            </p>
-            {f.portfolio.length > 0 ? (
-              <div className="space-y-2.5">
-                {f.portfolio.map((p) => (
-                  <div key={p.id} className="glass rounded-2xl p-5">
-                    <p className="text-[14px] font-semibold">{p.title}</p>
-                    {p.description && <p className="mt-1 text-[12.5px] text-white/50">{p.description}</p>}
-                    {p.link && (
-                      <a href={p.link} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-[12px] font-semibold text-brand-soft hover:text-white">
-                        {p.link} →
-                      </a>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="glass rounded-2xl p-6 text-[13px] text-white/45">No portfolio items yet.</p>
-            )}
-          </div>
-
-          <div>
-            <p className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-white/40">
-              Client reviews
-            </p>
-            {reviews.length > 0 ? (
-              <div className="space-y-4">
-                {reviews.map((r) => (
-                  <div key={r.id} className="glass rounded-2xl p-6 transition-transform duration-300 hover:scale-[1.01]">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <p className="text-[13.5px] font-semibold">
-                        {r.reviewerName}
-                        {r.jobTitle && <span className="ml-2 font-normal text-white/40">· {r.jobTitle}</span>}
-                      </p>
-                      <span className="inline-flex items-center gap-1.5 text-[12.5px] font-bold text-amber-400">
-                        <Star className="h-3.5 w-3.5 fill-amber-400" />
-                        {r.stars.toFixed(1)}
+          <div className="mt-6">
+            {activeTab === "about" && (
+              <div className="glass rounded-2xl p-7">
+                {f.tagline ? (
+                  <p className="max-w-2xl text-[13.5px] leading-relaxed text-white/60">{f.tagline}</p>
+                ) : (
+                  <p className="text-[13px] text-white/40">No bio yet.</p>
+                )}
+                {f.skills.length > 0 && (
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    {f.skills.map((s) => (
+                      <span key={s} className="rounded-full border border-brand/25 bg-brand/8 px-3.5 py-1.5 text-[12px] font-medium text-brand-soft">
+                        {s}
                       </span>
-                    </div>
-                    {r.comment && <p className="mt-3 text-[13.5px] leading-relaxed text-white/60">"{r.comment}"</p>}
-                    <p className="mt-3 text-[11px] text-white/30">{new Date(r.createdAt).toLocaleDateString()}</p>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
-            ) : (
-              <p className="glass rounded-2xl p-6 text-[13px] text-white/45">Одоогоор review алга.</p>
+            )}
+
+            {activeTab === "portfolio" && (
+              f.portfolio.length > 0 ? (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {f.portfolio.map((p) => (
+                    <a
+                      key={p.id}
+                      href={p.link || undefined}
+                      target={p.link ? "_blank" : undefined}
+                      rel={p.link ? "noopener noreferrer" : undefined}
+                      className={`group overflow-hidden rounded-2xl border border-white/8 bg-white/[0.03] transition-colors ${p.link ? "hover:border-brand/40" : ""}`}
+                    >
+                      {p.images?.[0] ? (
+                        <img src={avatarSrc(p.images[0])} alt="" className="h-44 w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
+                      ) : (
+                        <div className="flex h-44 w-full items-center justify-center bg-white/[0.02] text-white/15">
+                          <ImageIcon className="h-9 w-9" />
+                        </div>
+                      )}
+                      <div className="p-4">
+                        <p className="text-[14px] font-semibold">{p.title}</p>
+                        {p.description && <p className="mt-1 line-clamp-2 text-[12.5px] text-white/50">{p.description}</p>}
+                        {p.link && (
+                          <p className="mt-2 text-[12px] font-semibold text-brand-soft group-hover:text-white">View project →</p>
+                        )}
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <p className="glass rounded-2xl p-6 text-[13px] text-white/45">No portfolio items yet.</p>
+              )
+            )}
+
+            {activeTab === "reviews" && (
+              reviews.length > 0 ? (
+                <div className="space-y-4">
+                  {reviews.map((r) => (
+                    <div key={r.id} className="glass rounded-2xl p-6 transition-transform duration-300 hover:scale-[1.01]">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <p className="text-[13.5px] font-semibold">
+                          {r.reviewerName}
+                          {r.jobTitle && <span className="ml-2 font-normal text-white/40">· {r.jobTitle}</span>}
+                        </p>
+                        <span className="inline-flex items-center gap-1.5 text-[12.5px] font-bold text-amber-400">
+                          <Star className="h-3.5 w-3.5 fill-amber-400" />
+                          {r.stars.toFixed(1)}
+                        </span>
+                      </div>
+                      {r.comment && <p className="mt-3 text-[13.5px] leading-relaxed text-white/60">"{r.comment}"</p>}
+                      <p className="mt-3 text-[11px] text-white/30">{new Date(r.createdAt).toLocaleDateString()}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="glass rounded-2xl p-6 text-[13px] text-white/45">Одоогоор review алга.</p>
+              )
             )}
           </div>
         </div>

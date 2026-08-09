@@ -50,3 +50,11 @@ export const uploadChatFile = multer({
   limits: { fileSize: 15 * 1024 * 1024 }, // 15MB
   fileFilter: chatFileFilter,
 }).single('file');
+
+// Portfolio item зураг — аватартай ижил зөвшөөрөгдсөн формат, гэхдээ жижиг
+// зураг биш (ажлын жишээ) тул хэмжээний хязгаарыг өргөвөр авав.
+export const uploadPortfolioImage = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter,
+}).single('image');

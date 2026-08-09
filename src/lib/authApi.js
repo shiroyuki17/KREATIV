@@ -93,6 +93,20 @@ export function requestFreelancerVerification(evidence) {
   return apiJson("/profile/freelancer/verification", { method: "POST", body: { evidence } });
 }
 
+// Portfolio — item бүр 0..N зурагтай (аватартай ижил, эхлээд файлыг
+// хадгалаад URL авна, дараа нь тэр URL-ыг item-д хавсаргана).
+export function uploadPortfolioImage(file) {
+  const form = new FormData();
+  form.append("image", file);
+  return apiJson("/profile/freelancer/portfolio/image", { method: "POST", body: form });
+}
+export function createPortfolioItem(data) {
+  return apiJson("/profile/freelancer/portfolio", { method: "POST", body: data });
+}
+export function deletePortfolioItem(id) {
+  return apiJson(`/profile/freelancer/portfolio/${id}`, { method: "DELETE" });
+}
+
 // Settings (Day 8/9): load the caller's own profile to edit — returns null
 // (not an error) when the user simply hasn't created that profile type yet.
 async function fetchOwnProfile(kind) {
