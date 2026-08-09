@@ -88,13 +88,58 @@ export default function Auth() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center px-6 py-28">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-1/4 h-[420px] w-[640px] -translate-x-1/2 rounded-full bg-brand/15 blur-[140px]"
-      />
+    <div className="relative min-h-screen lg:grid lg:grid-cols-[1.05fr_1fr]">
+      {/* ── Зүүн тал: брэнд ──
+          Зөвхөн өргөн дэлгэц дээр. Утсан дээр форм өөрөө бүтэн дэлгэцийг
+          эзэлдэг тул энэ хэсэг зөвхөн доош түлхэх байсан. */}
+      {/* `min-h-screen` нь ЭНД байх ёстой. Grid-ийн мөрөнд сунана гэж
+          найдвал баганын өндөр агуулгаараа тодорхойлогдож, панелийн доод
+          хэсэгт хоосон зурвас үлддэг. */}
+      <aside className="relative hidden min-h-screen overflow-hidden lg:flex lg:flex-col lg:justify-between">
+        {/* Дүүрэн градиент суурь */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-[radial-gradient(120%_90%_at_15%_0%,var(--color-violet)_0%,transparent_55%),radial-gradient(100%_80%_at_85%_100%,var(--color-brand)_0%,transparent_60%)] opacity-70"
+        />
+        {/* Нарийн тор — өнгийг хэт "хавтгай" харагдахаас сэргийлнэ */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 opacity-[0.07] [background-image:linear-gradient(to_right,white_1px,transparent_1px),linear-gradient(to_bottom,white_1px,transparent_1px)] [background-size:52px_52px]"
+        />
+        {/* Баруун ирмэгийг бүдгэрүүлж формтой зөөлөн залгана */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-y-0 right-0 w-40 bg-gradient-to-r from-transparent to-ink"
+        />
 
-      <div className="relative w-full max-w-md">
+        <button
+          onClick={() => nav("home")}
+          className="relative z-10 w-fit p-12 font-display text-xl tracking-tight"
+        >
+          <span className="font-bold">KRE</span>
+          <span className="bg-gradient-to-r from-brand-soft to-neon bg-clip-text font-bold text-transparent">
+            ATIV
+          </span>
+        </button>
+
+        <div className="relative z-10 max-w-lg px-12 pb-12">
+          <h2 className="font-display text-[clamp(2rem,3.4vw,3.1rem)] font-bold leading-[1.1] tracking-tight">
+            Elite work meets elite talent
+          </h2>
+          <p className="mt-4 text-[14px] leading-relaxed text-white/55">
+            Escrow-protected payments, milestone by milestone.
+          </p>
+        </div>
+      </aside>
+
+      {/* ── Баруун тал: форм ── */}
+      <div className="relative flex min-h-screen items-center justify-center px-6 py-16">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute left-1/2 top-1/4 h-[420px] w-[640px] -translate-x-1/2 rounded-full bg-brand/10 blur-[140px] lg:hidden"
+        />
+
+        <div className="relative w-full max-w-md">
         <button
           onClick={() => nav("home")}
           className="mb-6 inline-flex items-center gap-2 text-[13px] font-medium text-white/50 transition-colors hover:text-white"
@@ -308,6 +353,7 @@ export default function Auth() {
               {mode === "signup" ? "Log in" : "Sign up"}
             </button>
           </p>
+          </div>
         </div>
       </div>
     </div>
