@@ -430,12 +430,20 @@ export default function Payments() {
               <div className="glass rounded-2xl p-6">
                 <p className="inline-flex items-center gap-2 text-[12.5px] font-semibold text-mint">
                   <ShieldCheck className="h-4 w-4" />
-                  Demo QPay active
+                  {payStatus?.provider === "stripe"
+                    ? `Stripe active${payStatus.testMode ? " (test mode)" : ""}`
+                    : payStatus?.provider === "qpay"
+                      ? "QPay active"
+                      : "Demo mode active"}
                 </p>
                 <p className="mt-2 text-[12px] leading-relaxed text-white/45">
-                  Deposits/withdrawals here update your real wallet balance in the
-                  database — this is a demo payment provider, not a real bank
-                  transfer, until real QPay merchant credentials are connected.
+                  {payStatus?.provider === "stripe"
+                    ? (payStatus.testMode
+                        ? "Deposits go through Stripe Checkout in test mode — no real money moves. Use card 4242 4242 4242 4242 to try it."
+                        : "Deposits go through Stripe's secure checkout and update your real wallet balance.")
+                    : payStatus?.provider === "qpay"
+                      ? "Deposits/withdrawals here update your real wallet balance via QPay bank transfer."
+                      : "Deposits/withdrawals here update your real wallet balance in the database — this is a demo payment provider, not a real bank transfer, until a real payment provider is connected."}
                 </p>
               </div>
             </div>

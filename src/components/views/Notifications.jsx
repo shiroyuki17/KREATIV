@@ -116,13 +116,12 @@ export default function Notifications() {
                         <Icon className="h-5 w-5" />
                       </span>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className={`text-[13.5px] font-semibold ${n.read ? "text-white/80" : "text-white"}`}>
-                            {n.title}
+                        <div className="flex items-start justify-between gap-2">
+                          <p className={`text-[13px] leading-relaxed ${n.read ? "text-white/70" : "text-white"}`}>
+                            {n.text}
                           </p>
                           <span className="text-[11px] text-white/40 shrink-0">{n.createdAt ? new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Just now"}</span>
                         </div>
-                        <p className="mt-1 text-[12.5px] leading-relaxed text-white/60 line-clamp-2">{n.body}</p>
                       </div>
                       {!n.read && (
                         <span className="h-2 w-2 rounded-full bg-brand glow-brand shrink-0 mt-2" />
