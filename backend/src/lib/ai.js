@@ -1,14 +1,69 @@
-// Жинхэнэ Anthropic Claude API холболт — ANTHROPIC_API_KEY тохируулаагүй үед
-// isConfigured() false, ChatWidget.jsx локал rule-based хариулт руугаа
-// автоматаар унана (Google OAuth/QPay-тэй ижил demo-fallback хэв маяг).
+// Жинхэнэ AI холболт — Anthropic Claude-г эхлээд оролдож, кредит дуусах/rate
+// limit/тасалдал зэрэг upstream алдаа гарвал Gemini рүү автоматаар шилждэг
+// (хоёулаа тохируулаагүй үед л ChatWidget.jsx локал rule-based хариулт руугаа
+// унана — Google OAuth/QPay-тэй ижил demo-fallback хэв маяг).
 import { config } from '../config/env.js';
+import * as gemini from './gemini.js';
 
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const MODEL = 'claude-haiku-4-5-20251001';
 const MAX_TOKENS = 400;
 
 export function isConfigured() {
-  return !!config.ANTHROPIC_API_KEY;
+  return !!config.ANTHROPIC_API_KEY || gemini.isConfigured();
+}
+
+async function callAnthropicRaw({ system, messages, maxTokens = MAX_TOKENS }) {
+  const res = await fetch(ANTHROPIC_URL, {
+    method: 'POST',
+    headers: {
+      'x-api-key': config.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, system, messages }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    // Дээд урсгалын алдааг (кредит дуусах, rate limit, тасалдал) тэмдэглэж
+    // өгнө — эндээс Gemini рүү шилжинэ, хоёулаа унасан үед л route 503
+    // буцаана.
+    const err = new Error(`Anthropic API алдаа: ${res.status} ${body}`);
+    err.upstream = true;
+    err.upstreamStatus = res.status;
+    throw err;
+  }
+
+  const data = await res.json();
+  const text = (data.content || [])
+    .filter((block) => block.type === 'text')
+    .map((block) => block.text)
+    .join('\n')
+    .trim();
+  if (!text) throw new Error('Anthropic API хоосон хариу буцаалаа');
+  return text;
+}
+
+/**
+ * Anthropic-г эхлээд оролдоно; тохируулаагүй эсвэл upstream алдаатай бол
+ * (кредит дуусах гэх мэт) `geminiCall`-ыг ажиллуулна. Аль аль нь боломжгүй
+ * бол сүүлийн алдааг шидэнэ (route 503 болгож буцаана).
+ */
+async function withFallback(anthropicMessages, anthropicOpts, geminiCall) {
+  if (config.ANTHROPIC_API_KEY) {
+    try {
+      return await callAnthropicRaw({ ...anthropicOpts, messages: anthropicMessages });
+    } catch (err) {
+      if (!err.upstream || !gemini.isConfigured()) throw err;
+      // Anthropic-ийн upstream алдаа (жишээ нь кредит дуусах) — Gemini рүү шилжинэ.
+    }
+  } else if (!gemini.isConfigured()) {
+    const err = new Error('AI тохируулагдаагүй байна');
+    err.notConfigured = true;
+    throw err;
+  }
+  return geminiCall();
 }
 
 // Хиймэл тоо зохиохоос сэргийлж, өгсөн баримтаас өөрийг хэлэхгүй байхыг
@@ -28,43 +83,33 @@ Real, current platform facts:
 If asked something unrelated to KREATIV (general trivia, coding help, etc.), politely redirect back to what you can help with on the platform.`;
 }
 
-async function callAnthropic({ system, messages, maxTokens = MAX_TOKENS }) {
-  const res = await fetch(ANTHROPIC_URL, {
-    method: 'POST',
-    headers: {
-      'x-api-key': config.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, system, messages }),
-  });
-
-  if (!res.ok) {
-    const body = await res.text();
-    // Дээд урсгалын алдааг (кредит дуусах, rate limit, тасалдал) тэмдэглэж
-    // өгнө — route үүнийг 503 болгож буцаана, ингэснээр ChatWidget локал
-    // хариулт руугаа шилжиж, хүсэлт бүрд дэмий дахин оролдохоо болино.
-    const err = new Error(`Anthropic API алдаа: ${res.status} ${body}`);
-    err.upstream = true;
-    err.upstreamStatus = res.status;
-    throw err;
-  }
-
-  const data = await res.json();
-  const text = (data.content || [])
-    .filter((block) => block.type === 'text')
-    .map((block) => block.text)
-    .join('\n')
-    .trim();
-  if (!text) throw new Error('Anthropic API хоосон хариу буцаалаа');
-  return text;
-}
-
 export async function chat(messages, stats) {
-  return callAnthropic({ system: buildSystemPrompt(stats), messages });
+  const system = buildSystemPrompt(stats);
+  const userText = messages.map((m) => m.content).join('\n\n');
+  const result = await withFallback(messages, { system }, () =>
+    gemini.generateJson({
+      system: `${system}\n\nRespond with ONLY valid JSON: {"reply": string} — "reply" holds your full plain-text chat response (no markdown JSON inside it).`,
+      user: userText,
+      schema: { type: 'object', properties: { reply: { type: 'string' } }, required: ['reply'] },
+      // gemini-flash-ийн "thinking" горим гаралтын token хязгаараас урьдчилан
+      // зарцуулдаг тул жижиг хязгаар (жишээ нь 400) хариу гарахаас өмнө
+      // MAX_TOKENS алдаа өгдөг байсан — их хэмжээгээр нэмэгдүүлсэн.
+      maxOutputTokens: 1500,
+    })
+  );
+  return typeof result === 'string' ? result : result.reply;
 }
 
 const JOB_CATEGORIES = ['Design', 'Dev', 'AI', 'Motion', 'Writing', 'Marketing'];
+
+function sanitizeJobDraft(draft) {
+  if (!draft.title || !draft.description || !Array.isArray(draft.skills)) {
+    throw new Error('AI-ийн хариу дутуу байна. Дахин оролдоно уу.');
+  }
+  if (!JOB_CATEGORIES.includes(draft.category)) draft.category = 'Dev';
+  draft.budgetType = draft.budgetType === 'HOURLY' ? 'HOURLY' : 'FIXED';
+  return draft;
+}
 
 // FR-1.2: захиалагчийн товч, чөлөөтэй бичсэн санааг бүтэцтэй ажлын зар болгож
 // хувиргана. Хатуу JSON бүтэц шаардаж, parse хийхэд амжилтгүй бол алдаа шиднэ
@@ -81,24 +126,44 @@ Rules:
 - budgetType: "FIXED" or "HOURLY", whichever fits the scope described
 - budgetMin/budgetMax: a realistic USD range for this kind of freelance work (integers)`;
 
-  const text = await callAnthropic({
-    system,
-    messages: [{ role: 'user', content: idea }],
-    maxTokens: 500,
-  });
+  const geminiSchema = {
+    type: 'object',
+    properties: {
+      title: { type: 'string' },
+      description: { type: 'string' },
+      category: { type: 'string', enum: JOB_CATEGORIES },
+      skills: { type: 'array', items: { type: 'string' }, minItems: 3, maxItems: 6 },
+      budgetType: { type: 'string', enum: ['FIXED', 'HOURLY'] },
+      budgetMin: { type: 'integer' },
+      budgetMax: { type: 'integer' },
+    },
+    required: ['title', 'description', 'category', 'skills', 'budgetType', 'budgetMin', 'budgetMax'],
+  };
 
-  let draft;
-  try {
-    draft = JSON.parse(text.replace(/^```json\s*|\s*```$/g, ''));
-  } catch {
-    throw new Error('AI-ийн хариуг боловсруулж чадсангүй. Дахин оролдоно уу.');
-  }
-  if (!draft.title || !draft.description || !Array.isArray(draft.skills)) {
+  const draft = await withFallback(
+    [{ role: 'user', content: idea }],
+    { system, maxTokens: 500 },
+    async () => {
+      const raw = await gemini.generateJson({ system, user: idea, schema: geminiSchema, maxOutputTokens: 2000 });
+      return raw;
+    },
+    // Anthropic-ийн raw text-ийг JSON болгож задлана (Gemini аль хэдийн object буцаадаг).
+  ).then((result) => (typeof result === 'string' ? JSON.parse(result.replace(/^```json\s*|\s*```$/g, '')) : result))
+    .catch((err) => {
+      if (err.notConfigured || err.upstream) throw err;
+      throw new Error('AI-ийн хариуг боловсруулж чадсангүй. Дахин оролдоно уу.');
+    });
+
+  return sanitizeJobDraft(draft);
+}
+
+function sanitizeDisputeAnalysis(analysis) {
+  if (!['FREELANCER', 'CLIENT', 'SPLIT'].includes(analysis.recommendation)) {
     throw new Error('AI-ийн хариу дутуу байна. Дахин оролдоно уу.');
   }
-  if (!JOB_CATEGORIES.includes(draft.category)) draft.category = 'Dev';
-  draft.budgetType = draft.budgetType === 'HOURLY' ? 'HOURLY' : 'FIXED';
-  return draft;
+  if (!['low', 'medium', 'high'].includes(analysis.confidence)) analysis.confidence = 'medium';
+  if (!Array.isArray(analysis.keyEvidence)) analysis.keyEvidence = [];
+  return analysis;
 }
 
 // FR-5.2: AI Dispute Auditor — анхны brief, Kanban явц, чат түүхийг уншиж
@@ -117,30 +182,30 @@ Respond with ONLY valid JSON, no markdown fences, no commentary, matching exactl
 - reasoning: 3-5 sentences, specific to this case, referencing the actual evidence given.
 - keyEvidence: 2-4 short quotes or facts (from the chat/tasks/brief) that most influenced the recommendation.`;
 
-  const payload = {
-    originalBrief: brief,
-    milestone,
-    kanbanTasks: tasks,
-    chatTranscript,
-    disputeReason: reason,
+  const payload = { originalBrief: brief, milestone, kanbanTasks: tasks, chatTranscript, disputeReason: reason };
+  const payloadText = JSON.stringify(payload);
+
+  const geminiSchema = {
+    type: 'object',
+    properties: {
+      recommendation: { type: 'string', enum: ['FREELANCER', 'CLIENT', 'SPLIT'] },
+      confidence: { type: 'string', enum: ['low', 'medium', 'high'] },
+      reasoning: { type: 'string' },
+      keyEvidence: { type: 'array', items: { type: 'string' }, maxItems: 4 },
+    },
+    required: ['recommendation', 'confidence', 'reasoning', 'keyEvidence'],
   };
 
-  const text = await callAnthropic({
-    system,
-    messages: [{ role: 'user', content: JSON.stringify(payload) }],
-    maxTokens: 700,
-  });
+  const analysis = await withFallback(
+    [{ role: 'user', content: payloadText }],
+    { system, maxTokens: 700 },
+    () => gemini.generateJson({ system, user: payloadText, schema: geminiSchema, maxOutputTokens: 2500 })
+  )
+    .then((result) => (typeof result === 'string' ? JSON.parse(result.replace(/^```json\s*|\s*```$/g, '')) : result))
+    .catch((err) => {
+      if (err.notConfigured || err.upstream) throw err;
+      throw new Error('AI-ийн хариуг боловсруулж чадсангүй. Дахин оролдоно уу.');
+    });
 
-  let analysis;
-  try {
-    analysis = JSON.parse(text.replace(/^```json\s*|\s*```$/g, ''));
-  } catch {
-    throw new Error('AI-ийн хариуг боловсруулж чадсангүй. Дахин оролдоно уу.');
-  }
-  if (!['FREELANCER', 'CLIENT', 'SPLIT'].includes(analysis.recommendation)) {
-    throw new Error('AI-ийн хариу дутуу байна. Дахин оролдоно уу.');
-  }
-  if (!['low', 'medium', 'high'].includes(analysis.confidence)) analysis.confidence = 'medium';
-  if (!Array.isArray(analysis.keyEvidence)) analysis.keyEvidence = [];
-  return analysis;
+  return sanitizeDisputeAnalysis(analysis);
 }
