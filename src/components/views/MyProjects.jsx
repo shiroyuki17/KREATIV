@@ -16,6 +16,7 @@ import {
   submitReview,
 } from "../../lib/contractApi.js";
 import KanbanBoard from "../dashboard/KanbanBoard.jsx";
+import TimeTracker from "../dashboard/TimeTracker.jsx";
 
 const MILESTONE_BADGE = {
   PENDING_FUNDING: "border-white/15 bg-white/[0.05] text-white/50",
@@ -361,8 +362,11 @@ export default function MyProjects() {
                   <ChevronDown className={`h-3.5 w-3.5 transition-transform ${openWorkspace.has(c.id) ? "rotate-180" : ""}`} />
                 </button>
                 {openWorkspace.has(c.id) && (
-                  <div className="mt-3">
+                  <div className="mt-3 space-y-3">
                     <KanbanBoard contractId={c.id} />
+                    {/* Бодит цаг бүртгэл — сервер эхлэл/төгсгөлийг хадгална.
+                        Зөвхөн гүйцэтгэгч бүртгэж чадна, захиалагч харна. */}
+                    <TimeTracker contractId={c.id} />
                   </div>
                 )}
 

@@ -333,9 +333,10 @@ model Contract {
   // энэ огноог lazy тооцоолохын оронд гэрээ дуусах мөчид тодорхой тэмдэглэнэ.
   completedAt   DateTime?
 
-  milestones Milestone[]
-  reviews    Review[]
-  tasks      Task[]
+  milestones  Milestone[]
+  reviews     Review[]
+  tasks       Task[]
+  timeEntries TimeEntry[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -403,6 +404,33 @@ model Task {
   updatedAt DateTime @updatedAt
 
   @@index([contractId])
+}
+
+// ── Цаг бүртгэл ──
+//
+// Өмнө нь UI-д "42.5h logged / 60h est." гэсэн тоолуур байсан боловч ард нь
+// ямар ч өгөгдөл байгаагүй — хуудас ачаалах бүрд 42.5 цагаас эхлээд өсдөг
+// чимэглэл байв. Энэ хүснэгт түүнийг бодит болгоно.
+//
+// Цагийг ЭХЛЭХ/ДУУСАХ мөчөөр хадгална, урьдчилан тооцсон дүнгээр биш:
+// сервер талд үргэлж дахин тооцоолж чадах ёстой (клиентийн цаг найдваргүй,
+// мөн маргаан гарвал баримт хэрэгтэй).
+model TimeEntry {
+  id         String   @id @default(uuid())
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  contractId String
+
+  startedAt DateTime
+  // null = яг одоо ажиллаж байгаа тоолуур. Нэг гэрээнд нэг л ийм мөр байна
+  // (route түүнийг хангана).
+  endedAt   DateTime?
+  note      String?
+
+  createdAt DateTime @default(now())
+
+  @@index([contractId])
+  // Ажиллаж буй тоолуурыг хурдан олох — endedAt = null-ээр шүүнэ.
+  @@index([contractId, endedAt])
 }
 
 enum TaskStatus {

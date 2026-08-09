@@ -58,7 +58,7 @@ const TABS = [
   { page: "find-work", label: "Jobs", Icon: Search, alias: ["project"], modes: ["freelancer"] },
   { page: "find-talent", label: "Talent", Icon: Users, modes: ["client"] },
   { page: "post-job", label: "Post", Icon: Plus, modes: ["client"], accent: true },
-  { page: "my-projects", label: "Work", Icon: FolderKanban, alias: ["tracker"], modes: ["freelancer"], accent: true },
+  { page: "my-projects", label: "Work", Icon: FolderKanban, modes: ["freelancer"], accent: true },
   { page: "messages", label: "Chat", Icon: MessageSquare, live: "messages" },
   { page: "profile", label: "Profile", Icon: User, own: true },
 ];
@@ -74,7 +74,7 @@ const MAIN = [
   { page: "find-work", label: "Find Work", Icon: Search, alias: ["project"], modes: ["freelancer"] },
   { page: "find-talent", label: "Find Talent", Icon: Users, modes: ["client"] },
   { page: "post-job", label: "Post a Job", Icon: Plus, modes: ["client"] },
-  { page: "my-projects", label: "My Projects", Icon: FolderKanban, alias: ["tracker"] },
+  { page: "my-projects", label: "My Projects", Icon: FolderKanban },
   { page: "messages", label: "Messages", Icon: MessageSquare, live: "messages" },
   { page: "payments", label: "Payments", Icon: Wallet },
   { page: "subscription", label: "Plan & billing", Icon: CreditCard },

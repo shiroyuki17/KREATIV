@@ -49,7 +49,6 @@ const Contact = lazy(() => import("./components/views/Contact.jsx"));
 const Reviews = lazy(() => import("./components/views/Reviews.jsx"));
 const Terms = lazy(() => import("./components/views/Terms.jsx"));
 const DisputePolicy = lazy(() => import("./components/views/DisputePolicy.jsx"));
-const ProjectProgressDashboard = lazy(() => import("./components/dashboard/ProjectProgressDashboard.jsx"));
 
 // Chunk татагдах хормын завсарт — бүтэн хуудас багтаах хэмжээний тайван
 // орон зай. Spinner тавихаас татгалзав: chunk ихэвчлэн 100ms-аас
@@ -74,7 +73,6 @@ const APP_PAGES = new Set([
   "settings",
   "admin",
   "project",
-  "tracker",
 ]);
 
 // Every sidebar-shell page requires a real login — including Find Work/
@@ -101,7 +99,7 @@ const KNOWN = new Set([
   "home", "trust", "how", "help", "contact", "reviews", "auth", "auth-callback", "onboarding",
   "project", "profile", "client-dashboard", "freelancer-dashboard", "my-projects",
   "messages", "payments", "subscription", "settings", "notifications", "admin", "post-job",
-  "find-talent", "find-work", "tracker", "terms", "dispute-policy",
+  "find-talent", "find-work", "terms", "dispute-policy",
 ]);
 
 // Хуудсууд lazy болсон тул Suspense заавал хэрэгтэй. Гурван дуудлагын цэг
@@ -142,7 +140,6 @@ function ViewSwitch({ page }) {
     case "post-job": return <PostJob />;
     case "find-talent": return <FindTalent />;
     case "find-work": return <FindWork />;
-    case "tracker": return <div className="pt-4"><ProjectProgressDashboard /></div>;
     default: return <NotFound />;
   }
 }

@@ -1,88 +1,177 @@
-import { useEffect, useState } from "react";
-import { Play, Pause, Camera } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Play, Square, Loader2, AlertCircle, Trash2 } from "lucide-react";
+import {
+  fetchTimeEntries, startTimer, stopTimer, deleteTimeEntry,
+} from "../../lib/contractApi.js";
 
-const ESTIMATED_H = 60;
+// Гэрээн дээр ажилласан бодит цаг.
+//
+// Хуучин хувилбар нь 42.5 цагаас эхлээд секунд тутам өсдөг чимэглэл байсан —
+// ард нь ямар ч өгөгдөл байгаагүй, хуудас дахин ачаалахад эхнээсээ эхэлдэг
+// байв. Одоо сервер эхлэл/төгсгөлийн мөчийг хадгалж, нийт хугацааг өөрөө
+// тооцдог: клиентийн цаг найдваргүй бөгөөд цагийн хөлсний ажилд энэ нь
+// шууд мөнгө.
 
 function fmt(totalSec) {
-  const h = Math.floor(totalSec / 3600);
-  const m = Math.floor((totalSec % 3600) / 60);
-  const s = totalSec % 60;
-  return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  const s = Math.max(0, Math.floor(totalSec));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 }
 
-/** Minimalist logged-vs-estimated timer with a neon progress ring. */
-export default function TimeTracker() {
-  const [sec, setSec] = useState(42.5 * 3600);
-  const [running, setRunning] = useState(true);
+function fmtHours(totalSec) {
+  return `${(totalSec / 3600).toFixed(1)}h`;
+}
+
+function shortDate(iso) {
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+export default function TimeTracker({ contractId }) {
+  const [data, setData] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  // Ажиллаж буй тоолуурыг секунд тутам "урагшлуулах" — сервер рүү секунд
+  // тутам хүсэлт явуулахгүйгээр амьд харагдуулна.
+  const [tick, setTick] = useState(0);
+  const cancelled = useRef(false);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetchTimeEntries(contractId);
+      if (!cancelled.current) { setData(res); setError(""); }
+    } catch (err) {
+      if (!cancelled.current) setError(err.message);
+    }
+  }, [contractId]);
 
   useEffect(() => {
-    if (!running) return;
-    const t = setInterval(() => setSec((s) => s + 1), 1000);
-    return () => clearInterval(t);
-  }, [running]);
+    cancelled.current = false;
+    load();
+    return () => { cancelled.current = true; };
+  }, [load]);
 
-  const pct = Math.min(sec / (ESTIMATED_H * 3600), 1);
-  const R = 30;
-  const C = 2 * Math.PI * R;
+  useEffect(() => {
+    if (!data?.running) return undefined;
+    const t = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, [data?.running]);
+
+  if (!contractId) return null;
+
+  async function toggle() {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      if (data?.running) await stopTimer(contractId);
+      else await startTimer(contractId);
+      await load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeEntry(id) {
+    setError("");
+    try {
+      await deleteTimeEntry(id);
+      await load();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  if (!data) {
+    return <div className="glass animate-pulse-soft h-40 rounded-2xl" />;
+  }
+
+  // Ажиллаж буй тоолуурын өнгөрсөн хугацааг клиент талд нэмж харуулна.
+  // `tick` нь дахин render хийлгэх зорилготой; тооцоолол нь серверийн
+  // эхэлсэн мөчид тулгуурладаг тул хөтчийн цаг гажсан ч дүн зөрөхгүй.
+  const liveExtra = data.running
+    ? Math.max(0, (Date.now() - new Date(data.running.startedAt).getTime()) / 1000 - data.running.seconds)
+    : 0;
+  const total = data.totalSeconds + liveExtra;
 
   return (
     <div className="glass rounded-2xl p-5">
-      <div className="flex items-center gap-4">
-        <div className="relative h-[76px] w-[76px] shrink-0">
-          <svg viewBox="0 0 76 76" className="h-full w-full -rotate-90">
-            <circle cx="38" cy="38" r={R} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="5" />
-            <circle
-              cx="38"
-              cy="38"
-              r={R}
-              fill="none"
-              stroke="url(#tt-grad)"
-              strokeWidth="5"
-              strokeLinecap="round"
-              strokeDasharray={C}
-              strokeDashoffset={C * (1 - pct)}
-              style={{ transition: "stroke-dashoffset 1s linear", filter: "drop-shadow(0 0 6px rgba(201, 160, 99, 0.7))" }}
-            />
-            <defs>
-              <linearGradient id="tt-grad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#C9A063" />
-                <stop offset="100%" stopColor="#06B6D4" />
-              </linearGradient>
-            </defs>
-          </svg>
-          <span className="absolute inset-0 flex items-center justify-center font-display text-[13px] font-bold">
-            {Math.round(pct * 100)}%
-          </span>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-widest text-white/40">
+            Time logged
+          </p>
+          <p className="mt-1.5 font-display text-3xl font-bold tabular-nums">
+            {data.running ? fmt(total) : fmtHours(total)}
+          </p>
+          {data.running && (
+            <p className="mt-1 inline-flex items-center gap-1.5 text-[11px] font-medium text-mint">
+              <span className="h-1.5 w-1.5 animate-pulse-soft rounded-full bg-mint" />
+              Running
+            </p>
+          )}
         </div>
 
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
-            Time tracker
-          </p>
-          <p className="mt-1 font-display text-xl font-bold tabular-nums">
-            {fmt(Math.floor(sec))}
-          </p>
-          <p className="text-[11px] text-white/40">of {ESTIMATED_H}h estimated</p>
-        </div>
-
-        <button
-          onClick={() => setRunning((r) => !r)}
-          aria-label={running ? "Pause timer" : "Start timer"}
-          className={
-            running
-              ? "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-neon/40 bg-neon/15 text-neon transition-transform hover:scale-105"
-              : "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/[0.05] text-white/70 transition-transform hover:scale-105"
-          }
-        >
-          {running ? <Pause className="h-4.5 w-4.5" /> : <Play className="ml-0.5 h-4.5 w-4.5" />}
-        </button>
+        {data.canTrack && (
+          <button
+            onClick={toggle}
+            disabled={busy}
+            aria-label={data.running ? "Stop timer" : "Start timer"}
+            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-semibold transition-all disabled:opacity-50 ${
+              data.running
+                ? "border border-white/15 text-white/80 hover:border-red-400/40 hover:text-red-300"
+                : "bg-brand text-ink glow-brand"
+            }`}
+          >
+            {busy ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : data.running ? (
+              <Square className="h-3.5 w-3.5" />
+            ) : (
+              <Play className="h-3.5 w-3.5" />
+            )}
+            {data.running ? "Stop" : "Start"}
+          </button>
+        )}
       </div>
 
-      <div className="mt-4 flex items-center gap-2 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2.5 text-[11px] text-white/45">
-        <Camera className="h-3.5 w-3.5 text-brand-soft" />
-        Proof of work · 214 screenshots captured this week
-        <span className="ml-auto h-1.5 w-1.5 animate-pulse-soft rounded-full bg-mint" />
-      </div>
+      {error && (
+        <p className="mt-3 flex items-center gap-1.5 text-[12px] text-red-400">
+          <AlertCircle className="h-3.5 w-3.5 shrink-0" /> {error}
+        </p>
+      )}
+
+      {data.entries.length === 0 ? (
+        <p className="mt-4 text-[12.5px] text-white/40">
+          {data.canTrack
+            ? "No time logged yet — press Start when you begin working."
+            : "The freelancer hasn't logged any time yet."}
+        </p>
+      ) : (
+        <ul className="mt-4 space-y-1.5 border-t border-white/8 pt-3">
+          {data.entries.slice(0, 5).map((e) => (
+            <li key={e.id} className="group flex items-center justify-between gap-3 text-[12px]">
+              <span className="text-white/45">{shortDate(e.startedAt)}</span>
+              <span className="flex-1 truncate text-white/60">{e.note || ""}</span>
+              <span className="tabular-nums font-medium text-white/80">
+                {e.running ? "running" : fmtHours(e.seconds)}
+              </span>
+              {data.canTrack && !e.running && (
+                <button
+                  onClick={() => removeEntry(e.id)}
+                  aria-label="Delete entry"
+                  className="text-white/25 opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

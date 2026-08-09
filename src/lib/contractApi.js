@@ -50,3 +50,16 @@ export const fetchReviewsFor = (userId) => authedJson(`/reviews/for/${userId}`);
 
 // Нийтийн "Success stories" хуудас — { stats, reviews }. Нэвтрэлт шаардахгүй.
 export const fetchPublicReviews = () => publicJson("/reviews/public");
+
+// ── Цаг бүртгэл ──
+// Хугацааг ЗӨВХӨН сервер хэмждэг: клиент нь эхлүүл/зогсоо гэж хэлэх төдий.
+// { entries, totalSeconds, running, canTrack }
+export const fetchTimeEntries = (contractId) => authedJson(`/contracts/${contractId}/time`);
+
+export const startTimer = (contractId, note) =>
+  authedJson(`/contracts/${contractId}/time/start`, { method: "POST", body: note ? { note } : {} });
+
+export const stopTimer = (contractId) =>
+  authedJson(`/contracts/${contractId}/time/stop`, { method: "POST" });
+
+export const deleteTimeEntry = (entryId) => authedJson(`/time/${entryId}`, { method: "DELETE" });

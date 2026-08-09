@@ -27,6 +27,7 @@ import reviewRoutes from './routes/review.routes.js';
 import aiRoutes from './routes/ai.routes.js';
 import taskRoutes from './routes/task.routes.js';
 import subscriptionRoutes from './routes/subscription.routes.js';
+import timeRoutes from './routes/time.routes.js';
 import stripeWebhookRoutes from './routes/stripe-webhook.routes.js';
 
 export const app = express();
@@ -88,6 +89,7 @@ app.use('/', reviewRoutes);
 app.use('/ai', aiRoutes);
 app.use('/', taskRoutes);
 app.use('/', subscriptionRoutes);
+app.use('/', timeRoutes);
 
 // 404
 app.use((req, res) => {
