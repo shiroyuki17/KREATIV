@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import prisma from '../lib/prisma.js';
 import { config } from '../config/env.js';
 import { signAccessToken, signRefreshToken, hashToken } from '../utils/jwt.js';
+import { logError } from '../lib/logger.js';
 
 const router = Router();
 const STATE_COOKIE = 'oauth_state';
@@ -50,7 +51,7 @@ router.get('/google/demo', async (req, res, next) => {
       });
     }
     if (!user.isActive) {
-      return res.redirect(`${config.FRONTEND_URL}/#/auth?oauth_error=account_disabled`);
+      return res.redirect(`${config.FRONTEND_URL}/#/auth-callback?oauth_error=account_disabled`);
     }
 
     const accessToken = signAccessToken({ sub: user.id, role: user.role });
@@ -58,7 +59,9 @@ router.get('/google/demo', async (req, res, next) => {
     const redirectParams = new URLSearchParams({ accessToken, refreshToken });
     res.redirect(`${config.FRONTEND_URL}/#/auth-callback?${redirectParams.toString()}`);
   } catch (err) {
-    next(err);
+    // Callback-ийн адил: хөтчийн redirect тул түүхий JSON харуулж болохгүй.
+    logError(err, { route: 'auth/google/demo' });
+    res.redirect(`${config.FRONTEND_URL}/#/auth-callback?oauth_error=server_error`);
   }
 });
 
@@ -104,10 +107,10 @@ router.get('/google/callback', async (req, res, next) => {
     res.clearCookie(STATE_COOKIE);
 
     if (googleError) {
-      return res.redirect(`${config.FRONTEND_URL}/#/auth?oauth_error=${encodeURIComponent(googleError)}`);
+      return res.redirect(`${config.FRONTEND_URL}/#/auth-callback?oauth_error=${encodeURIComponent(googleError)}`);
     }
     if (!code || !state || !expectedState || state !== expectedState) {
-      return res.redirect(`${config.FRONTEND_URL}/#/auth?oauth_error=invalid_state`);
+      return res.redirect(`${config.FRONTEND_URL}/#/auth-callback?oauth_error=invalid_state`);
     }
 
     // Authorization code-ийг Google-ийн token endpoint дээр access/id token-оор солино
@@ -126,7 +129,7 @@ router.get('/google/callback', async (req, res, next) => {
     if (!tokenRes.ok) {
       const body = await tokenRes.text();
       console.error('Google token exchange failed:', body);
-      return res.redirect(`${config.FRONTEND_URL}/#/auth?oauth_error=token_exchange_failed`);
+      return res.redirect(`${config.FRONTEND_URL}/#/auth-callback?oauth_error=token_exchange_failed`);
     }
 
     const { id_token: idToken } = await tokenRes.json();
@@ -135,7 +138,7 @@ router.get('/google/callback', async (req, res, next) => {
     // байдал өгөх боловч энэ урсгалд заавал биш).
     const profile = jwt.decode(idToken);
     if (!profile?.sub || !profile?.email) {
-      return res.redirect(`${config.FRONTEND_URL}/#/auth?oauth_error=invalid_profile`);
+      return res.redirect(`${config.FRONTEND_URL}/#/auth-callback?oauth_error=invalid_profile`);
     }
 
     let user = await prisma.user.findUnique({ where: { googleId: profile.sub } });
@@ -150,7 +153,7 @@ router.get('/google/callback', async (req, res, next) => {
       // Шинэ хэрэглэгч үүсгэхэд энэ шалгалт хамаарахгүй — булаах акаунт алга.
       const existing = await prisma.user.findUnique({ where: { email: profile.email } });
       if (existing && profile.email_verified !== true) {
-        return res.redirect(`${config.FRONTEND_URL}/#/auth?oauth_error=email_unverified`);
+        return res.redirect(`${config.FRONTEND_URL}/#/auth-callback?oauth_error=email_unverified`);
       }
       if (existing) {
         user = await prisma.user.update({
@@ -170,7 +173,7 @@ router.get('/google/callback', async (req, res, next) => {
     }
 
     if (!user.isActive) {
-      return res.redirect(`${config.FRONTEND_URL}/#/auth?oauth_error=account_disabled`);
+      return res.redirect(`${config.FRONTEND_URL}/#/auth-callback?oauth_error=account_disabled`);
     }
 
     const accessToken = signAccessToken({ sub: user.id, role: user.role });
@@ -179,7 +182,14 @@ router.get('/google/callback', async (req, res, next) => {
     const redirectParams = new URLSearchParams({ accessToken, refreshToken });
     res.redirect(`${config.FRONTEND_URL}/#/auth-callback?${redirectParams.toString()}`);
   } catch (err) {
-    next(err);
+    // Энэ бол ХӨТЧИЙН хаяг руу шууд орж ирсэн redirect, API дуудлага биш.
+    // next(err) хийвэл хэрэглэгч backend-ийн URL дээр түүхий
+    // {"error":"Серверийн алдаа"} JSON хараад гацдаг — буцах ч зам байхгүй.
+    // (Жишээ нь өгөгдлийн сан унтарсан үед яг ингэдэг байв.)
+    // Бусад бүх бүтэлгүйтлийн адил frontend рүү буцааж, тэнд ойлгомжтой
+    // мессеж харуулна.
+    logError(err, { route: 'auth/google/callback' });
+    res.redirect(`${config.FRONTEND_URL}/#/auth-callback?oauth_error=server_error`);
   }
 });
 
