@@ -3,6 +3,7 @@ import { Search, Send, Info, X, AlertCircle, ShieldAlert, Phone, Video, MoreHori
 import { useNav } from "../../nav.jsx";
 import { getAccessToken, avatarSrc, API_BASE } from "../../lib/authApi.js";
 import { fetchConversations, startConversation, fetchThread, sendMessage, sendFile } from "../../lib/messagesApi.js";
+import { fetchFreelancerByUserId } from "../../lib/talentApi.js";
 import { connectSocket, getSocket } from "../../lib/socket.js";
 import { useEscapeKey } from "../../hooks/useEscapeKey.js";
 import { useCall } from "../../lib/useCall.js";
@@ -118,26 +119,84 @@ function Avatar({ name, avatarUrl, size = "md", online = false }) {
 }
 
 function DetailsPanel({ contact, onVoiceCall, onVideoCall }) {
+  // FR-2.1: skills/stats нь өмнө нь бүх хэн нэгэнд ижилхэн "98% Success /
+  // 142 Projects" гэсэн ХАРДКОД байсан — одоо тухайн хэрэглэгчийн бодит
+  // freelancer профайлаас татна. Client-той чатлаж байгаа бол (freelancer
+  // профайлгүй тул 404) энэ хэсгийг зүгээр л алгасна.
+  const [profile, setProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setProfile(null);
+    setProfileLoading(true);
+    fetchFreelancerByUserId(contact.id)
+      .then((p) => { if (!cancelled) setProfile(p); })
+      .catch(() => { if (!cancelled) setProfile(null); })
+      .finally(() => { if (!cancelled) setProfileLoading(false); });
+    return () => { cancelled = true; };
+  }, [contact.id]);
+
   return (
     <div className="h-full overflow-y-auto">
       {/* Profile Header */}
       <div className="flex flex-col items-center px-5 py-8" style={{ background: "linear-gradient(180deg, rgba(123, 57, 252, 0.06) 0%, transparent 100%)" }}>
         <Avatar name={contact.name} avatarUrl={contact.avatarUrl} size="lg" online={contact.online} />
         <p className="mt-3 text-[15px] font-bold tracking-tight">{contact.name}</p>
-        {contact.online && (
+        {contact.online ? (
           <span className="mt-1 flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium"
             style={{ background: "rgba(123, 57, 252, 0.1)", color: "#7B39FC" }}>
             <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />
             Online
           </span>
+        ) : (
+          <span className="mt-1 text-[11px] text-white/35">Offline</span>
         )}
+        {profile?.headline && <p className="mt-2 text-[12px] text-white/45">{profile.headline}</p>}
       </div>
 
-      {/* Skills/stats were hardcoded placeholders (same 4 skills, same
-          "98% Success / 142 Projects" for every contact) — removed rather
-          than keep showing fake numbers. A real version needs a profile
-          fetch by userId, not data this component has today. */}
       <div className="h-px mx-5" style={{ background: "rgba(255,255,255,0.06)" }} />
+
+      {profileLoading ? (
+        <div className="flex justify-center py-6">
+          <Loader2 className="h-4 w-4 animate-spin text-white/30" />
+        </div>
+      ) : profile ? (
+        <>
+          {profile.skills?.length > 0 && (
+            <div className="p-5">
+              <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-white/30">Skills</p>
+              <div className="flex flex-wrap gap-1.5">
+                {profile.skills.map((s) => (
+                  <span key={s} className="rounded-lg px-2.5 py-1 text-[11px] font-medium"
+                    style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)" }}>
+                    {s}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="h-px mx-5" style={{ background: "rgba(255,255,255,0.06)" }} />
+
+          {/* Зөвхөн бодитоор хадгалдаг тоог харуулна — "Success %"/"Response
+              time" гэх мэт бидний схемд огт байхгүй хэмжигдэхүүнийг зохиохгүй. */}
+          <div className="grid grid-cols-2 gap-3 p-5">
+            <div className="rounded-xl p-3 text-center" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <p className="text-[15px] font-bold" style={{ color: "#7B39FC" }}>
+                {profile.ratingAvg > 0 ? `${profile.ratingAvg.toFixed(1)}★` : "—"}
+              </p>
+              <p className="text-[10.5px] text-white/40">Rating</p>
+            </div>
+            <div className="rounded-xl p-3 text-center" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <p className="text-[15px] font-bold" style={{ color: "#7B39FC" }}>{profile.jobsCompleted}</p>
+              <p className="text-[10.5px] text-white/40">Jobs done</p>
+            </div>
+          </div>
+
+          <div className="h-px mx-5" style={{ background: "rgba(255,255,255,0.06)" }} />
+        </>
+      ) : null}
 
       {/* Actions */}
       <div className="space-y-2 p-5 pt-0">
