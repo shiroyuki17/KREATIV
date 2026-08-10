@@ -118,7 +118,6 @@ function Avatar({ name, avatarUrl, size = "md", online = false }) {
 }
 
 function DetailsPanel({ contact, onVoiceCall, onVideoCall }) {
-  const skills = ["UI/UX Design", "React", "Figma", "Branding"];
   return (
     <div className="h-full overflow-y-auto">
       {/* Profile Header */}
@@ -134,33 +133,11 @@ function DetailsPanel({ contact, onVoiceCall, onVideoCall }) {
         )}
       </div>
 
-      {/* Divider */}
+      {/* Skills/stats were hardcoded placeholders (same 4 skills, same
+          "98% Success / 142 Projects" for every contact) — removed rather
+          than keep showing fake numbers. A real version needs a profile
+          fetch by userId, not data this component has today. */}
       <div className="h-px mx-5" style={{ background: "rgba(255,255,255,0.06)" }} />
-
-      {/* Skills */}
-      <div className="p-5">
-        <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-white/30">Skills</p>
-        <div className="flex flex-wrap gap-1.5">
-          {skills.map((s) => (
-            <span key={s} className="rounded-lg px-2.5 py-1 text-[11px] font-medium"
-              style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)" }}>
-              {s}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <div className="h-px mx-5" style={{ background: "rgba(255,255,255,0.06)" }} />
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-3 p-5">
-        {[["98%", "Success"], ["142", "Projects"], ["4.9★", "Rating"], ["<1h", "Response"]].map(([val, lbl]) => (
-          <div key={lbl} className="rounded-xl p-3 text-center" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <p className="text-[15px] font-bold" style={{ color: "#7B39FC" }}>{val}</p>
-            <p className="text-[10.5px] text-white/40">{lbl}</p>
-          </div>
-        ))}
-      </div>
 
       {/* Actions */}
       <div className="space-y-2 p-5 pt-0">
