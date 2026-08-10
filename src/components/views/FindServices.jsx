@@ -47,13 +47,22 @@ function GigCard({ g, nav }) {
           <span className="flex items-center gap-1 text-[11px] text-white/40">
             <Clock className="h-3.5 w-3.5" /> {g.deliveryDays}d delivery
           </span>
-          {g.freelancer.ratingAvg > 0 && (
+          {g.reviewCount > 0 ? (
+            <span className="flex items-center gap-1 text-[11px] font-bold text-amber-400">
+              <Star className="h-3 w-3 fill-amber-400" /> {g.ratingAvg.toFixed(1)} ({g.reviewCount})
+            </span>
+          ) : g.freelancer.ratingAvg > 0 ? (
             <span className="flex items-center gap-1 text-[11px] font-bold text-amber-400">
               <Star className="h-3 w-3 fill-amber-400" /> {g.freelancer.ratingAvg.toFixed(1)}
             </span>
-          )}
+          ) : null}
         </div>
-        <p className="mt-2 text-right font-display text-[16px] font-bold text-mint">${g.price}</p>
+        <div className="mt-1.5 flex items-center justify-between">
+          {g.ordersCount > 0 ? (
+            <span className="text-[10.5px] text-white/35">{g.ordersCount} захиалагдсан</span>
+          ) : <span />}
+        </div>
+        <p className="mt-1.5 text-right font-display text-[16px] font-bold text-mint">${g.price}</p>
       </div>
     </button>
   );

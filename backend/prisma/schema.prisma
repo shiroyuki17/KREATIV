@@ -167,6 +167,11 @@ model Job {
   moderationStatus ModerationStatus @default(APPROVED)
   moderationReason String?
 
+  // Gig захиалгаас автоматаар үүссэн бол — тухайн gig-ийн захиалгын
+  // тоо/дундаж үнэлгээг тооцоход хэрэглэнэ (доор Gig.jobs харна уу).
+  gig   Gig?    @relation(fields: [gigId], references: [id])
+  gigId String?
+
   proposals Proposal[]
   contract  Contract?
 
@@ -176,6 +181,7 @@ model Job {
   @@index([status])
   @@index([category])
   @@index([clientId])
+  @@index([gigId])
 }
 
 enum BudgetType {
@@ -214,6 +220,8 @@ model Gig {
   deliveryDays Int
   images       String[]          @default([])
   active       Boolean           @default(true)
+
+  jobs Job[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

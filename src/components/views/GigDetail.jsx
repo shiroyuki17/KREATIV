@@ -128,6 +128,17 @@ export default function GigDetail() {
               </span>
             </div>
 
+            {(gig.reviewCount > 0 || gig.ordersCount > 0) && (
+              <div className="mt-3 flex items-center gap-3 text-[12px] text-white/45">
+                {gig.reviewCount > 0 && (
+                  <span className="flex items-center gap-1 font-semibold text-amber-400">
+                    <Star className="h-3.5 w-3.5 fill-amber-400" /> {gig.ratingAvg.toFixed(1)} ({gig.reviewCount})
+                  </span>
+                )}
+                {gig.ordersCount > 0 && <span>{gig.ordersCount} захиалагдсан</span>}
+              </div>
+            )}
+
             {orderError && (
               <p className="mt-4 flex items-center gap-1.5 rounded-xl border border-red-500/30 bg-red-500/10 px-3.5 py-2.5 text-[12px] font-medium text-red-400">
                 <AlertCircle className="h-3.5 w-3.5 shrink-0" /> {orderError}

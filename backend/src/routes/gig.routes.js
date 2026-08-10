@@ -20,7 +20,7 @@ function validate(schema, body) {
   return { data: result.data };
 }
 
-function publicGig(gig) {
+function publicGig(gig, stats) {
   return {
     id: gig.id,
     title: gig.title,
@@ -31,6 +31,9 @@ function publicGig(gig) {
     images: gig.images,
     active: gig.active,
     createdAt: gig.createdAt,
+    ordersCount: stats?.ordersCount ?? 0,
+    ratingAvg: stats?.ratingAvg ?? 0,
+    reviewCount: stats?.reviewCount ?? 0,
     freelancer: {
       id: gig.freelancer.id,
       userId: gig.freelancer.userId,
@@ -41,6 +44,51 @@ function publicGig(gig) {
       verified: gig.freelancer.verificationStatus === 'VERIFIED',
     },
   };
+}
+
+// Тухайн gig-үүдийн захиалгын тоо (Job.gigId-аар) болон дундаж үнэлгээ
+// (client-ийн freelancer-т өгсөн Review — revieweeId = freelancer.userId)
+// нэг дор batch-ээр тооцно, N+1 query-ээс сэргийлнэ.
+async function gigStatsFor(gigs) {
+  const gigIds = gigs.map((g) => g.id);
+  if (!gigIds.length) return {};
+
+  const jobs = await prisma.job.findMany({
+    where: { gigId: { in: gigIds } },
+    select: { id: true, gigId: true },
+  });
+  const stats = {};
+  for (const g of gigs) stats[g.id] = { ordersCount: 0, ratingAvg: 0, reviewCount: 0 };
+  for (const j of jobs) stats[j.gigId].ordersCount++;
+  if (!jobs.length) return stats;
+
+  const contracts = await prisma.contract.findMany({
+    where: { jobId: { in: jobs.map((j) => j.id) } },
+    select: { id: true, jobId: true },
+  });
+  const contractToGig = new Map();
+  const jobToGig = new Map(jobs.map((j) => [j.id, j.gigId]));
+  for (const c of contracts) contractToGig.set(c.id, jobToGig.get(c.jobId));
+  if (!contracts.length) return stats;
+
+  const freelancerUserIdByGig = new Map(gigs.map((g) => [g.id, g.freelancer.userId]));
+  const reviews = await prisma.review.findMany({
+    where: { contractId: { in: contracts.map((c) => c.id) } },
+    select: { contractId: true, stars: true, revieweeId: true },
+  });
+  const sums = {};
+  for (const r of reviews) {
+    const gigId = contractToGig.get(r.contractId);
+    if (!gigId || r.revieweeId !== freelancerUserIdByGig.get(gigId)) continue; // зөвхөн freelancer-ийг үнэлсэн review
+    sums[gigId] = sums[gigId] || { sum: 0, count: 0 };
+    sums[gigId].sum += r.stars;
+    sums[gigId].count++;
+  }
+  for (const [gigId, { sum, count }] of Object.entries(sums)) {
+    stats[gigId].reviewCount = count;
+    stats[gigId].ratingAvg = Math.round((sum / count) * 10) / 10;
+  }
+  return stats;
 }
 
 async function loadOwnFreelancerProfile(userId) {
@@ -79,7 +127,7 @@ router.post('/gigs', requireAuth, async (req, res, next) => {
       data: { ...data, freelancerId: profile.id },
       include: { freelancer: { include: { user: true } } },
     });
-    res.status(201).json(publicGig(gig));
+    res.status(201).json(publicGig(gig, { ordersCount: 0, ratingAvg: 0, reviewCount: 0 }));
   } catch (err) {
     next(err);
   }
@@ -95,7 +143,8 @@ router.get('/gigs/mine', requireAuth, async (req, res, next) => {
       include: { freelancer: { include: { user: true } } },
       orderBy: { createdAt: 'desc' },
     });
-    res.json({ gigs: gigs.map(publicGig) });
+    const stats = await gigStatsFor(gigs);
+    res.json({ gigs: gigs.map((g) => publicGig(g, stats[g.id])) });
   } catch (err) {
     next(err);
   }
@@ -136,9 +185,10 @@ router.get('/gigs', async (req, res, next) => {
       }),
       prisma.gig.count({ where }),
     ]);
+    const stats = await gigStatsFor(gigs);
 
     res.json({
-      gigs: gigs.map(publicGig),
+      gigs: gigs.map((g) => publicGig(g, stats[g.id])),
       total,
       page: data.page,
       pageSize: data.pageSize,
@@ -157,7 +207,8 @@ router.get('/gigs/:id', async (req, res, next) => {
       include: { freelancer: { include: { user: true } } },
     });
     if (!gig || !gig.active) return res.status(404).json({ error: 'Олдсонгүй' });
-    res.json(publicGig(gig));
+    const stats = await gigStatsFor([gig]);
+    res.json(publicGig(gig, stats[gig.id]));
   } catch (err) {
     next(err);
   }
@@ -177,7 +228,8 @@ router.patch('/gigs/:id', requireAuth, async (req, res, next) => {
       data,
       include: { freelancer: { include: { user: true } } },
     });
-    res.json(publicGig(updated));
+    const stats = await gigStatsFor([updated]);
+    res.json(publicGig(updated, stats[updated.id]));
   } catch (err) {
     next(err);
   }
@@ -219,6 +271,7 @@ router.post('/gigs/:id/order', requireAuth, requireClientProfile, async (req, re
           budgetMin: gig.price,
           budgetMax: gig.price,
           status: 'IN_PROGRESS',
+          gigId: gig.id,
         },
       });
       const proposal = await tx.proposal.create({
