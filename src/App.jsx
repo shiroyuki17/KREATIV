@@ -42,6 +42,7 @@ const FindTalent = lazy(() => import("./components/views/FindTalent.jsx"));
 const FindWork = lazy(() => import("./components/views/FindWork.jsx"));
 const Auth = lazy(() => import("./components/views/Auth.jsx"));
 const AuthCallback = lazy(() => import("./components/views/AuthCallback.jsx"));
+const ResetPassword = lazy(() => import("./components/views/ResetPassword.jsx"));
 const Onboarding = lazy(() => import("./components/views/Onboarding.jsx"));
 const HowItWorks = lazy(() => import("./components/views/HowItWorks.jsx"));
 const HelpCenter = lazy(() => import("./components/views/HelpCenter.jsx"));
@@ -96,7 +97,7 @@ function HomePage() {
 }
 
 const KNOWN = new Set([
-  "home", "trust", "how", "help", "contact", "reviews", "auth", "auth-callback", "onboarding",
+  "home", "trust", "how", "help", "contact", "reviews", "auth", "auth-callback", "reset-password", "onboarding",
   "project", "profile", "client-dashboard", "freelancer-dashboard", "my-projects",
   "messages", "payments", "subscription", "settings", "notifications", "admin", "post-job",
   "find-talent", "find-work", "terms", "dispute-policy",
@@ -125,6 +126,7 @@ function ViewSwitch({ page }) {
     case "dispute-policy": return <DisputePolicy />;
     case "auth": return <Auth />;
     case "auth-callback": return <AuthCallback />;
+    case "reset-password": return <ResetPassword />;
     case "onboarding": return <Onboarding />;
     case "project": return <ProjectDetail />;
     case "profile": return <FreelancerProfile />;
@@ -158,7 +160,7 @@ function Shell() {
   const { page } = useNav();
 
   // Full-screen flows — no site chrome
-  if (page === "auth" || page === "auth-callback" || page === "onboarding") {
+  if (page === "auth" || page === "auth-callback" || page === "reset-password" || page === "onboarding") {
     return <div className="min-h-screen overflow-x-clip bg-ink text-white"><View page={page} /></div>;
   }
 

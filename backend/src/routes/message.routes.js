@@ -3,7 +3,7 @@ import prisma from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { createNotification } from './notification.routes.js';
 import { detectLeakage } from '../lib/leakage.js';
-import { emitToUser } from '../lib/socket.js';
+import { emitToUser, isUserOnline } from '../lib/socket.js';
 import { uploadChatFile } from '../middleware/upload.js';
 import { saveUpload } from '../lib/storage.js';
 
@@ -75,9 +75,10 @@ router.get('/conversations', requireAuth, async (req, res, next) => {
         const unread = await prisma.message.count({
           where: { conversationId: c.id, senderId: { not: req.user.id }, readAt: null },
         });
+        const other = otherParticipant(c, req.user.id);
         return {
           id: c.id,
-          with: publicUser(otherParticipant(c, req.user.id)),
+          with: { ...publicUser(other), online: isUserOnline(other.id) },
           lastMessage: c.messages[0] || null,
           unread,
           updatedAt: c.updatedAt,

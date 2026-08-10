@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { Router } from 'express';
 import prisma from '../lib/prisma.js';
 import { config } from '../config/env.js';
@@ -17,6 +18,8 @@ import {
   refreshSchema,
   phoneOtpRequestSchema,
   phoneOtpVerifySchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
 } from '../validators/auth.schema.js';
 
 const router = Router();
@@ -186,6 +189,78 @@ router.post('/logout', async (req, res, next) => {
       data: { revoked: true },
     });
     res.json({ message: 'Гарлаа' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+const RESET_TTL_MINUTES = 30;
+
+// ── POST /forgot-password ──
+// Account enumeration-аас сэргийлж, имэйл бүртгэлтэй эсэхээс үл хамааран
+// ЯГ ИЖИЛ хариу буцаана — зурвасын агуулгаас (илгээсэн эсэх) мэдэхгүй.
+router.post('/forgot-password', authLimiter, async (req, res, next) => {
+  try {
+    const { data, error } = validate(forgotPasswordSchema, req.body);
+    if (error) return res.status(400).json({ error });
+
+    const user = await prisma.user.findUnique({ where: { email: data.email } });
+    // Google-ээр л бүртгүүлсэн (нууц үггүй) хэрэглэгчид сэргээх нууц үг
+    // байхгүй тул энд ч бас алгасна — гэхдээ хариу ижилхэн.
+    if (user && user.passwordHash) {
+      const token = crypto.randomBytes(32).toString('hex');
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          passwordResetHash: hashToken(token),
+          passwordResetExpiresAt: new Date(Date.now() + RESET_TTL_MINUTES * 60 * 1000),
+        },
+      });
+      const link = `${config.FRONTEND_URL}/#/reset-password?token=${token}`;
+      sendMail({
+        to: user.email,
+        subject: 'KREATIV — нууц үг сэргээх',
+        html: `<p>Сайн байна уу, ${user.name || 'найз'}!</p><p>Нууц үгээ сэргээхийн тулд доорх холбоос дээр дарна уу (${RESET_TTL_MINUTES} минутын дотор хүчинтэй):</p><p><a href="${link}">${link}</a></p><p>Хэрэв та энэ хүсэлтийг илгээгээгүй бол энэ имэйлийг үл тоомсорлоно уу.</p>`,
+      });
+    }
+
+    res.json({ message: 'Хэрэв энэ имэйл бүртгэлтэй бол сэргээх холбоос илгээгдлээ.' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /reset-password ──
+router.post('/reset-password', authLimiter, async (req, res, next) => {
+  try {
+    const { data, error } = validate(resetPasswordSchema, req.body);
+    if (error) return res.status(400).json({ error });
+
+    const user = await prisma.user.findFirst({
+      where: { passwordResetHash: hashToken(data.token) },
+    });
+    if (!user || !user.passwordResetExpiresAt || user.passwordResetExpiresAt < new Date()) {
+      return res.status(400).json({ error: 'Холбоос хүчингүй эсвэл хугацаа дууссан. Дахин хүснэ үү.' });
+    }
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: user.id },
+        data: {
+          passwordHash: await hashPassword(data.password),
+          passwordResetHash: null,
+          passwordResetExpiresAt: null,
+        },
+      }),
+      // Аюулгүй байдлын үүднээс бүх session-ийг хүчингүй болгоно — нууц үг
+      // алдагдсан байж болзошгүй тул хуучин refresh token-ууд ажиллахгүй.
+      prisma.refreshToken.updateMany({
+        where: { userId: user.id, revoked: false },
+        data: { revoked: true },
+      }),
+    ]);
+
+    res.json({ message: 'Нууц үг амжилттай солигдлоо. Одоо шинэ нууц үгээрээ нэвтэрнэ үү.' });
   } catch (err) {
     next(err);
   }

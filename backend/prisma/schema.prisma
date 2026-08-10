@@ -27,6 +27,10 @@ model User {
   // горимоор ажиллана (kod-ыг sendMail-ийн адил "илгээгээд" хариултад буцаана).
   phoneOtpHash      String?
   phoneOtpExpiresAt DateTime?
+
+  // "Forgot password" — sha256(token) хадгална, түр зуурын (30 мин)
+  passwordResetHash      String?
+  passwordResetExpiresAt DateTime?
   phoneVerifiedAt   DateTime?
 
   refreshTokens     RefreshToken[]

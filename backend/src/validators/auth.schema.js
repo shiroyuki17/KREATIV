@@ -26,3 +26,11 @@ export const phoneOtpVerifySchema = z.object({
   phone: phoneSchema,
   code: z.string().regex(/^\d{6}$/, 'Код 6 орон байх ёстой'),
 });
+
+export const forgotPasswordSchema = z.object({
+  email: z.email('Имэйл буруу байна'),
+});
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, 'token шаардлагатай'),
+  password: z.string().min(8, 'Нууц үг дор хаяж 8 тэмдэгт'),
+});

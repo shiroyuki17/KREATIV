@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Briefcase, Laptop, ArrowLeft, Check, AlertCircle } from "lucide-react";
 import Magnet from "../fx/Magnet.jsx";
 import { useNav } from "../../nav.jsx";
-import { googleLoginUrl, registerUser, loginUser, saveTokens, resolveHomeRoute, consumeStashedRedirect } from "../../lib/authApi.js";
+import { googleLoginUrl, registerUser, loginUser, saveTokens, resolveHomeRoute, consumeStashedRedirect, forgotPassword } from "../../lib/authApi.js";
 
 const OAUTH_ERROR_MESSAGES = {
   invalid_state: "Google холболт хугацаа дууссан байна. Дахин оролдоно уу.",
@@ -37,6 +37,7 @@ export default function Auth() {
   const [confirm, setConfirm] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
+  const [forgotSent, setForgotSent] = useState(false);
 
   const mismatch = mode === "signup" && confirm.length > 0 && password !== confirm;
   const matched = mode === "signup" && confirm.length > 0 && password === confirm;
@@ -46,17 +47,25 @@ export default function Auth() {
     !submitting &&
     (mode === "login"
       ? email.length > 0 && password.length > 0
-      : firstName.trim().length > 0 &&
-        lastName.trim().length > 0 &&
-        email.length > 0 &&
-        PHONE_RE.test(phone) &&
-        password.length > 0 &&
-        password === confirm);
+      : mode === "forgot"
+        ? email.length > 0
+        : firstName.trim().length > 0 &&
+          lastName.trim().length > 0 &&
+          email.length > 0 &&
+          PHONE_RE.test(phone) &&
+          password.length > 0 &&
+          password === confirm);
 
   async function handleSubmit() {
     setFormError("");
     setSubmitting(true);
     try {
+      if (mode === "forgot") {
+        await forgotPassword(email);
+        setForgotSent(true);
+        return;
+      }
+
       if (mode === "signup") {
         const { user, accessToken, refreshToken } = await registerUser({
           email,
@@ -150,7 +159,7 @@ export default function Auth() {
 
         <div className="glass rounded-3xl p-8">
           <p className="text-center font-display text-xl font-bold tracking-tight">
-            {mode === "signup" ? "Join " : "Welcome back to "}
+            {mode === "signup" ? "Join " : mode === "forgot" ? "Reset password for " : "Welcome back to "}
             KRE
             <span className="bg-gradient-to-r from-brand-soft to-neon bg-clip-text text-transparent">
               ATIV
@@ -159,7 +168,9 @@ export default function Auth() {
           <p className="mt-1.5 text-center text-[12.5px] text-white/45">
             {mode === "signup"
               ? "Where elite work meets elite talent."
-              : "Log in to your workspace."}
+              : mode === "forgot"
+                ? "Enter your email and we'll send you a reset link."
+                : "Log in to your workspace."}
           </p>
 
           {(oauthError || formError) && (
@@ -168,6 +179,20 @@ export default function Auth() {
             </p>
           )}
 
+          {mode === "forgot" && forgotSent ? (
+            <>
+              <p className="mt-6 flex items-center gap-2 rounded-xl border border-brand/30 bg-brand/10 px-3.5 py-3 text-[13px] font-medium text-brand-soft">
+                <Check className="h-4 w-4 shrink-0" /> If that email is registered, a reset link is on its way.
+              </p>
+              <button
+                onClick={() => { setMode("login"); setForgotSent(false); setFormError(""); }}
+                className="mt-6 w-full rounded-xl border border-white/15 bg-white/[0.05] py-3.5 text-[14px] font-semibold text-white/90 transition-colors hover:border-white/25"
+              >
+                Back to log in
+              </button>
+            </>
+          ) : (
+          <>
           {mode === "signup" && (
             <div className="mt-7 grid grid-cols-2 gap-3">
               {ROLES.map(({ id, label, desc, Icon }) => (
@@ -255,11 +280,15 @@ export default function Auth() {
               </label>
             )}
 
+            {mode !== "forgot" && (
             <label className="block">
               <span className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-widest text-white/40">
                 Password
                 {mode === "login" && (
-                  <button className="text-brand-soft normal-case tracking-normal hover:text-white">
+                  <button
+                    onClick={() => { setMode("forgot"); setFormError(""); }}
+                    className="text-brand-soft normal-case tracking-normal hover:text-white"
+                  >
                     Forgot?
                   </button>
                 )}
@@ -272,6 +301,7 @@ export default function Auth() {
                 className="mt-2 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[14px] outline-none transition-colors placeholder:text-white/25 focus:border-brand/50"
               />
             </label>
+            )}
 
             {mode === "signup" && (
               <label className="block animate-rise-in">
@@ -311,9 +341,17 @@ export default function Auth() {
             disabled={!canSubmit}
             className="mt-6 w-full rounded-xl bg-brand py-3.5 text-[14px] font-semibold text-fg-1 glow-brand transition-all disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
           >
-            {submitting ? "Түр хүлээнэ үү…" : mode === "signup" ? "Create account" : "Log in"}
+            {submitting
+              ? "Түр хүлээнэ үү…"
+              : mode === "signup"
+                ? "Create account"
+                : mode === "forgot"
+                  ? "Send reset link"
+                  : "Log in"}
           </button>
 
+          {mode !== "forgot" && (
+          <>
           <div className="my-5 flex items-center gap-3">
             <span className="h-px flex-1 bg-white/10" />
             <span className="text-[11px] font-medium uppercase tracking-widest text-white/30">
@@ -334,25 +372,40 @@ export default function Auth() {
             </svg>
             Continue with Google
           </button>
+          </>
+          )}
 
           <p className="mt-6 text-center text-[12.5px] text-white/45">
-            {mode === "signup" ? "Already have an account?" : "New to KREATIV?"}{" "}
-            <button
-              onClick={() => {
-                setMode(mode === "signup" ? "login" : "signup");
-                setPassword("");
-                setConfirm("");
-                setFirstName("");
-                setLastName("");
-                setEmail("");
-                setPhone("");
-                setFormError("");
-              }}
-              className="font-semibold text-brand-soft hover:text-white"
-            >
-              {mode === "signup" ? "Log in" : "Sign up"}
-            </button>
+            {mode === "forgot" ? (
+              <button
+                onClick={() => { setMode("login"); setFormError(""); }}
+                className="font-semibold text-brand-soft hover:text-white"
+              >
+                ← Back to log in
+              </button>
+            ) : (
+              <>
+                {mode === "signup" ? "Already have an account?" : "New to KREATIV?"}{" "}
+                <button
+                  onClick={() => {
+                    setMode(mode === "signup" ? "login" : "signup");
+                    setPassword("");
+                    setConfirm("");
+                    setFirstName("");
+                    setLastName("");
+                    setEmail("");
+                    setPhone("");
+                    setFormError("");
+                  }}
+                  className="font-semibold text-brand-soft hover:text-white"
+                >
+                  {mode === "signup" ? "Log in" : "Sign up"}
+                </button>
+              </>
+            )}
           </p>
+          </>
+          )}
           </div>
         </div>
       </div>

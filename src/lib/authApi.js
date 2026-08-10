@@ -48,6 +48,13 @@ export function loginUser({ email, password }) {
   return postPublic("/auth/login", { email, password });
 }
 
+export function forgotPassword(email) {
+  return postPublic("/auth/forgot-password", { email });
+}
+export function resetPassword(token, password) {
+  return postPublic("/auth/reset-password", { token, password });
+}
+
 // Server-side session revocation + local cleanup. Best-effort: логаут UI-д
 // үргэлж шууд ажиллах ёстой тул сервер рүү өгсөн хүсэлт амжилтгүй болсон ч
 // (сүлжээ тасарсан г.м) local token-уудыг цэвэрлэсээр байна.

@@ -123,14 +123,15 @@ function DetailsPanel({ contact, onVoiceCall, onVideoCall }) {
     <div className="h-full overflow-y-auto">
       {/* Profile Header */}
       <div className="flex flex-col items-center px-5 py-8" style={{ background: "linear-gradient(180deg, rgba(123, 57, 252, 0.06) 0%, transparent 100%)" }}>
-        <Avatar name={contact.name} avatarUrl={contact.avatarUrl} size="lg" online />
+        <Avatar name={contact.name} avatarUrl={contact.avatarUrl} size="lg" online={contact.online} />
         <p className="mt-3 text-[15px] font-bold tracking-tight">{contact.name}</p>
-        <span className="mt-1 flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium"
-          style={{ background: "rgba(123, 57, 252, 0.1)", color: "#7B39FC" }}>
-          <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />
-          Online
-        </span>
-        <p className="mt-2 text-[12px] text-white/40">Freelancer · Top Rated</p>
+        {contact.online && (
+          <span className="mt-1 flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium"
+            style={{ background: "rgba(123, 57, 252, 0.1)", color: "#7B39FC" }}>
+            <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />
+            Online
+          </span>
+        )}
       </div>
 
       {/* Divider */}
@@ -194,11 +195,16 @@ export default function Messages() {
   const [leakageWarning, setLeakageWarning] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [peerTyping, setPeerTyping] = useState(false);
+  const typingStopTimer = useRef(null);
+  const typingSentAt = useRef(0);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
   const activeIdRef = useRef(null);
   activeIdRef.current = activeId;
+  const conversationsRef = useRef([]);
+  conversationsRef.current = conversations;
 
   const active = conversations.find((c) => c.id === activeId) || null;
   const filteredConvos = conversations.filter((c) =>
@@ -218,7 +224,36 @@ export default function Messages() {
       fetchConversations(token).then((res) => setConversations(res.conversations)).catch(() => {});
     };
     socket.on("message:new", onMessage);
-    return () => socket.off("message:new", onMessage);
+
+    // FR-2.1: онлайн төлөв — өмнө нь Math.random()-оор зохиомол харуулдаг
+    // байсныг socket.js-ийн бодит presence:online/offline event-үүдээр
+    // солив (server нь зөвхөн ярилцлагатай хамтрагчид рүү л явуулдаг).
+    const onOnline = ({ userId }) =>
+      setConversations((cs) => cs.map((c) => (c.with.id === userId ? { ...c, with: { ...c.with, online: true } } : c)));
+    const onOffline = ({ userId }) =>
+      setConversations((cs) => cs.map((c) => (c.with.id === userId ? { ...c, with: { ...c.with, online: false } } : c)));
+    socket.on("presence:online", onOnline);
+    socket.on("presence:offline", onOffline);
+
+    // FR-2.1: "бичиж байна…" заалт — зөвхөн идэвхтэй нээлттэй ярилцлагад л
+    // харуулна, persist хийхгүй (чат түүхэнд орохгүй).
+    const onTypingStart = ({ conversationId, fromUserId }) => {
+      const c = conversationsRef.current.find((c) => c.id === activeIdRef.current);
+      if (conversationId === activeIdRef.current && c?.with.id === fromUserId) setPeerTyping(true);
+    };
+    const onTypingStop = ({ conversationId }) => {
+      if (conversationId === activeIdRef.current) setPeerTyping(false);
+    };
+    socket.on("typing:start", onTypingStart);
+    socket.on("typing:stop", onTypingStop);
+
+    return () => {
+      socket.off("message:new", onMessage);
+      socket.off("presence:online", onOnline);
+      socket.off("presence:offline", onOffline);
+      socket.off("typing:start", onTypingStart);
+      socket.off("typing:stop", onTypingStop);
+    };
   }, []);
 
   // FR-2.2: connectSocket() дээрх useEffect-ийн ДАРАА дуудагдах ёстой —
@@ -285,6 +320,7 @@ export default function Messages() {
 
   useEffect(() => {
     const token = getAccessToken();
+    setPeerTyping(false); // яриа солигдоход өмнөх ярилцлагын "бичиж байна" төлөв хадгалагдахгүй
     if (!token || !activeId) { setThread([]); return; }
     let cancelled = false;
     const load = () => fetchThread(activeId, token).then((res) => { if (!cancelled) setThread(res.messages); }).catch(() => {});
@@ -292,6 +328,25 @@ export default function Messages() {
     const t = setInterval(() => { if (!getSocket()?.connected) load(); }, 4000);
     return () => { cancelled = true; clearInterval(t); };
   }, [activeId]);
+
+  // FR-2.1: draft бичих үед хамтрагчид "бичиж байна" мэдэгдэл явуулна —
+  // 2.5с чимээгүй бол эсвэл илгээмэгц шууд stop илгээнэ. Хэт олон event
+  // явуулахгүйн тулд 1.5с-д нэгээс илүүгүй start явуулна.
+  const notifyTyping = () => {
+    if (!active) return;
+    const socket = getSocket();
+    if (!socket) return;
+    const now = Date.now();
+    if (now - typingSentAt.current > 1500) {
+      socket.emit("typing:start", { toUserId: active.with.id, conversationId: active.id });
+      typingSentAt.current = now;
+    }
+    clearTimeout(typingStopTimer.current);
+    typingStopTimer.current = setTimeout(() => {
+      socket.emit("typing:stop", { toUserId: active.with.id, conversationId: active.id });
+      typingSentAt.current = 0;
+    }, 2500);
+  };
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -304,6 +359,9 @@ export default function Messages() {
     setSending(true);
     setLeakageWarning(null);
     inputRef.current?.focus();
+    clearTimeout(typingStopTimer.current);
+    typingSentAt.current = 0;
+    getSocket()?.emit("typing:stop", { toUserId: active.with.id, conversationId: active.id });
     try {
       const message = await sendMessage(activeId, text, getAccessToken());
       setThread((t) => [...t, message]);
@@ -434,7 +492,7 @@ export default function Messages() {
                     borderBottom: "1px solid rgba(255,255,255,0.04)",
                   }}
                 >
-                  <Avatar name={c.with.name} avatarUrl={c.with.avatarUrl} online={Math.random() > 0.5} />
+                  <Avatar name={c.with.name} avatarUrl={c.with.avatarUrl} online={c.with.online} />
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center justify-between gap-2">
                       <span className="truncate text-[13.5px] font-semibold">{c.with.name}</span>
@@ -469,10 +527,12 @@ export default function Messages() {
               {/* Chat Header */}
               <div className="flex items-center gap-3 px-5 py-3.5 shrink-0"
                 style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.01)" }}>
-                <Avatar name={active.with.name} avatarUrl={active.with.avatarUrl} size="sm" online />
+                <Avatar name={active.with.name} avatarUrl={active.with.avatarUrl} size="sm" online={active.with.online} />
                 <div className="flex-1 min-w-0">
                   <p className="text-[14px] font-bold truncate">{active.with.name}</p>
-                  <p className="text-[11px]" style={{ color: "#7B39FC" }}>● Online</p>
+                  <p className="text-[11px]" style={{ color: peerTyping ? "#7B39FC" : active.with.online ? "#7B39FC" : "rgba(255,255,255,0.35)" }}>
+                    {peerTyping ? "typing…" : active.with.online ? "● Online" : "Offline"}
+                  </p>
                 </div>
                 <div className="flex items-center gap-1">
                   <button
@@ -590,7 +650,7 @@ export default function Messages() {
                   <input
                     ref={inputRef}
                     value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
+                    onChange={(e) => { setDraft(e.target.value); notifyTyping(); }}
                     onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()}
                     placeholder="Write a message…"
                     className="flex-1 bg-transparent text-[13.5px] outline-none placeholder:text-white/25"
