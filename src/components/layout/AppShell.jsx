@@ -28,6 +28,7 @@ import { DASHBOARD_FOR, useNav } from "../../nav.jsx";
 import { useLive } from "../../live.jsx";
 import { logoutUser, getAccessToken } from "../../lib/authApi.js";
 import { fetchNotifications, markAllNotificationsRead } from "../../lib/notificationsApi.js";
+import { getSocket } from "../../lib/socket.js";
 
 const NOTIF_META = {
   payment: { Icon: CircleDollarSign, cls: "text-mint border-mint/30 bg-mint/10" },
@@ -442,7 +443,10 @@ function NotifDropdown({ anchorRef, open, onClose, onViewAll, align = "left" }) 
   }, [open, anchorRef, align]);
 
   // Fetch fresh each time it's opened rather than polling in the background —
-  // this is a rarely-open dropdown, not a live feed.
+  // this is a rarely-open dropdown, not a live feed. Гэхдээ нээлттэй байх
+  // хугацаанд шинэ мэдэгдэл ирвэл (ажил approve болох г.м) жагсаалтын
+  // эхэнд шууд нэмнэ — badge тоо аль хэдийн live байсан ч, доторх жагсаалт
+  // хуучирсан хэвээр байх нь бодит асуудал байсан.
   useEffect(() => {
     if (!open) return;
     const token = getAccessToken();
@@ -452,6 +456,14 @@ function NotifDropdown({ anchorRef, open, onClose, onViewAll, align = "left" }) 
       .then((res) => setItems(res.notifications.slice(0, 5)))
       .catch(() => setItems([]))
       .finally(() => setLoading(false));
+
+    const socket = getSocket();
+    if (!socket) return;
+    const onNew = ({ notification }) => {
+      setItems((arr) => [notification, ...arr.filter((n) => n.id !== notification.id)].slice(0, 5));
+    };
+    socket.on("notification:new", onNew);
+    return () => socket.off("notification:new", onNew);
   }, [open]);
 
   useEffect(() => {
