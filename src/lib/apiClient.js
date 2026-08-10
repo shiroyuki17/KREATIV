@@ -154,7 +154,7 @@ export function refreshAccessToken() {
 }
 
 // ── Хүсэлт ──
-function buildRequest(path, { method, body, headers, authed }) {
+function rawFetch(path, { method, body, headers, authed }) {
   const token = authed ? getAccessToken() : null;
   const isForm = typeof FormData !== "undefined" && body instanceof FormData;
   return fetch(`${API_BASE}${path}`, {
@@ -168,6 +168,27 @@ function buildRequest(path, { method, body, headers, authed }) {
     },
     body: isForm ? body : body ? JSON.stringify(body) : undefined,
   });
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Render чөлөөт tier дээр backend 15 минут идэвхгүй байвал унтдаг тул
+// эхний хүсэлт "Failed to fetch" (сервер сэрж байх зуурх холболт огт
+// амжилтгүй болох) шидэж болно. Энэ төрлийн алдаа гэдэг нь хүсэлт СЕРВЕРТ
+// хүрч ЧАДААГҮЙ гэсэн үг (холболт тогтоогдоогүй) тул POST/PATCH ч гэсэн
+// дахин илгээхэд аюулгүй — сэрэх хугацаанд (~20с) багтаан хэдэн удаа оролдоно.
+async function buildRequest(path, opts) {
+  const delays = [0, 1200, 3000, 6000, 9000];
+  let lastErr;
+  for (const delay of delays) {
+    if (delay) await sleep(delay);
+    try {
+      return await rawFetch(path, opts);
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw new Error("Сервертэй холбогдож чадсангүй. Дахин оролдоно уу.", { cause: lastErr });
 }
 
 /**

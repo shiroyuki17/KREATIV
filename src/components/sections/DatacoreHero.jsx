@@ -39,36 +39,48 @@ export default function DatacoreHero() {
 
       {/* Агуулга. pt-28 нь дээрх fixed Navbar-ын доогуур орохоос сэргийлнэ. */}
       <div className="relative z-10 flex flex-col items-center px-6 pb-20 pt-28 text-center">
-        <div className="glass inline-flex h-[38px] items-center gap-2 rounded-[10px] px-3">
+        <div
+          className="glass animate-rise-in inline-flex h-[38px] items-center gap-2 rounded-[10px] px-3"
+          style={{ animationDelay: "0.05s" }}
+        >
           <span className="rounded-[6px] bg-brand px-2 py-0.5 text-[12px] font-bold text-fg-1">New</span>
           <span className="text-[14px] font-medium text-white">AI matching now live on KREATIV</span>
         </div>
 
         {/* Instrument Serif: static English marketing copy only (never
             Cyrillic user content), per the site-wide font token comment. */}
-        <h1 className="mt-6 max-w-4xl font-serif text-[clamp(2.6rem,7.5vw,6rem)] font-normal leading-[1.05] text-white">
+        <h1
+          className="animate-rise-in mt-6 max-w-4xl text-balance font-serif text-[clamp(2.6rem,7.5vw,6rem)] font-normal leading-[1.05] text-white"
+          style={{ animationDelay: "0.15s" }}
+        >
           Elite work meets{" "}
           <span className="bg-gradient-to-r from-brand-soft via-neon to-violet-soft bg-clip-text italic text-transparent">
             elite talent
           </span>
         </h1>
 
-        <p className="mt-6 max-w-[620px] text-[clamp(0.95rem,2vw,1.125rem)] leading-relaxed text-white/70">
+        <p
+          className="animate-rise-in mt-6 max-w-[620px] text-[clamp(0.95rem,2vw,1.125rem)] leading-relaxed text-white/70"
+          style={{ animationDelay: "0.28s" }}
+        >
           Post a brief, get AI-matched in hours, and track every milestone in real time — with
           escrow-protected payments.
         </p>
 
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+        <div
+          className="animate-rise-in mt-8 flex flex-wrap items-center justify-center gap-4"
+          style={{ animationDelay: "0.4s" }}
+        >
           <button
             onClick={() => nav("find-talent")}
-            className="inline-flex items-center gap-2 rounded-xl bg-brand px-7 py-3.5 text-[15px] font-semibold text-fg-1 glow-brand transition-transform hover:scale-[1.03]"
+            className="group inline-flex items-center gap-2 rounded-xl bg-brand px-7 py-3.5 text-[15px] font-semibold text-fg-1 glow-brand transition-transform duration-300 hover:scale-[1.03]"
           >
             Find Talent
-            <ArrowRight className="h-4 w-4" />
+            <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
           </button>
           <button
             onClick={() => nav("post-job")}
-            className="glass rounded-xl px-7 py-3.5 text-[15px] font-semibold text-white/90 transition-all hover:border-white/25"
+            className="glass rounded-xl px-7 py-3.5 text-[15px] font-semibold text-white/90 transition-all duration-300 hover:border-white/25 hover:-translate-y-0.5"
           >
             Post a Job
           </button>

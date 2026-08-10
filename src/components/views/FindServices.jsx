@@ -17,10 +17,11 @@ function initialsOf(name) {
   return (name || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 }
 
-function GigCard({ g, nav }) {
+function GigCard({ g, nav, i = 0 }) {
   return (
     <button
       onClick={() => nav("gig", { id: g.id })}
+      style={{ animationDelay: `${Math.min(i, 8) * 45}ms` }}
       className="glass group animate-rise-in overflow-hidden rounded-2xl text-left transition-transform duration-300 hover:-translate-y-0.5 hover:scale-[1.015]"
     >
       {g.images?.[0] ? (
@@ -170,7 +171,7 @@ export default function FindServices() {
 
       {loading && <CardGridSkeleton count={8} className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4" />}
       <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-        {!loading && gigs.map((g) => <GigCard key={g.id} g={g} nav={nav} />)}
+        {!loading && gigs.map((g, i) => <GigCard key={g.id} g={g} nav={nav} i={i} />)}
       </div>
 
       {!loading && gigs.length === 0 && !error && (
