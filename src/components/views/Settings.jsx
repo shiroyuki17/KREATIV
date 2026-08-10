@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { User, Bell, Lock, Check, AlertCircle, Loader2, ShieldCheck, Smartphone, Image as ImageIcon, Plus, X, Link as LinkIcon } from "lucide-react";
+import { User, Bell, Lock, Check, AlertCircle, Loader2, ShieldCheck, Smartphone, Image as ImageIcon, Plus, X, Link as LinkIcon, Tag, Clock } from "lucide-react";
 import Magnet from "../fx/Magnet.jsx";
 import {
   fetchMe,
@@ -18,6 +18,7 @@ import {
   deletePortfolioItem,
   avatarSrc as fileSrc,
 } from "../../lib/authApi.js";
+import { fetchMyGigs, uploadGigImage, createGig, updateGig, deleteGig } from "../../lib/gigApi.js";
 
 // FR-1.1 — жинхэнэ SMS gateway байхгүй тул демо горим: backend хариултад
 // demoCode-ыг шууд буцаадаг тул автоматаар талбарт бөглөж, ажиллаж байгааг
@@ -324,9 +325,221 @@ function PortfolioManager({ items, onAdd, onRemove }) {
 const TABS = [
   { id: "profile", label: "Profile", Icon: User },
   { id: "portfolio", label: "Portfolio", Icon: ImageIcon, freelancerOnly: true },
+  { id: "gigs", label: "My Services", Icon: Tag, freelancerOnly: true },
   { id: "notifications", label: "Notifications", Icon: Bell },
   { id: "security", label: "Security", Icon: Lock },
 ];
+
+const GIG_CATEGORIES = ["Design", "Dev", "AI", "Motion", "Writing", "Marketing"];
+
+// Gig удирдлага — Fiverr-маягийн fixed-price үйлчилгээ жагсаах/устгах.
+function GigManager() {
+  const [gigs, setGigs] = useState(null);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState(GIG_CATEGORIES[0]);
+  const [price, setPrice] = useState("");
+  const [deliveryDays, setDeliveryDays] = useState("");
+  const [imageUrls, setImageUrls] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [busyId, setBusyId] = useState(null);
+  const fileRef = useRef(null);
+
+  useEffect(() => {
+    fetchMyGigs().then((res) => setGigs(res.gigs)).catch(() => setGigs([]));
+  }, []);
+
+  const onImageSelected = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploading(true);
+    setError("");
+    try {
+      const { url } = await uploadGigImage(file);
+      setImageUrls((arr) => [...arr, url]);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const submit = async () => {
+    setError("");
+    if (title.trim().length < 5) { setError("Гарчиг дор хаяж 5 тэмдэгт"); return; }
+    if (description.trim().length < 20) { setError("Тайлбар дор хаяж 20 тэмдэгт"); return; }
+    const priceNum = Number(price);
+    const daysNum = Number(deliveryDays);
+    if (!priceNum || priceNum <= 0) { setError("Үнэ зөв тоо байх ёстой"); return; }
+    if (!daysNum || daysNum <= 0) { setError("Хугацаа зөв тоо байх ёстой"); return; }
+
+    setSaving(true);
+    try {
+      const gig = await createGig({
+        title: title.trim(),
+        description: description.trim(),
+        category,
+        price: priceNum,
+        deliveryDays: daysNum,
+        images: imageUrls,
+      });
+      setGigs((arr) => [gig, ...(arr || [])]);
+      setTitle(""); setDescription(""); setPrice(""); setDeliveryDays(""); setImageUrls([]);
+    } catch (err) {
+      setError(Array.isArray(err.message) ? err.message.join(", ") : err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleActive = async (gig) => {
+    setBusyId(gig.id);
+    try {
+      const updated = await updateGig(gig.id, { active: !gig.active });
+      setGigs((arr) => arr.map((g) => (g.id === gig.id ? updated : g)));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const remove = async (id) => {
+    setBusyId(id);
+    try {
+      await deleteGig(id);
+      setGigs((arr) => arr.filter((g) => g.id !== id));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  if (gigs === null) {
+    return <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-brand-soft" /></div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      {gigs.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {gigs.map((g) => (
+            <div key={g.id} className="overflow-hidden rounded-xl border border-white/8 bg-white/[0.03]">
+              {g.images?.[0] ? (
+                <img src={fileSrc(g.images[0])} alt="" className="h-32 w-full object-cover" />
+              ) : (
+                <div className="flex h-32 w-full items-center justify-center bg-white/[0.02] text-white/20">
+                  <ImageIcon className="h-7 w-7" />
+                </div>
+              )}
+              <div className="p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-[13px] font-semibold">{g.title}</p>
+                  <span className="shrink-0 font-display text-[14px] font-bold text-mint">${g.price}</span>
+                </div>
+                <p className="mt-1 flex items-center gap-1.5 text-[11px] text-white/40">
+                  <Clock className="h-3 w-3" /> {g.deliveryDays}d · {g.category}
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    onClick={() => toggleActive(g)}
+                    disabled={busyId === g.id}
+                    className={`flex-1 rounded-lg px-3 py-1.5 text-[11.5px] font-semibold transition-colors disabled:opacity-50 ${
+                      g.active ? "border border-white/12 text-white/60 hover:border-white/25" : "bg-brand text-fg-1"
+                    }`}
+                  >
+                    {g.active ? "Идэвхгүй болгох" : "Идэвхжүүлэх"}
+                  </button>
+                  <button
+                    onClick={() => remove(g.id)}
+                    disabled={busyId === g.id}
+                    className="rounded-lg border border-red-400/30 px-3 py-1.5 text-[11.5px] font-semibold text-red-300 transition-colors hover:bg-red-400/10 disabled:opacity-50"
+                  >
+                    Устгах
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="rounded-xl border border-white/8 bg-white/[0.03] p-5">
+        <p className="text-[12.5px] font-semibold text-white/70">Шинэ үйлчилгээ нэмэх</p>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          {imageUrls.map((url, i) => (
+            <div key={i} className="relative h-16 w-16 overflow-hidden rounded-lg border border-white/10">
+              <img src={fileSrc(url)} alt="" className="h-full w-full object-cover" />
+              <button
+                onClick={() => setImageUrls((arr) => arr.filter((_, j) => j !== i))}
+                className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity hover:opacity-100"
+              >
+                <X className="h-4 w-4 text-white" />
+              </button>
+            </div>
+          ))}
+          <input ref={fileRef} type="file" accept="image/png,image/jpeg" onChange={onImageSelected} className="hidden" />
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading || imageUrls.length >= 10}
+            className="flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-white/15 text-white/40 transition-colors hover:border-brand/40 hover:text-brand-soft disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+          </button>
+        </div>
+
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder='Гарчиг — e.g. "I will design a modern minimalist logo"'
+          className="mt-3 w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] outline-none focus:border-brand/50"
+        />
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={3}
+          placeholder="Юу багтдаг, хэдэн засвар орно, гэх мэт дэлгэрэнгүй"
+          className="mt-2 w-full resize-none rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] outline-none focus:border-brand/50"
+        />
+        <div className="mt-2 grid grid-cols-3 gap-2">
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] outline-none focus:border-brand/50 [&>option]:bg-[#14141a]"
+          >
+            {GIG_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <input
+            value={price}
+            onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, ""))}
+            placeholder="Үнэ ($)"
+            className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] outline-none focus:border-brand/50"
+          />
+          <input
+            value={deliveryDays}
+            onChange={(e) => setDeliveryDays(e.target.value.replace(/[^0-9]/g, ""))}
+            placeholder="Хугацаа (өдөр)"
+            className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] outline-none focus:border-brand/50"
+          />
+        </div>
+
+        <button
+          onClick={submit}
+          disabled={saving || uploading}
+          className="mt-3 rounded-lg bg-brand px-4 py-2 text-[12.5px] font-bold text-fg-1 glow-brand disabled:opacity-50"
+        >
+          {saving ? "Хадгалж байна…" : "Үйлчилгээ нэмэх"}
+        </button>
+        {error && <p className="mt-2 text-[11.5px] font-medium text-red-400">{error}</p>}
+      </div>
+    </div>
+  );
+}
 
 function Field({ label, disabled, ...props }) {
   return (
@@ -605,6 +818,14 @@ export default function Settings() {
               onAdd={(item) => setFreelancerProfile((p) => ({ ...p, portfolio: [...(p.portfolio || []), item] }))}
               onRemove={(id) => setFreelancerProfile((p) => ({ ...p, portfolio: (p.portfolio || []).filter((i) => i.id !== id) }))}
             />
+          ) : (
+            <p className="text-[13px] text-white/45">Эхлээд "Profile" tab дээрээ мэдээллээ хадгална уу.</p>
+          )
+        )}
+
+        {tab === "gigs" && isFreelancer && (
+          freelancerProfile ? (
+            <GigManager />
           ) : (
             <p className="text-[13px] text-white/45">Эхлээд "Profile" tab дээрээ мэдээллээ хадгална уу.</p>
           )

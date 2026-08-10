@@ -40,6 +40,8 @@ const AdminPanel = lazy(() => import("./components/views/AdminPanel.jsx"));
 const PostJob = lazy(() => import("./components/views/PostJob.jsx"));
 const FindTalent = lazy(() => import("./components/views/FindTalent.jsx"));
 const FindWork = lazy(() => import("./components/views/FindWork.jsx"));
+const FindServices = lazy(() => import("./components/views/FindServices.jsx"));
+const GigDetail = lazy(() => import("./components/views/GigDetail.jsx"));
 const Auth = lazy(() => import("./components/views/Auth.jsx"));
 const AuthCallback = lazy(() => import("./components/views/AuthCallback.jsx"));
 const ResetPassword = lazy(() => import("./components/views/ResetPassword.jsx"));
@@ -74,6 +76,8 @@ const APP_PAGES = new Set([
   "settings",
   "admin",
   "project",
+  "find-services",
+  "gig",
 ]);
 
 // Every sidebar-shell page requires a real login — including Find Work/
@@ -100,7 +104,7 @@ const KNOWN = new Set([
   "home", "trust", "how", "help", "contact", "reviews", "auth", "auth-callback", "reset-password", "onboarding",
   "project", "profile", "client-dashboard", "freelancer-dashboard", "my-projects",
   "messages", "payments", "subscription", "settings", "notifications", "admin", "post-job",
-  "find-talent", "find-work", "terms", "dispute-policy",
+  "find-talent", "find-work", "find-services", "gig", "terms", "dispute-policy",
 ]);
 
 // Хуудсууд lazy болсон тул Suspense заавал хэрэгтэй. Гурван дуудлагын цэг
@@ -142,6 +146,8 @@ function ViewSwitch({ page }) {
     case "post-job": return <PostJob />;
     case "find-talent": return <FindTalent />;
     case "find-work": return <FindWork />;
+    case "find-services": return <FindServices />;
+    case "gig": return <GigDetail />;
     default: return <NotFound />;
   }
 }

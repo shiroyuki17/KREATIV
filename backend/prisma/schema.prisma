@@ -98,6 +98,7 @@ model FreelancerProfile {
   portfolio PortfolioItem[]
   proposals Proposal[]
   contracts Contract[]
+  gigs      Gig[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -193,6 +194,32 @@ enum ModerationStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+// ── Gigs (Fiverr-маягийн бэлэн үйлчилгээ) ──
+// Job/Proposal-ийн эсрэг чиглэл: энд freelancer ӨӨРӨӨ fixed-price
+// үйлчилгээгээ урьдчилж зарлаж тавьдаг, client шууд захиалдаг (сонголт
+// хийж proposal хүлээхгүй). Захиалга ирэхэд шинэ Job+Proposal-ийг
+// доторлогоо талд нь автоматаар үүсгэж, дараа нь ЯГ ХЭВИЙН Contract/
+// Milestone/escrow урсгал руу шилждэг — төлбөр/escrow-ын логикийг
+// давхардуулахгүй, аль хэдийн шалгагдсан замыг л дахин ашиглана.
+model Gig {
+  id           String            @id @default(uuid())
+  freelancer   FreelancerProfile @relation(fields: [freelancerId], references: [id], onDelete: Cascade)
+  freelancerId String
+  title        String
+  description  String
+  category     String
+  price        Int
+  deliveryDays Int
+  images       String[]          @default([])
+  active       Boolean           @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@index([freelancerId])
 }
 
 // ── Payments ──

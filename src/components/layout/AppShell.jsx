@@ -23,6 +23,7 @@ import {
   Info,
   CheckCheck,
   Briefcase,
+  Tag,
 } from "lucide-react";
 import { DASHBOARD_FOR, useNav } from "../../nav.jsx";
 import { useLive } from "../../live.jsx";
@@ -74,6 +75,7 @@ const MAIN = [
   { page: "dashboard", label: "Dashboard", Icon: LayoutDashboard },
   { page: "find-work", label: "Find Work", Icon: Search, alias: ["project"], modes: ["freelancer"] },
   { page: "find-talent", label: "Find Talent", Icon: Users, modes: ["client"] },
+  { page: "find-services", label: "Services", Icon: Tag, alias: ["gig"] },
   { page: "post-job", label: "Post a Job", Icon: Plus, modes: ["client"] },
   { page: "my-projects", label: "My Projects", Icon: FolderKanban },
   { page: "messages", label: "Messages", Icon: MessageSquare, live: "messages" },
