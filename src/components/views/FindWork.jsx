@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Search, Star, BadgeCheck, ChevronLeft, ChevronRight as ChevronRightIcon, Sparkles, SlidersHorizontal, X, ChevronRight, ChevronDown, AlertCircle, Loader2, Wand2 } from "lucide-react";
+import { Search, Star, BadgeCheck, ChevronLeft, ChevronRight as ChevronRightIcon, Sparkles, SlidersHorizontal, X, ChevronRight, ChevronDown, AlertCircle, Loader2, Wand2, Users } from "lucide-react";
 import SpotlightCard from "../fx/SpotlightCard.jsx";
 import { useNav } from "../../nav.jsx";
 import { fetchJobs, searchJobsByPrompt } from "../../lib/jobsApi.js";
@@ -397,6 +397,14 @@ export default function FindWork() {
                       {job.client?.ratingAvg > 0 && (
                         <span className="inline-flex items-center gap-1"><Star className="h-3 w-3 fill-amber-400 text-amber-400" />{job.client.ratingAvg}</span>
                       )}
+                      <span className={`inline-flex items-center gap-1 ${!job.proposalCount ? "font-semibold text-mint" : ""}`}>
+                        <Users className="h-3 w-3" />
+                        {!job.proposalCount
+                          ? "Be the first to apply"
+                          : job.proposalCount === 1
+                          ? "1 proposal"
+                          : `${job.proposalCount} proposals`}
+                      </span>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-1.5">
                       {job.skills.map((t) => (
