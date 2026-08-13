@@ -16,7 +16,7 @@
 // CATEGORIES enum-аас, ур чадвар нь DB-д БОДИТООР байгаа тагуудаас. Тэгэхгүй
 // бол загвар "React.js" гэж бичээд (бодит таг нь "React") 0 үр дүн гарна.
 import { CATEGORIES } from '../validators/job.schema.js';
-import * as gemini from './gemini.js';
+import * as ai from './ai.js';
 import prisma from './prisma.js';
 
 export const MAX_PROMPT_LENGTH = 400;
@@ -97,7 +97,10 @@ export async function promptToFilters(prompt) {
   const text = String(prompt || '').trim().slice(0, MAX_PROMPT_LENGTH);
   if (!text) throw new Error('Хайх зүйлээ бичнэ үү');
 
-  if (!gemini.isConfigured()) {
+  // Anthropic ЭСВЭЛ Gemini аль нэг нь тохируулагдсан бол AI-аар хайна.
+  // Өмнө нь зөвхөн Gemini-г шалгадаг байсан тул Anthropic-тай орчинд
+  // AI хайлт дэмий л түлхүүр үгийн горимд ажилладаг байв.
+  if (!ai.isConfigured()) {
     return { filters: await keywordFallback(text), interpretation: '', source: 'keyword' };
   }
 
@@ -105,11 +108,12 @@ export async function promptToFilters(prompt) {
 
   let raw;
   try {
-    raw = await gemini.generateJson({
+    raw = await ai.generateJsonWithFallback({
       system: buildSystemPrompt(skills),
       user: text,
       schema: buildSchema(skills),
-      maxOutputTokens: 300,
+      maxTokens: 400,
+      geminiMaxOutputTokens: 1500,
     });
   } catch (err) {
     // AI унасан ч хайлт ажиллах ёстой — түлхүүр үгээр үргэлжлүүлнэ.

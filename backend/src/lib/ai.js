@@ -114,6 +114,26 @@ function sanitizeJobDraft(draft) {
 // FR-1.2: захиалагчийн товч, чөлөөтэй бичсэн санааг бүтэцтэй ажлын зар болгож
 // хувиргана. Хатуу JSON бүтэц шаардаж, parse хийхэд амжилтгүй бол алдаа шиднэ
 // (хагас broken зар үүсгэхийн оронд).
+/**
+ * Ерөнхий "JSON буцаа" дуудлага — Anthropic эхэлж, унавал Gemini.
+ *
+ * Яагаад хэрэгтэй болов: jobSearchAI.js нь ЗӨВХӨН gemini.isConfigured()-ыг
+ * шалгадаг байсан тул зөвхөн ANTHROPIC_API_KEY тохируулсан орчинд AI хайлт
+ * ажиллахгүй, түлхүүр үгийн хайлт руугаа унадаг байв — тэр үед AI-ийн бусад
+ * функц (job draft, dispute) хэвийн ажиллаж байхад.
+ */
+export async function generateJsonWithFallback({ system, user, schema, maxTokens = 500, geminiMaxOutputTokens = 1500 }) {
+  const result = await withFallback(
+    [{ role: 'user', content: user }],
+    { system, maxTokens },
+    () => gemini.generateJson({ system, user, schema, maxOutputTokens: geminiMaxOutputTokens })
+  );
+  // Anthropic нь түүхий текст, Gemini нь аль хэдийн object буцаадаг.
+  return typeof result === 'string'
+    ? JSON.parse(result.replace(/^```json\s*|\s*```$/g, ''))
+    : result;
+}
+
 export async function generateJobDraft(idea) {
   const system = `You turn a short, casual freelance project idea into a structured job brief for the KREATIV marketplace. Respond with ONLY valid JSON, no markdown fences, no commentary, matching exactly this shape:
 {"title": string, "description": string, "category": string, "skills": string[], "budgetType": string, "budgetMin": number, "budgetMax": number}
