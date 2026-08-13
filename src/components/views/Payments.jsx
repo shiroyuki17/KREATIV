@@ -12,6 +12,7 @@ import {
   AlertCircle,
   Loader2,
   Check,
+  Download,
 } from "lucide-react";
 import { useNav } from "../../nav.jsx";
 import { getAccessToken } from "../../lib/authApi.js";
@@ -327,11 +328,16 @@ export default function Payments() {
         {/* Мөнгө нэмэх/татах нь хуудасны түвшний үйлдэл тул үлдэгдлийн картын
             булангаас гаргаж энд авчирсан — карт зөвхөн тоогоо харуулна. */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* Хажуугийн хоёр товч хүрээ/дэвсгэртэй атал энэ нь зөвхөн бүдэг
+              (fg-3) текст байсан тул товч мэт огт харагддаггүй байв —
+              Withdraw-тай ижил outline хэв маягт оруулав. */}
           <button
             onClick={exportCsv}
             disabled={exporting}
-            className="rounded-xl px-4 py-2.5 text-[12.5px] font-medium text-fg-3 transition-colors hover:text-fg-1 disabled:opacity-50"
+            title="Бүх гүйлгээгээ CSV болгон татах"
+            className="inline-flex items-center gap-2 rounded-xl border border-line-2 px-4 py-2.5 text-[12.5px] font-semibold text-fg-2 transition-colors hover:border-brand hover:text-fg-1 disabled:cursor-not-allowed disabled:opacity-60"
           >
+            <Download className="h-4 w-4" />
             {exporting ? "Экспортлож байна…" : "Export CSV"}
           </button>
           <button
