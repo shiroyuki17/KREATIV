@@ -128,3 +128,27 @@ export function retrieveSubscription(subscriptionId) {
 export function retrieveSession(sessionId) {
   return stripe().checkout.sessions.retrieve(sessionId);
 }
+
+/**
+ * Тухайн имэйлээр Stripe-д бүртгэлтэй хэрэглэгчийн ХАМГИЙН СҮҮЛИЙН
+ * захиалгыг олно.
+ *
+ * Хадгалсан checkout session ID байхгүй хуучин мөрүүдэд хэрэгтэй: webhook
+ * ажиллаагүй үед тэдгээр захиалга PENDING дээр мөнхөд гацдаг бөгөөд
+ * тулгах өөр түлхүүр байхгүй.
+ */
+export async function findLatestSubscriptionByEmail(email) {
+  if (!email) return null;
+  const customers = await stripe().customers.list({ email, limit: 5 });
+  for (const customer of customers.data) {
+    const subs = await stripe().subscriptions.list({
+      customer: customer.id,
+      status: 'all',
+      limit: 5,
+    });
+    // active/trialing-ийг эхэлж сонгоно; байхгүй бол хамгийн сүүлийнхийг.
+    const active = subs.data.find((s) => s.status === 'active' || s.status === 'trialing');
+    if (active) return { subscription: active, customerId: customer.id };
+  }
+  return null;
+}

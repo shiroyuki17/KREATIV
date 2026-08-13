@@ -26,7 +26,12 @@ router.get('/subscription/me', requireAuth, async (req, res, next) => {
     // Webhook ирээгүй/тохируулаагүй бол захиалга PENDING дээр мөнхөд гацдаг
     // байв — хэрэглэгч төлчихөөд "Awaiting payment" харсаар. Энд Stripe-аас
     // ШУУД асууж тулгана (хэрэглэгчийн үгэнд итгэхгүй, Stripe-ийнхэд итгэнэ).
-    const reconciled = await reconcilePendingSubscription(subscription);
+    // req.user нь JWT-ээс ирдэг тул зөвхөн { id, role } — имэйл байхгүй.
+    const account = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { email: true },
+    });
+    const reconciled = await reconcilePendingSubscription(subscription, account?.email);
     if (reconciled) subscription = reconciled;
     const plan = effectivePlan(subscription);
     res.json({
@@ -72,10 +77,19 @@ router.post('/subscription/checkout', requireAuth, async (req, res, next) => {
       return res.status(409).json({ error: 'Та энэ багцад аль хэдийн бүртгэлтэй байна' });
     }
 
+    // req.user нь JWT-ийн { id, role } л агуулдаг — өмнө нь энд req.user.email
+    // гэж дамжуулдаг байсан нь ҮРГЭЛЖ undefined байв. Үүний улмаас Stripe
+    // customer_email хоосон явж, хэрэглэгч Checkout дээр өөр имэйл бичвэл
+    // манай акаунттай холбогдох гүүр тасардаг байлаа.
+    const account = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { email: true },
+    });
+
     const session = await stripe.createSubscriptionSession({
       priceId,
       userId: req.user.id,
-      email: req.user.email,
+      email: account?.email,
       stripeCustomerId: existing?.stripeCustomerId || null,
     });
 

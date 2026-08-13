@@ -72,28 +72,69 @@ export async function upsertSubscription(userId, subscription, customerId) {
  *
  * @returns Шинэчлэгдсэн бол шинэ subscription мөр, үгүй бол null.
  */
-export async function reconcilePendingSubscription(subscription) {
+export async function reconcilePendingSubscription(subscription, email) {
   if (!subscription || subscription.status !== 'PENDING') return null;
-  if (!stripe.isConfigured() || !subscription.stripeCheckoutSessionId) return null;
+  if (!stripe.isConfigured()) return null;
+
+  const userId = subscription.userId;
+  const reload = () => prisma.subscription.findUnique({ where: { userId } });
 
   try {
-    const session = await stripe.retrieveSession(subscription.stripeCheckoutSessionId);
-    if (!session?.subscription) return null;
+    // ── 1. Хадгалсан session ID байвал түүгээр ──
+    if (subscription.stripeCheckoutSessionId) {
+      const session = await stripe.retrieveSession(subscription.stripeCheckoutSessionId);
 
-    const stripeSub = await stripe.retrieveSubscription(
-      typeof session.subscription === 'string' ? session.subscription : session.subscription.id
-    );
-    await upsertSubscription(subscription.userId, stripeSub, session.customer);
-    logEvent('stripe.subscription.reconciled', {
-      userId: subscription.userId,
-      subscriptionId: stripeSub.id,
-      status: stripeSub.status,
-    });
-    return prisma.subscription.findUnique({ where: { userId: subscription.userId } });
+      if (session?.subscription) {
+        const stripeSub = await stripe.retrieveSubscription(
+          typeof session.subscription === 'string' ? session.subscription : session.subscription.id
+        );
+        await upsertSubscription(userId, stripeSub, session.customer);
+        logEvent('stripe.subscription.reconciled', { userId, subscriptionId: stripeSub.id, status: stripeSub.status });
+        return reload();
+      }
+
+      // Checkout нээгдээд дуусаагүй (хэрэглэгч цонхоо хаасан) — Stripe
+      // session-ыг "expired" болгодог. Ийм үед PENDING-ийг цэвэрлэнэ:
+      // эс тэгвээс төлбөр хийгээгүй хүн "Awaiting payment" гэсэн бичгийг
+      // мөнхөд харна.
+      if (session?.status === 'expired') {
+        await clearStalePending(userId);
+        return reload();
+      }
+      // status === 'open' — хэрэглэгч яг одоо төлж байж болно, хүлээнэ.
+      return null;
+    }
+
+    // ── 2. Session ID байхгүй (энэ талбар нэмэгдэхээс өмнөх хуучин мөр) ──
+    // Имэйлээр нь Stripe-аас хайж үзнэ.
+    const found = await stripe.findLatestSubscriptionByEmail(email);
+    if (found) {
+      await upsertSubscription(userId, found.subscription, found.customerId);
+      logEvent('stripe.subscription.reconciled', {
+        userId,
+        subscriptionId: found.subscription.id,
+        status: found.subscription.status,
+        via: 'email',
+      });
+      return reload();
+    }
+
+    // Stripe талд ямар ч захиалга алга — төлбөр хэзээ ч дуусаагүй гэсэн үг.
+    await clearStalePending(userId);
+    return reload();
   } catch (err) {
-    // Stripe унасан/session хугацаа дууссан — хуудас унагаах шалтгаан биш,
-    // PENDING хэвээр харуулаад дараагийн ачаалалтад дахин оролдоно.
-    logError(err, { where: 'reconcilePendingSubscription', userId: subscription.userId });
+    // Stripe унасан — хуудас унагаах шалтгаан биш, PENDING хэвээр
+    // харуулаад дараагийн ачаалалтад дахин оролдоно.
+    logError(err, { where: 'reconcilePendingSubscription', userId });
     return null;
   }
+}
+
+/** Дуусаагүй checkout-ийн үлдэгдэл PENDING-ийг цэвэрлэнэ (үнэгүй багц руу). */
+async function clearStalePending(userId) {
+  await prisma.subscription.update({
+    where: { userId },
+    data: { status: 'NONE', stripeCheckoutSessionId: null },
+  });
+  logEvent('stripe.subscription.stale_pending_cleared', { userId });
 }
