@@ -23,6 +23,22 @@ function publicUser(user) {
   return { id: user.id, name: user.name, avatarUrl: user.avatarUrl };
 }
 
+/** Хоёр талын аль нэг нь нөгөөгөө блоклосон эсэх. Нэг талын блок хангалттай:
+ *  блоклуулсан хүн ч блоклосон руугаа бичиж чадахгүй, эс тэгвээс блок нь
+ *  зөвхөн хагасаар ажиллана. */
+async function blockExistsBetween(a, b) {
+  const found = await prisma.block.findFirst({
+    where: {
+      OR: [
+        { blockerId: a, blockedId: b },
+        { blockerId: b, blockedId: a },
+      ],
+    },
+    select: { blockerId: true },
+  });
+  return found;
+}
+
 function unreadMessageCount(userId) {
   return prisma.message.count({
     where: {
@@ -70,6 +86,15 @@ router.get('/conversations', requireAuth, async (req, res, next) => {
       orderBy: { updatedAt: 'desc' },
     });
 
+    // Блокуудыг нэг удаа татаад санах ойд тулгана — яриа бүрд тусад нь
+    // query явуулбал N+1 болно.
+    const blocks = await prisma.block.findMany({
+      where: { OR: [{ blockerId: req.user.id }, { blockedId: req.user.id }] },
+      select: { blockerId: true, blockedId: true },
+    });
+    const iBlocked = new Set(blocks.filter((b) => b.blockerId === req.user.id).map((b) => b.blockedId));
+    const blockedMe = new Set(blocks.filter((b) => b.blockedId === req.user.id).map((b) => b.blockerId));
+
     const withUnread = await Promise.all(
       conversations.map(async (c) => {
         const unread = await prisma.message.count({
@@ -78,7 +103,14 @@ router.get('/conversations', requireAuth, async (req, res, next) => {
         const other = otherParticipant(c, req.user.id);
         return {
           id: c.id,
-          with: { ...publicUser(other), online: isUserOnline(other.id) },
+          with: {
+            ...publicUser(other),
+            // Блоклосон хүнийхээ онлайн төлөвийг харуулахгүй — блок нь
+            // харилцаа таслах гэсэн үг, зөвхөн зурвас хориглох биш.
+            online: iBlocked.has(other.id) || blockedMe.has(other.id) ? false : isUserOnline(other.id),
+            blockedByMe: iBlocked.has(other.id),
+            hasBlockedMe: blockedMe.has(other.id),
+          },
           lastMessage: c.messages[0] || null,
           unread,
           updatedAt: c.updatedAt,
@@ -101,6 +133,15 @@ router.post('/conversations', requireAuth, async (req, res, next) => {
     }
     const other = await prisma.user.findUnique({ where: { id: otherUserId }, select: { id: true, name: true, avatarUrl: true } });
     if (!other) return res.status(404).json({ error: 'Хэрэглэгч олдсонгүй' });
+
+    const block = await blockExistsBetween(req.user.id, otherUserId);
+    if (block) {
+      return res.status(403).json({
+        error: block.blockerId === req.user.id
+          ? 'Та энэ хэрэглэгчийг блоклосон байна'
+          : 'Энэ хэрэглэгчтэй харилцах боломжгүй',
+      });
+    }
 
     const [userAId, userBId] = canonicalPair(req.user.id, otherUserId);
     const conversation = await prisma.conversation.upsert({
@@ -151,6 +192,16 @@ router.post('/conversations/:id/messages', requireAuth, async (req, res, next) =
       return res.status(404).json({ error: 'Олдсонгүй' });
     }
 
+    const peerId = conversation.userAId === req.user.id ? conversation.userBId : conversation.userAId;
+    const block = await blockExistsBetween(req.user.id, peerId);
+    if (block) {
+      return res.status(403).json({
+        error: block.blockerId === req.user.id
+          ? 'Та энэ хэрэглэгчийг блоклосон байна — блокоо цуцалж зурвас илгээнэ үү'
+          : 'Энэ хэрэглэгч рүү зурвас илгээх боломжгүй',
+      });
+    }
+
     const { flagged, reasons } = detectLeakage(text);
     const message = await prisma.message.create({
       data: { conversationId: conversation.id, senderId: req.user.id, text, flagged },
@@ -181,6 +232,11 @@ router.post('/conversations/:id/attachments', requireAuth, (req, res, next) => {
         return res.status(404).json({ error: 'Олдсонгүй' });
       }
 
+      const peerId = conversation.userAId === req.user.id ? conversation.userBId : conversation.userAId;
+      if (await blockExistsBetween(req.user.id, peerId)) {
+        return res.status(403).json({ error: 'Энэ хэрэглэгч рүү файл илгээх боломжгүй' });
+      }
+
       const fileUrl = await saveUpload('chat', req.user.id, req.file);
       const message = await prisma.message.create({
         data: {
@@ -201,6 +257,40 @@ router.post('/conversations/:id/attachments', requireAuth, (req, res, next) => {
       next(e);
     }
   });
+});
+
+// ── POST /messages/blocks ── (хэрэглэгч блоклох, body: { userId })
+router.post('/blocks', requireAuth, async (req, res, next) => {
+  try {
+    const targetId = req.body?.userId;
+    if (!targetId || targetId === req.user.id) {
+      return res.status(400).json({ error: 'Буруу хэрэглэгч' });
+    }
+    const target = await prisma.user.findUnique({ where: { id: targetId }, select: { id: true } });
+    if (!target) return res.status(404).json({ error: 'Хэрэглэгч олдсонгүй' });
+
+    // upsert — давхар дарахад 409 өгөхгүй, дүн нь ижил (idempotent).
+    await prisma.block.upsert({
+      where: { blockerId_blockedId: { blockerId: req.user.id, blockedId: targetId } },
+      update: {},
+      create: { blockerId: req.user.id, blockedId: targetId },
+    });
+    res.status(201).json({ blocked: true, userId: targetId });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── DELETE /messages/blocks/:userId ── (блок цуцлах)
+router.delete('/blocks/:userId', requireAuth, async (req, res, next) => {
+  try {
+    await prisma.block.deleteMany({
+      where: { blockerId: req.user.id, blockedId: req.params.userId },
+    });
+    res.json({ blocked: false, userId: req.params.userId });
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ── GET /messages/unread-count ── (sidebar badge)

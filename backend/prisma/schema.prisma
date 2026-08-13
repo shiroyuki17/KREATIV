@@ -45,9 +45,26 @@ model User {
   disputesOpened     Dispute[]
   reviewsGiven       Review[]         @relation("ReviewsGiven")
   reviewsReceived    Review[]         @relation("ReviewsReceived")
+  blocksMade         Block[]          @relation("BlocksMade")
+  blocksReceived     Block[]          @relation("BlocksReceived")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Хэрэглэгч нөгөөг нь блоклох. Хоёр тал ХОЁУЛАА бие биедээ бичихээ болино
+// (нэг талын блок хангалттай) — жагсаалт нь чиглэлтэй ч хэрэгжилт нь
+// хоёр чиглэлд шалгадаг.
+model Block {
+  id        String   @id @default(uuid())
+  blocker   User     @relation("BlocksMade", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockerId String
+  blocked   User     @relation("BlocksReceived", fields: [blockedId], references: [id], onDelete: Cascade)
+  blockedId String
+  createdAt DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
 }
 
 model RefreshToken {

@@ -71,7 +71,24 @@ export function initSocket(httpServer, corsOrigin) {
     // ephemeral, мессежийн адил persist хийх шаардлагагүй). Бодит
     // аудио/видео урсгал хэрэглэгчид хооронд шууд (peer-to-peer) урсдаг —
     // сервер зөвхөн холболт тохируулах "гар барих" мэдээллийг дамжуулна.
-    socket.on('call:offer', ({ toUserId, conversationId, sdp, kind }) => {
+    socket.on('call:offer', async ({ toUserId, conversationId, sdp, kind }) => {
+      // Блок нь зурвасын адил дуудлагад ч хамаарна — эс тэгвээс блоклосон
+      // хүн рүү зурвас илгээж чадахгүй атлаа видео дуудлага хийж чадна.
+      const blocked = await prisma.block.findFirst({
+        where: {
+          OR: [
+            { blockerId: socket.userId, blockedId: toUserId },
+            { blockerId: toUserId, blockedId: socket.userId },
+          ],
+        },
+        select: { id: true },
+      }).catch(() => null);
+      if (blocked) {
+        // Дуудагчид "хариулсангүй"-тэй ижил урсгалаар мэдэгдэнэ — блоклосон
+        // эсэхийг ил хэлэхгүй (блоклуулсныг мэдэгдэх нь хувийн мэдээлэл).
+        socket.emit('call:reject', { fromUserId: toUserId });
+        return;
+      }
       emitToUser(toUserId, 'call:offer', { fromUserId: socket.userId, conversationId, sdp, kind });
     });
     socket.on('call:answer', ({ toUserId, sdp }) => {

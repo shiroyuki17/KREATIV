@@ -39,3 +39,9 @@ export async function sendFile(conversationId, file) {
 
 export const fetchMessageUnreadCount = (accessToken) =>
   authedJson("/messages/unread-count", { accessToken });
+
+export const blockUser = (userId) =>
+  authedJson("/messages/blocks", { method: "POST", body: { userId } });
+
+export const unblockUser = (userId) =>
+  authedJson(`/messages/blocks/${userId}`, { method: "DELETE" });

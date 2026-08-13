@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Search, Send, Info, X, AlertCircle, ShieldAlert, Phone, Video, MoreHorizontal, Smile, Paperclip, Check, CheckCheck, FileText, FileArchive, Figma, Github, Download, Loader2 } from "lucide-react";
+import { Search, Send, Info, X, AlertCircle, ShieldAlert, Phone, Video, MoreHorizontal, Smile, Paperclip, Check, CheckCheck, FileText, FileArchive, Figma, Github, Download, Loader2, Ban } from "lucide-react";
 import { useNav } from "../../nav.jsx";
 import { getAccessToken, avatarSrc, API_BASE } from "../../lib/authApi.js";
-import { fetchConversations, startConversation, fetchThread, sendMessage, sendFile } from "../../lib/messagesApi.js";
+import { fetchConversations, startConversation, fetchThread, sendMessage, sendFile, blockUser, unblockUser } from "../../lib/messagesApi.js";
 import { fetchFreelancerByUserId } from "../../lib/talentApi.js";
 import { connectSocket, getSocket } from "../../lib/socket.js";
 import { useEscapeKey } from "../../hooks/useEscapeKey.js";
@@ -232,6 +232,9 @@ export default function Messages() {
   const [searchQuery, setSearchQuery] = useState("");
   const [uploadingFile, setUploadingFile] = useState(false);
   const [peerTyping, setPeerTyping] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [blockBusy, setBlockBusy] = useState(false);
+  const menuRef = useRef(null);
   const typingStopTimer = useRef(null);
   const typingSentAt = useRef(0);
   const bottomRef = useRef(null);
@@ -248,6 +251,42 @@ export default function Messages() {
   );
 
   useEscapeKey(() => setShowDetails(false), showDetails);
+  useEscapeKey(() => setMenuOpen(false), menuOpen);
+
+  // Цэсний гадна дарахад хаах
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onClick = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [menuOpen]);
+
+  // Ярианы жагсаалтыг дахин татахгүйгээр тухайн хүний блок төлөвийг шинэчилнэ.
+  async function toggleBlock() {
+    if (!active || blockBusy) return;
+    const peerId = active.with.id;
+    const nowBlocked = !active.with.blockedByMe;
+    setBlockBusy(true);
+    setError("");
+    try {
+      if (nowBlocked) await blockUser(peerId);
+      else await unblockUser(peerId);
+      setConversations((list) =>
+        list.map((c) =>
+          c.with.id === peerId
+            ? { ...c, with: { ...c.with, blockedByMe: nowBlocked, online: nowBlocked ? false : c.with.online } }
+            : c
+        )
+      );
+      setMenuOpen(false);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBlockBusy(false);
+    }
+  }
 
   useEffect(() => {
     const token = getAccessToken();
@@ -543,7 +582,7 @@ export default function Messages() {
                           : "No messages yet"}
                       </span>
                       {c.unread > 0 && (
-                        <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-[9.5px] font-bold text-black"
+                        <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-[9.5px] font-bold text-white"
                           style={{ background: "#7B39FC", boxShadow: "0 0 10px rgba(123, 57, 252, 0.5)" }}>
                           {c.unread}
                         </span>
@@ -566,28 +605,54 @@ export default function Messages() {
                 <Avatar name={active.with.name} avatarUrl={active.with.avatarUrl} size="sm" online={active.with.online} />
                 <div className="flex-1 min-w-0">
                   <p className="text-[14px] font-bold truncate">{active.with.name}</p>
-                  <p className="text-[11px]" style={{ color: peerTyping ? "#7B39FC" : active.with.online ? "#7B39FC" : "rgba(255,255,255,0.35)" }}>
-                    {peerTyping ? "typing…" : active.with.online ? "● Online" : "Offline"}
+                  <p className="text-[11px]" style={{ color: active.with.blockedByMe ? "rgba(248,113,113,0.8)" : (peerTyping || active.with.online) ? "#7B39FC" : "rgba(255,255,255,0.35)" }}>
+                    {active.with.blockedByMe
+                      ? "Блоклосон"
+                      : peerTyping ? "typing…" : active.with.online ? "● Online" : "Offline"}
                   </p>
                 </div>
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => call.startCall(active.with.id, activeId, false)}
+                    disabled={active.with.blockedByMe || active.with.hasBlockedMe}
                     aria-label="Voice call"
-                    className="rounded-xl p-2 text-white/40 transition-colors hover:bg-white/5 hover:text-white"
+                    className="rounded-xl p-2 text-white/40 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
                   >
                     <Phone className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => call.startCall(active.with.id, activeId, true)}
+                    disabled={active.with.blockedByMe || active.with.hasBlockedMe}
                     aria-label="Video call"
-                    className="rounded-xl p-2 text-white/40 transition-colors hover:bg-white/5 hover:text-white"
+                    className="rounded-xl p-2 text-white/40 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
                   >
                     <Video className="h-4 w-4" />
                   </button>
-                  <button className="rounded-xl p-2 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </button>
+                  <div ref={menuRef} className="relative">
+                    <button
+                      onClick={() => setMenuOpen((o) => !o)}
+                      aria-label="More options"
+                      className="rounded-xl p-2 text-white/40 transition-colors hover:bg-white/5 hover:text-white"
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </button>
+                    {menuOpen && (
+                      <div className="absolute right-0 top-[calc(100%+6px)] z-30 min-w-[190px] overflow-hidden rounded-xl border border-white/10 bg-[#1b1730] py-1.5 shadow-xl shadow-black/40">
+                        <button
+                          onClick={toggleBlock}
+                          disabled={blockBusy}
+                          className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-[13px] text-red-400 transition-colors hover:bg-red-500/10 disabled:opacity-50"
+                        >
+                          <Ban className="h-3.5 w-3.5 shrink-0" />
+                          {blockBusy
+                            ? "Түр хүлээнэ үү…"
+                            : active.with.blockedByMe
+                            ? "Блокоо цуцлах"
+                            : "Хэрэглэгчийг блоклох"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
                   <button
                     onClick={() => setShowDetails((v) => !v)}
                     aria-label="Show details"
@@ -627,9 +692,13 @@ export default function Messages() {
                             m.fileType?.startsWith("image/")
                               ? undefined
                               : isMe ? {
-                                background: "linear-gradient(135deg, #7B39FC 0%, #00b87d 100%)",
-                                color: "#0a1a12",
-                                boxShadow: "0 4px 20px rgba(123, 57, 252, 0.25)",
+                                // Ягаан→ногоон градиент байсныг зассан: ногоон нь
+                                // хуучин theme-ийн үлдэгдэл байсан бөгөөд шинэ
+                                // ягаан брэндтэй зөрчилдөж, бараан ногоон текст нь
+                                // уншихад ч хүнд байв.
+                                background: "linear-gradient(135deg, #7B39FC 0%, #b06bfb 100%)",
+                                color: "#ffffff",
+                                boxShadow: "0 4px 20px rgba(123, 57, 252, 0.3)",
                                 fontWeight: 500,
                               } : {
                                 background: "rgba(255,255,255,0.07)",
@@ -660,7 +729,29 @@ export default function Messages() {
                 </div>
               )}
 
-              {/* Input Bar */}
+              {/* Блоклосон/блоклуулсан үед зурвас бичих талбарыг харуулахгүй —
+                  бичээд илгээх гэж оролдоод сервер 403 өгснийг харах нь
+                  утгагүй, шалтгааныг нь шууд хэлэх нь тодорхой. */}
+              {(active.with.blockedByMe || active.with.hasBlockedMe) ? (
+                <div className="flex flex-col items-center gap-2 px-5 py-5 text-center shrink-0"
+                  style={{ borderTop: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.01)" }}>
+                  <Ban className="h-5 w-5 text-white/25" />
+                  <p className="text-[12.5px] text-white/45">
+                    {active.with.blockedByMe
+                      ? `Та ${active.with.name}-г блоклосон байна.`
+                      : "Энэ хэрэглэгчтэй харилцах боломжгүй."}
+                  </p>
+                  {active.with.blockedByMe && (
+                    <button
+                      onClick={toggleBlock}
+                      disabled={blockBusy}
+                      className="rounded-xl border border-white/12 bg-white/[0.04] px-4 py-2 text-[12.5px] font-semibold text-white/75 transition-colors hover:border-white/25 hover:text-white disabled:opacity-50"
+                    >
+                      {blockBusy ? "Түр хүлээнэ үү…" : "Блокоо цуцлах"}
+                    </button>
+                  )}
+                </div>
+              ) : (
               <div className="flex items-center gap-3 px-4 py-3.5 shrink-0"
                 style={{ borderTop: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.01)" }}>
                 <input
@@ -701,14 +792,15 @@ export default function Messages() {
                   aria-label="Send message"
                   className="shrink-0 rounded-xl p-2.5 transition-all disabled:cursor-not-allowed disabled:opacity-40 hover:scale-105 active:scale-95"
                   style={{
-                    background: draft.trim() ? "linear-gradient(135deg, #7B39FC, #00b87d)" : "rgba(255,255,255,0.06)",
-                    color: draft.trim() ? "#0a1a12" : "rgba(255,255,255,0.3)",
+                    background: draft.trim() ? "linear-gradient(135deg, #7B39FC, #b06bfb)" : "rgba(255,255,255,0.06)",
+                    color: draft.trim() ? "#ffffff" : "rgba(255,255,255,0.3)",
                     boxShadow: draft.trim() ? "0 4px 16px rgba(123, 57, 252, 0.35)" : "none",
                   }}
                 >
                   <Send className="h-4 w-4" />
                 </button>
               </div>
+              )}
             </>
           ) : (
             /* Empty state */
