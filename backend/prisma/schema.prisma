@@ -319,6 +319,9 @@ model Subscription {
   // null хэвээр — планы эрх нь эдгээргүйгээр ч ажиллана.
   stripeCustomerId     String? @unique
   stripeSubscriptionId String? @unique
+  // Хамгийн сүүлд эхлүүлсэн Checkout Session. Webhook ирээгүй үед үүгээр
+  // Stripe-аас шууд асууж захиалгыг тулгана (lib/subscriptionSync.js).
+  stripeCheckoutSessionId String?
 
   // Одоогийн төлсөн хугацааны төгсгөл — эрх хэдийг хүртэл хүчинтэйг харуулна.
   currentPeriodEnd DateTime?

@@ -9,6 +9,7 @@ import prisma from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import * as stripe from '../lib/payments/stripe.js';
 import { PLANS, publicPlans, effectivePlan, stripePriceIdFor } from '../lib/plans.js';
+import { reconcilePendingSubscription } from '../lib/subscriptionSync.js';
 import { logError } from '../lib/logger.js';
 
 const router = Router();
@@ -21,7 +22,12 @@ router.get('/plans', (req, res) => {
 // ── GET /subscription/me ──
 router.get('/subscription/me', requireAuth, async (req, res, next) => {
   try {
-    const subscription = await prisma.subscription.findUnique({ where: { userId: req.user.id } });
+    let subscription = await prisma.subscription.findUnique({ where: { userId: req.user.id } });
+    // Webhook ирээгүй/тохируулаагүй бол захиалга PENDING дээр мөнхөд гацдаг
+    // байв — хэрэглэгч төлчихөөд "Awaiting payment" харсаар. Энд Stripe-аас
+    // ШУУД асууж тулгана (хэрэглэгчийн үгэнд итгэхгүй, Stripe-ийнхэд итгэнэ).
+    const reconciled = await reconcilePendingSubscription(subscription);
+    if (reconciled) subscription = reconciled;
     const plan = effectivePlan(subscription);
     res.json({
       planKey: plan.key,
@@ -75,10 +81,21 @@ router.post('/subscription/checkout', requireAuth, async (req, res, next) => {
 
     // Checkout эхэлснийг тэмдэглэнэ — webhook ирэх хүртэл UI "хүлээгдэж
     // байна" гэж харуулж чадна. Эрх нь ACTIVE болтол нээгдэхгүй.
+    //
+    // Session ID-г заавал хадгална: webhook ирэхгүй бол GET /subscription/me
+    // үүгээр Stripe-аас шууд асууж захиалгыг тулгана.
     await prisma.subscription.upsert({
       where: { userId: req.user.id },
-      update: { status: existing?.status === 'ACTIVE' ? existing.status : 'PENDING' },
-      create: { userId: req.user.id, planKey: 'starter', status: 'PENDING' },
+      update: {
+        status: existing?.status === 'ACTIVE' ? existing.status : 'PENDING',
+        stripeCheckoutSessionId: session.sessionId,
+      },
+      create: {
+        userId: req.user.id,
+        planKey: 'starter',
+        status: 'PENDING',
+        stripeCheckoutSessionId: session.sessionId,
+      },
     });
 
     res.json({ checkoutUrl: session.url });

@@ -16,28 +16,13 @@ import { Router } from 'express';
 import express from 'express';
 import prisma from '../lib/prisma.js';
 import * as stripe from '../lib/payments/stripe.js';
-import { planKeyFromStripePrice } from '../lib/plans.js';
 import { createNotification } from './notification.routes.js';
 import { logError, logEvent } from '../lib/logger.js';
+// Захиалгыг DB рүү бичих логик нь subscription.routes.js-ийн тулгах
+// (reconcile) зам ХОЁУЛАА ижил байх ёстой тул хуваалцсан модульд байна.
+import { upsertSubscription } from '../lib/subscriptionSync.js';
 
 const router = Router();
-
-// Stripe-ийн subscription статусыг манай enum руу буулгана.
-function mapSubscriptionStatus(stripeStatus) {
-  switch (stripeStatus) {
-    case 'active':
-    case 'trialing':
-      return 'ACTIVE';
-    case 'past_due':
-    case 'unpaid':
-      return 'PAST_DUE';
-    case 'canceled':
-    case 'incomplete_expired':
-      return 'CANCELED';
-    default:
-      return 'PENDING';
-  }
-}
 
 async function completeDeposit(tx) {
   const updated = await prisma.transaction.update({
@@ -79,34 +64,6 @@ async function handleCheckoutCompleted(session) {
     await upsertSubscription(userId, subscription, session.customer);
     logEvent('stripe.subscription.started', { userId, subscriptionId: subscription.id });
   }
-}
-
-async function upsertSubscription(userId, subscription, customerId) {
-  const priceId = subscription.items?.data?.[0]?.price?.id;
-  const planKey = planKeyFromStripePrice(priceId);
-  // Танихгүй price ирвэл багцыг таамаглахгүй — Starter хэвээр үлдээж,
-  // мөрөө үлдээнэ. (Dashboard дээр шинэ Price үүсгээд env-д нэмээгүй үед.)
-  if (!planKey) {
-    logError(new Error('Танихгүй Stripe price ID'), { priceId, userId });
-  }
-
-  const periodEnd = subscription.items?.data?.[0]?.current_period_end
-    ?? subscription.current_period_end;
-
-  const data = {
-    planKey: planKey || 'starter',
-    status: mapSubscriptionStatus(subscription.status),
-    stripeCustomerId: typeof customerId === 'string' ? customerId : subscription.customer,
-    stripeSubscriptionId: subscription.id,
-    currentPeriodEnd: periodEnd ? new Date(periodEnd * 1000) : null,
-    cancelAtPeriodEnd: !!subscription.cancel_at_period_end,
-  };
-
-  await prisma.subscription.upsert({
-    where: { userId },
-    update: data,
-    create: { userId, ...data },
-  });
 }
 
 async function handleSubscriptionEvent(subscription) {
