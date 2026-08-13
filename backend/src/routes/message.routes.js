@@ -95,28 +95,40 @@ router.get('/conversations', requireAuth, async (req, res, next) => {
     const iBlocked = new Set(blocks.filter((b) => b.blockerId === req.user.id).map((b) => b.blockedId));
     const blockedMe = new Set(blocks.filter((b) => b.blockedId === req.user.id).map((b) => b.blockerId));
 
-    const withUnread = await Promise.all(
-      conversations.map(async (c) => {
-        const unread = await prisma.message.count({
-          where: { conversationId: c.id, senderId: { not: req.user.id }, readAt: null },
-        });
-        const other = otherParticipant(c, req.user.id);
-        return {
-          id: c.id,
-          with: {
-            ...publicUser(other),
-            // Блоклосон хүнийхээ онлайн төлөвийг харуулахгүй — блок нь
-            // харилцаа таслах гэсэн үг, зөвхөн зурвас хориглох биш.
-            online: iBlocked.has(other.id) || blockedMe.has(other.id) ? false : isUserOnline(other.id),
-            blockedByMe: iBlocked.has(other.id),
-            hasBlockedMe: blockedMe.has(other.id),
-          },
-          lastMessage: c.messages[0] || null,
-          unread,
-          updatedAt: c.updatedAt,
-        };
-      })
+    // Уншаагүй тоог НЭГ groupBy-гаар бүх ярианд нь тооцно. Өмнө нь яриа
+    // тутамд тусдаа count() явуулдаг байсан тул 20 харилцаатай хэрэглэгч
+    // хуудсаа нээх бүрд 20 нэмэлт query үүсгэдэг байв (N+1).
+    const unreadRows = await prisma.message.groupBy({
+      by: ['conversationId'],
+      where: {
+        conversationId: { in: conversations.map((c) => c.id) },
+        senderId: { not: req.user.id },
+        readAt: null,
+      },
+      _count: { _all: true },
+    });
+    const unreadByConversation = new Map(
+      unreadRows.map((r) => [r.conversationId, r._count._all])
     );
+
+    const withUnread = conversations.map((c) => {
+      const unread = unreadByConversation.get(c.id) || 0;
+      const other = otherParticipant(c, req.user.id);
+      return {
+        id: c.id,
+        with: {
+          ...publicUser(other),
+          // Блоклосон хүнийхээ онлайн төлөвийг харуулахгүй — блок нь
+          // харилцаа таслах гэсэн үг, зөвхөн зурвас хориглох биш.
+          online: iBlocked.has(other.id) || blockedMe.has(other.id) ? false : isUserOnline(other.id),
+          blockedByMe: iBlocked.has(other.id),
+          hasBlockedMe: blockedMe.has(other.id),
+        },
+        lastMessage: c.messages[0] || null,
+        unread,
+        updatedAt: c.updatedAt,
+      };
+    });
 
     res.json({ conversations: withUnread });
   } catch (err) {
