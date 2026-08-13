@@ -24,6 +24,8 @@ import {
   CheckCheck,
   Briefcase,
   Tag,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { DASHBOARD_FOR, useNav } from "../../nav.jsx";
 import { useLive } from "../../live.jsx";
@@ -681,10 +683,25 @@ function DesktopTopBar({ go, user, setUser, authReady, notifBadge }) {
   );
 }
 
+const SIDEBAR_COLLAPSED_KEY = "kreativ:sidebarCollapsed";
+
 export default function AppShell({ children }) {
   const { page, nav, role, user, setUser, authReady, mode, switchMode } = useNav();
   const { unread } = useLive();
   const [open, setOpen] = useState(false); // mobile drawer
+  // Desktop rail collapse — бүх дэд component (Brand, ModeSwitcher, NavRow)
+  // аль хэдийн collapsed prop-оо дэмждэг байсан ч хэзээ ч чиг зохицуулагч
+  // (toggle) байхгүй, hardcode false байсан тул огт ажилладаггүй байв.
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1"; } catch { return false; }
+  });
+  const toggleCollapsed = () => {
+    setCollapsed((c) => {
+      const next = !c;
+      try { localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0"); } catch { /* private mode */ }
+      return next;
+    });
+  };
   const notifBadge = unread.notifications || 0;
 
   const go = (p, params) => { setOpen(false); nav(p, params); };
@@ -695,12 +712,19 @@ export default function AppShell({ children }) {
   }, [open]);
 
   return (
-    <div className="min-h-screen bg-ink text-white lg:grid lg:grid-cols-[264px_1fr]">
+    <div className={`min-h-screen bg-ink text-white lg:grid ${collapsed ? "lg:grid-cols-[76px_1fr]" : "lg:grid-cols-[264px_1fr]"}`}>
       {/* Desktop sidebar — always shows icon + label, no more hover-to-reveal */}
-      <aside className="sticky top-0 z-30 hidden h-screen w-[264px] flex-col border-r border-white/8 bg-[#141517]/95 lg:flex">
-        <Brand go={go} collapsed={false} />
-        <ModeSwitcher collapsed={false} mode={mode} user={user} onSwitch={switchMode} />
-        <NavList page={page} go={go} collapsed={false} role={role} mode={mode} />
+      <aside className={`sticky top-0 z-30 hidden h-screen flex-col border-r border-white/8 bg-[#141517]/95 lg:flex ${collapsed ? "w-[76px]" : "w-[264px]"}`}>
+        <Brand go={go} collapsed={collapsed} />
+        <ModeSwitcher collapsed={collapsed} mode={mode} user={user} onSwitch={switchMode} />
+        <NavList page={page} go={go} collapsed={collapsed} role={role} mode={mode} />
+        <button
+          onClick={toggleCollapsed}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className={`m-2 flex items-center gap-2 rounded-xl border border-white/8 bg-white/[0.02] px-3 py-2.5 text-[12.5px] font-medium text-white/50 transition-colors hover:bg-white/[0.06] hover:text-white ${collapsed ? "justify-center" : ""}`}
+        >
+          {collapsed ? <PanelLeftOpen className="h-4 w-4 shrink-0" /> : <><PanelLeftClose className="h-4 w-4 shrink-0" /><span>Collapse</span></>}
+        </button>
       </aside>
 
       {/* Mobile top bar */}
