@@ -162,6 +162,21 @@ export default function PostJob() {
   const canNext =
     step === 0 ? title.trim() && cat : step === 1 ? desc.trim() && budget.trim() : true;
 
+  // Continue товч дэмий л бүдгэрч, юу дутуугий нь хэлдэггүй байв —
+  // хэрэглэгч категори сонгоогүйгээ анзаарахгүй тээнэгэлзэнэ.
+  const missing =
+    step === 0
+      ? [!title.trim() && "гарчиг", !cat && "категори"].filter(Boolean)
+      : step === 1
+      ? [!desc.trim() && "тайлбар", !budget.trim() && "төсөв"].filter(Boolean)
+      : [];
+
+  const goNext = () => {
+    if (!canNext || submitting) return;
+    if (step < 2) setStep((s) => s + 1);
+    else publish();
+  };
+
   // Зохиомол "7 strong matches" биш — сонгосон ур чадвартай тохирох
   // freelancer-үүдийн бодит тоог review алхамд хүрэхэд татна.
   useEffect(() => {
@@ -311,6 +326,17 @@ export default function PostJob() {
               {aiError && <p className="mt-2 text-[11.5px] text-red-400">{aiError}</p>}
             </div>
 
+            {/* AI бол товчлол, заавал биш — доорх талбаруудтай ямар
+                хамааралтайг тодруулна. Өмнө нь дараалан жагссан тул эхлээд
+                AI-г заавал ажиллуулах ёстой мэт харагддаг байв. */}
+            <div className="flex items-center gap-3">
+              <span className="h-px flex-1 bg-white/8" />
+              <span className="text-[10.5px] font-semibold uppercase tracking-widest text-white/25">
+                эсвэл гараар бөглөнө үү
+              </span>
+              <span className="h-px flex-1 bg-white/8" />
+            </div>
+
             <label className="block">
               <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
                 Project title
@@ -318,6 +344,10 @@ export default function PostJob() {
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
+                // Enter нь AI талбарт ажилладаг байсан ч энд ажилладаггүй
+                // байсан тул хэрэглэгч заавал хулганаараа Continue дарах
+                // шаардлагатай байв.
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); goNext(); } }}
                 placeholder="e.g. Design a 3D landing page for an AI startup"
                 className="mt-2 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[14px] outline-none transition-colors placeholder:text-white/25 focus:border-brand/50"
               />
@@ -405,6 +435,7 @@ export default function PostJob() {
                 <input
                   value={budget}
                   onChange={(e) => setBudget(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); goNext(); } }}
                   placeholder={type === "Fixed" ? "$5,000" : "$90/hr"}
                   className="mt-2 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[14px] outline-none transition-colors placeholder:text-white/25 focus:border-brand/50"
                 />
@@ -512,15 +543,22 @@ export default function PostJob() {
             <ArrowLeft className="h-4 w-4" />
             {step === 0 ? "Cancel" : "Back"}
           </button>
-          <button
-            type="button"
-            onClick={() => (step < 2 ? setStep((s) => s + 1) : publish())}
-            disabled={!canNext || submitting}
-            className="inline-flex items-center gap-2 rounded-xl bg-brand px-6 py-3 text-[13.5px] font-semibold glow-brand transition-all disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
-          >
-            {step < 2 ? "Continue" : submitting ? "Publishing…" : "Publish brief"}
-            <ArrowRight className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-3">
+            {missing.length > 0 && (
+              <span className="text-[12px] text-white/40">
+                {missing.join(", ")} дутуу байна
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={goNext}
+              disabled={!canNext || submitting}
+              className="inline-flex items-center gap-2 rounded-xl bg-brand px-6 py-3 text-[13.5px] font-semibold glow-brand transition-all disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+            >
+              {step < 2 ? "Continue" : submitting ? "Publishing…" : "Publish brief"}
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
