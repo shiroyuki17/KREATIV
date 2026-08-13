@@ -203,9 +203,12 @@ export default function MyProjects() {
   const [contracts, setContracts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [openWorkspace, setOpenWorkspace] = useState(() => new Set());
+  // Ажлын явц (Kanban board) шууд харагдаж байхыг хvссэн тул анхнаасаа
+  // НЭЭЛТТЭЙ — хэрэглэгч бүрэн хаасан контрактуудыг л энд хадгална
+  // (нээлттэй байдал бол өгөгдмөл, хаасан нь тэмдэглэгдсэн зүйл).
+  const [closedWorkspace, setClosedWorkspace] = useState(() => new Set());
   const toggleWorkspace = (id) =>
-    setOpenWorkspace((s) => {
+    setClosedWorkspace((s) => {
       const next = new Set(s);
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
@@ -334,6 +337,28 @@ export default function MyProjects() {
                     {c.status}
                   </span>
                 </div>
+
+                {/* Ажлын явц — хэдэн milestone АПРОВЕД болсныг тоогоор бус,
+                    нэг харцаар харагдах progress bar-аар харуулна. */}
+                {c.milestones.length > 0 && (() => {
+                  const done = c.milestones.filter((m) => m.status === "APPROVED").length;
+                  const pct = Math.round((done / c.milestones.length) * 100);
+                  return (
+                    <div className="mt-3.5">
+                      <div className="flex items-center justify-between text-[11px] text-white/45">
+                        <span>Явц</span>
+                        <span className="font-semibold text-white/70">{done}/{c.milestones.length} milestone · {pct}%</span>
+                      </div>
+                      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/8">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-brand to-neon transition-all duration-500"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 <div className="mt-4 space-y-2.5">
                   {c.milestones.map((m) => (
                     <MilestoneCard
@@ -359,9 +384,9 @@ export default function MyProjects() {
                     <LayoutGrid className="h-3.5 w-3.5 text-brand-soft" />
                     Workspace · Kanban board
                   </span>
-                  <ChevronDown className={`h-3.5 w-3.5 transition-transform ${openWorkspace.has(c.id) ? "rotate-180" : ""}`} />
+                  <ChevronDown className={`h-3.5 w-3.5 transition-transform ${!closedWorkspace.has(c.id) ? "rotate-180" : ""}`} />
                 </button>
-                {openWorkspace.has(c.id) && (
+                {!closedWorkspace.has(c.id) && (
                   <div className="mt-3 space-y-3">
                     <KanbanBoard contractId={c.id} />
                     {/* Бодит цаг бүртгэл — сервер эхлэл/төгсгөлийг хадгална.
