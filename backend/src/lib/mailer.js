@@ -5,7 +5,7 @@ import { config } from '../config/env.js';
 // явуулна; SMTP_HOST/USER/PASS .env-д байхгүй бол Ethereal-ийн үнэгэн,
 // автоматаар үүсдэг тест inbox руу орно (илгээсэн имэйл бодит хаяг руу
 // очихгүй ч console дээрх preview URL-аар агуулгыг бүрэн харах боломжтой).
-function smtpConfigured() {
+export function smtpConfigured() {
   return !!(config.SMTP_HOST && config.SMTP_USER && config.SMTP_PASS);
 }
 

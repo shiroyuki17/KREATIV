@@ -11,6 +11,10 @@ import { createNotification } from './notification.routes.js';
 import { runReconciliation } from '../lib/reconcile.js';
 import { PENDING_HOLD_DAYS } from '../lib/wallet.js';
 import * as ai from '../lib/ai.js';
+import * as stripe from '../lib/payments/stripe.js';
+import * as gemini from '../lib/gemini.js';
+import { smtpConfigured } from '../lib/mailer.js';
+import { config } from '../config/env.js';
 
 const router = Router();
 router.use(requireAuth, requireRole('ADMIN'));
@@ -34,6 +38,43 @@ function lastNMonths(n) {
 }
 
 // ── GET /admin/stats ──
+// ── GET /admin/integrations ──
+// Аль гуравдагч үйлчилгээ БОДИТООР тохируулагдсаныг нэг дор харуулна.
+// Үүнгүйгээр "имэйл ирэхгүй байна" гэх мэт асуудлыг оношлохын тулд Render
+// dashboard руу орж env хувьсагч ширтэхээс өөр арга байхгүй байв.
+// Түлхүүрийн УТГЫГ хэзээ ч буцаахгүй — зөвхөн тохируулагдсан эсэхийг.
+router.get('/integrations', async (req, res, next) => {
+  try {
+    res.json({
+      email: {
+        configured: smtpConfigured(),
+        // Тохируулаагүй үед имэйл Ethereal тест inbox руу очдог тул
+        // хэрэглэгчийн жинхэнэ хайрцагт ХЭЗЭЭ Ч хүрэхгүй.
+        mode: smtpConfigured() ? 'smtp' : 'ethereal-test-inbox',
+        host: smtpConfigured() ? config.SMTP_HOST : null,
+      },
+      ai: {
+        anthropic: !!config.ANTHROPIC_API_KEY,
+        gemini: gemini.isConfigured(),
+        anyConfigured: ai.isConfigured(),
+      },
+      payments: {
+        stripe: stripe.isConfigured(),
+        stripeTestMode: stripe.isConfigured() ? stripe.isTestMode() : null,
+        stripeWebhook: !!config.STRIPE_WEBHOOK_SECRET,
+        provider: config.PAYMENT_PROVIDER,
+      },
+      googleOauth: {
+        configured: !!(config.GOOGLE_CLIENT_ID && config.GOOGLE_CLIENT_SECRET && config.GOOGLE_REDIRECT_URI),
+        redirectUri: config.GOOGLE_REDIRECT_URI || null,
+      },
+      storage: { s3: !!config.S3_BUCKET },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get('/stats', async (req, res, next) => {
   try {
     const [totalUsers, totalFreelancers, totalClients, totalAdmins, totalJobs, allUsers] = await Promise.all([
