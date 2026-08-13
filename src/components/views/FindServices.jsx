@@ -4,6 +4,7 @@ import { useNav } from "../../nav.jsx";
 import { avatarSrc } from "../../lib/authApi.js";
 import { fetchGigs } from "../../lib/gigApi.js";
 import { CardGridSkeleton } from "../ui/Skeleton.jsx";
+import Select from "../ui/Select.jsx";
 
 const CATS = ["All", "Design", "Dev", "AI", "Motion", "Writing", "Marketing"];
 const SORTS = {
@@ -129,18 +130,12 @@ export default function FindServices() {
             className="w-full bg-transparent text-[14px] outline-none placeholder:text-white/30"
           />
         </div>
-        <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
-          <SlidersHorizontal className="h-4 w-4 text-white/40" />
-          <select
-            value={sort}
-            onChange={(e) => { setSort(e.target.value); setPage(1); }}
-            className="bg-transparent text-[13px] text-white/75 outline-none [&>option]:bg-[#14141a]"
-          >
-            {Object.entries(SORTS).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
-            ))}
-          </select>
-        </div>
+        <Select
+          icon={SlidersHorizontal}
+          value={sort}
+          onChange={(v) => { setSort(v); setPage(1); }}
+          options={Object.entries(SORTS).map(([k, v]) => ({ value: k, label: v }))}
+        />
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">

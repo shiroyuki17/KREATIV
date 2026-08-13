@@ -5,6 +5,7 @@ import { useNav } from "../../nav.jsx";
 import { fetchJobs, searchJobsByPrompt } from "../../lib/jobsApi.js";
 import { useEscapeKey } from "../../hooks/useEscapeKey.js";
 import { CardGridSkeleton } from "../ui/Skeleton.jsx";
+import Select from "../ui/Select.jsx";
 
 const CATS = ["All", "Design", "Dev", "AI", "Motion", "Writing", "Marketing"];
 const TYPES = ["Any", "Fixed", "Hourly"];
@@ -317,13 +318,11 @@ export default function FindWork() {
           <SlidersHorizontal className="h-4 w-4" /> Filters
           {activeCount > 0 && <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-fg-1">{activeCount}</span>}
         </button>
-        <select
+        <Select
           value={sort}
-          onChange={(e) => setSort(e.target.value)}
-          className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[13px] text-white/75 outline-none [&>option]:bg-[#0c110e]"
-        >
-          {Object.entries(SORTS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-        </select>
+          onChange={setSort}
+          options={Object.entries(SORTS).map(([k, v]) => ({ value: k, label: v }))}
+        />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[264px_1fr]">
