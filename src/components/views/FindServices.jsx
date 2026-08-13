@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
-import { Search, Star, SlidersHorizontal, ChevronLeft, ChevronRight, AlertCircle, BadgeCheck, Clock, ImageIcon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Search, Star, SlidersHorizontal, ChevronLeft, ChevronRight, AlertCircle, BadgeCheck, Clock, ImageIcon, Plus, X, Loader2 } from "lucide-react";
 import { useNav } from "../../nav.jsx";
 import { avatarSrc } from "../../lib/authApi.js";
-import { fetchGigs } from "../../lib/gigApi.js";
+import { fetchGigs, createGig, uploadGigImage } from "../../lib/gigApi.js";
 import { CardGridSkeleton } from "../ui/Skeleton.jsx";
 import Select from "../ui/Select.jsx";
+import { useEscapeKey } from "../../hooks/useEscapeKey.js";
 
 const CATS = ["All", "Design", "Dev", "AI", "Motion", "Writing", "Marketing"];
 const SORTS = {
@@ -70,6 +71,152 @@ function GigCard({ g, nav, i = 0 }) {
   );
 }
 
+const GIG_CATEGORIES = ["Design", "Dev", "AI", "Motion", "Writing", "Marketing"];
+
+// Үйлчилгээ нэмэх модал. Settings → My Services-ийн формтой ижил
+// талбарууд, ижил validation — гэхдээ хэрэглэгч зар үзэж байгаа хуудсаа
+// орхихгүйгээр нэмнэ.
+function CreateGigModal({ onClose, onCreated }) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState(GIG_CATEGORIES[0]);
+  const [price, setPrice] = useState("");
+  const [deliveryDays, setDeliveryDays] = useState("");
+  const [imageUrls, setImageUrls] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const fileRef = useRef(null);
+  useEscapeKey(onClose, true);
+
+  const onImageSelected = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploading(true);
+    setError("");
+    try {
+      const { url } = await uploadGigImage(file);
+      setImageUrls((arr) => [...arr, url]);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const submit = async () => {
+    setError("");
+    if (title.trim().length < 5) { setError("Гарчиг дор хаяж 5 тэмдэгт"); return; }
+    if (description.trim().length < 20) { setError("Тайлбар дор хаяж 20 тэмдэгт"); return; }
+    const priceNum = Number(price);
+    const daysNum = Number(deliveryDays);
+    if (!priceNum || priceNum <= 0) { setError("Үнэ зөв тоо байх ёстой"); return; }
+    if (!daysNum || daysNum <= 0) { setError("Хугацаа зөв тоо байх ёстой"); return; }
+
+    setSaving(true);
+    try {
+      const gig = await createGig({
+        title: title.trim(),
+        description: description.trim(),
+        category,
+        price: priceNum,
+        deliveryDays: daysNum,
+        images: imageUrls,
+      });
+      onCreated(gig);
+    } catch (err) {
+      setError(Array.isArray(err.message) ? err.message.join(", ") : err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="create-gig-title"
+        onClick={(e) => e.stopPropagation()}
+        className="glass max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-2xl p-6"
+      >
+        <div className="flex items-center justify-between">
+          <p id="create-gig-title" className="text-[15px] font-bold">Шинэ үйлчилгээ</p>
+          <button onClick={onClose} aria-label="Close" className="rounded-lg p-1.5 text-white/45 hover:text-white">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {error && (
+          <p className="mt-3 flex items-start gap-1.5 rounded-xl border border-red-500/30 bg-red-500/10 px-3.5 py-2.5 text-[12.5px] font-medium text-red-400">
+            <AlertCircle className="mt-px h-3.5 w-3.5 shrink-0" /> {error}
+          </p>
+        )}
+
+        <div className="mt-4 space-y-3">
+          <div className="flex flex-wrap gap-2">
+            {imageUrls.map((u) => (
+              <img key={u} src={avatarSrc(u)} alt="" className="h-16 w-16 rounded-xl object-cover" />
+            ))}
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="flex h-16 w-16 items-center justify-center rounded-xl border border-dashed border-white/20 text-white/40 transition-colors hover:border-brand/50 hover:text-white/70 disabled:opacity-50"
+            >
+              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            </button>
+            <input ref={fileRef} type="file" accept="image/png,image/jpeg" onChange={onImageSelected} className="hidden" />
+          </div>
+
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder='Гарчиг — e.g. "I will design a modern minimalist logo"'
+            className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[13.5px] outline-none placeholder:text-white/30 focus:border-brand/50"
+          />
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={4}
+            placeholder="Юу багтдаг, хэдэн засвар орно, гэх мэт дэлгэрэнгүй"
+            className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[13.5px] outline-none placeholder:text-white/30 focus:border-brand/50"
+          />
+          <div className="grid grid-cols-3 gap-2">
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-3 text-[13px] text-white/80 outline-none focus:border-brand/50 [&>option]:bg-[#1b1730]"
+            >
+              {GIG_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <input
+              value={price}
+              onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, ""))}
+              placeholder="Үнэ ($)"
+              className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-3 text-[13px] outline-none placeholder:text-white/30 focus:border-brand/50"
+            />
+            <input
+              value={deliveryDays}
+              onChange={(e) => setDeliveryDays(e.target.value.replace(/[^0-9]/g, ""))}
+              placeholder="Хугацаа (өдөр)"
+              className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-3 text-[13px] outline-none placeholder:text-white/30 focus:border-brand/50"
+            />
+          </div>
+        </div>
+
+        <button
+          onClick={submit}
+          disabled={saving}
+          className="mt-5 w-full rounded-xl bg-brand py-3 text-[13.5px] font-bold text-fg-1 glow-brand disabled:opacity-50"
+        >
+          {saving ? "Нэмж байна…" : "Үйлчилгээ нэмэх"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function FindServices() {
   const { params, nav } = useNav();
   const [q, setQ] = useState(params?.query || "");
@@ -82,6 +229,7 @@ export default function FindServices() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showCreate, setShowCreate] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(async () => {
@@ -110,15 +258,29 @@ export default function FindServices() {
 
   return (
     <div className="mx-auto max-w-[1400px] px-6 pb-24 pt-8">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-soft">
-        — Browse services
-      </p>
-      <h1 className="mt-3 font-display text-[clamp(1.9rem,3.6vw,2.8rem)] font-bold text-brand text-glow tracking-tight">
-        Bэлэн үйлчилгээ захиалах
-      </h1>
-      <p className="mt-2 max-w-xl text-[13.5px] text-white/50">
-        Fixed-price — үнэ, хугацаа урьдчилж тодорхой. Захиалаад л, freelancer шууд эхэлнэ.
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-soft">
+            — Browse services
+          </p>
+          <h1 className="mt-3 font-display text-[clamp(1.9rem,3.6vw,2.8rem)] font-bold text-brand text-glow tracking-tight">
+            Бэлэн үйлчилгээ захиалах
+          </h1>
+          <p className="mt-2 max-w-xl text-[13.5px] text-white/50">
+            Fixed-price — үнэ, хугацаа урьдчилж тодорхой. Захиалаад л, freelancer шууд эхэлнэ.
+          </p>
+        </div>
+        {/* Өмнө нь үйлчилгээ нэмэхийн тулд Settings → My Services руу
+            орох цорын ганц зам байсан — зар харж байгаа хуудсандаа
+            байхад нь шууд нэмэх нь илүү зөв. */}
+        <button
+          onClick={() => setShowCreate(true)}
+          className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-brand px-5 py-3 text-[13.5px] font-semibold text-fg-1 glow-brand transition-transform hover:scale-[1.02]"
+        >
+          <Plus className="h-4 w-4" />
+          Үйлчилгээ нэмэх
+        </button>
+      </div>
 
       <div className="mt-7 flex flex-wrap items-center gap-3">
         <div className="flex min-w-[240px] flex-1 items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 focus-within:border-brand/50">
@@ -200,6 +362,20 @@ export default function FindServices() {
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>
+      )}
+
+      {showCreate && (
+        <CreateGigModal
+          onClose={() => setShowCreate(false)}
+          onCreated={(gig) => {
+            setShowCreate(false);
+            // Шинээр нэмсэн үйлчилгээ нь шүүлтүүрт таарахгүй байж болно
+            // (өөр категори г.м) тул жагсаалтын өмнө шууд оруулахын оронд
+            // дэлгэрэнгүй хуудас руу нь үсэргэнэ — хэрэглэгч бодитоор
+            // нийтлэгдсэнийг өөрөө хардаг.
+            nav("gig", { id: gig.id });
+          }}
+        />
       )}
     </div>
   );
