@@ -26,8 +26,12 @@ function last6MonthsBuckets(transactions) {
   }
   return months.map(({ year, month, label }) => ({
     m: label,
+    // ESCROW_RELEASE = milestone батлагдаад escrow-оос гүйцэтгэгч рүү
+    // гарсан төлбөр, өөрөөр хэлбэл freelancer-ийн ОРЛОГО. Өмнө нь энд
+    // DEPOSIT-ыг тоолдог байсан нь захиалагчийн хэтэвч цэнэглэлт —
+    // freelancer тийм гүйлгээ хийдэггүй тул график үргэлж хоосон байв.
     v: transactions
-      .filter((t) => t.kind === "DEPOSIT" && t.status === "COMPLETED")
+      .filter((t) => t.kind === "ESCROW_RELEASE" && t.status === "COMPLETED")
       .filter((t) => { const d = new Date(t.createdAt); return d.getFullYear() === year && d.getMonth() === month; })
       .reduce((s, t) => s + t.amount, 0),
   }));
@@ -198,7 +202,7 @@ export default function FreelancerDashboard() {
         <div className="space-y-5">
           <div className="glass rounded-2xl p-6">
             <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
-              Deposits · last 6 months
+              Earnings · last 6 months
             </p>
             <div className="mt-5 flex h-36 items-end gap-2.5">
               {earnings.map((e, i) => {
