@@ -30,7 +30,7 @@ import {
 import { DASHBOARD_FOR, useNav } from "../../nav.jsx";
 import { useLive } from "../../live.jsx";
 import { logoutUser, getAccessToken } from "../../lib/authApi.js";
-import { fetchNotifications, markAllNotificationsRead } from "../../lib/notificationsApi.js";
+import { fetchNotifications, markAllNotificationsRead, markNotificationRead } from "../../lib/notificationsApi.js";
 import { getSocket } from "../../lib/socket.js";
 
 const NOTIF_META = {
@@ -121,7 +121,7 @@ function RailTip({ anchorRef, active, children }) {
   return createPortal(
     <span
       style={{ top: pos.top, left: pos.left }}
-      className="animate-toast-in pointer-events-none fixed z-50 -translate-y-1/2 whitespace-nowrap rounded-lg border border-white/10 bg-[#0d1411] px-2.5 py-1.5 text-[12px] font-medium text-white shadow-[0_8px_24px_rgba(0,0,0,0.6)]"
+      className="animate-toast-in pointer-events-none fixed z-50 -translate-y-1/2 whitespace-nowrap rounded-lg border border-white/10 bg-[#1b1730] px-2.5 py-1.5 text-[12px] font-medium text-white shadow-[0_8px_24px_rgba(0,0,0,0.6)]"
     >
       {children}
     </span>,
@@ -430,11 +430,24 @@ function UserCard({ go, collapsed, user, setUser, authReady }) {
 // Notification bell opens an in-place dropdown (portaled so it isn't
 // clipped by the sidebar's overflow-y:auto) instead of navigating away —
 // the full Notifications page is still reachable via "View all".
-function NotifDropdown({ anchorRef, open, onClose, onViewAll, align = "left" }) {
+function NotifDropdown({ anchorRef, open, onClose, onViewAll, onNavigate, align = "left" }) {
   const [pos, setPos] = useState(null);
   const panelRef = useRef(null);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Мэдэгдэл дарах: уншсанаар тэмдэглээд (optimistic) холбоос руу шилжинэ.
+  // link байхгүй мэдэгдэл ч дарагдана — зүгээр л уншсан болж хаагдана.
+  const onOpenItem = (n) => {
+    if (!n.read) {
+      setItems((arr) => arr.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
+      markNotificationRead(n.id).catch(() => {});
+    }
+    onClose();
+    // "profile" нь vнэлгээний мэдэгдэл — хэрэглэгчийн ӨӨРИЙН профайл руу
+    // хөтөлнө. FreelancerProfile нь params.userId-гvйгээр хоосон гардаг.
+    if (n.link) onNavigate(n.link);
+  };
 
   useEffect(() => {
     if (!open || !anchorRef.current) return;
@@ -488,7 +501,7 @@ function NotifDropdown({ anchorRef, open, onClose, onViewAll, align = "left" }) 
     <div
       ref={panelRef}
       style={pos}
-      className="animate-toast-in fixed z-50 w-[340px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-white/10 bg-[#0d1411] shadow-[0_24px_60px_rgba(0,0,0,0.6)]"
+      className="animate-toast-in fixed z-50 w-[340px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-white/10 bg-[#1b1730] shadow-[0_24px_60px_rgba(0,0,0,0.6)]"
     >
       <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
         <p className="text-[13px] font-bold">Notifications</p>
@@ -505,19 +518,29 @@ function NotifDropdown({ anchorRef, open, onClose, onViewAll, align = "left" }) 
         {!loading && items.length === 0 && (
           <p className="px-4 py-6 text-center text-[12px] text-white/35">No notifications yet</p>
         )}
+        {/* Мэдэгдэл бүр нь ДАРАГДАХ ёстой: Notification.link (жишээ нь
+            "messages", "my-projects") нь DB-д хадгалагддаг байсан ч хаана ч
+            уншигддаггүй, эргэлзээгүй <div> байсан тул дарахад юу ч
+            болдоггүй байв. Одоо уншсанаар тэмдэглээд шууд тийш үсэргэнэ. */}
         {items.map((n) => {
           const { Icon, cls } = NOTIF_META[n.type] || NOTIF_META.system;
           return (
-            <div key={n.id} className="flex items-start gap-3 border-b border-white/5 px-4 py-3 last:border-b-0 hover:bg-white/[0.03]">
+            <button
+              key={n.id}
+              onClick={() => onOpenItem(n)}
+              className={`flex w-full items-start gap-3 border-b border-white/5 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-white/[0.05] ${
+                n.read ? "" : "bg-brand/[0.05]"
+              }`}
+            >
               <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${cls}`}>
                 <Icon className="h-3.5 w-3.5" />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[12.5px] leading-snug text-white/85">{n.text}</p>
+                <p className={`text-[12.5px] leading-snug ${n.read ? "text-white/70" : "font-medium text-white"}`}>{n.text}</p>
                 <p className="mt-0.5 text-[10.5px] text-white/35">{timeAgo(n.createdAt)}</p>
               </div>
               {!n.read && <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />}
-            </div>
+            </button>
           );
         })}
       </div>
@@ -532,7 +555,7 @@ function NotifDropdown({ anchorRef, open, onClose, onViewAll, align = "left" }) 
   );
 }
 
-function NotifBell({ collapsed, badge, onViewAll, align, buttonClassName, dotClassName }) {
+function NotifBell({ collapsed, badge, onViewAll, onNavigate, align, buttonClassName, dotClassName }) {
   const ref = useRef(null);
   const [hovered, setHovered] = useState(false);
   const [open, setOpen] = useState(false);
@@ -563,6 +586,7 @@ function NotifBell({ collapsed, badge, onViewAll, align, buttonClassName, dotCla
         align={align}
         onClose={() => setOpen(false)}
         onViewAll={() => { setOpen(false); onViewAll(); }}
+        onNavigate={onNavigate}
       />
     </>
   );
@@ -623,7 +647,7 @@ function UserMenu({ go, user, setUser }) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-56 overflow-hidden rounded-2xl border border-white/10 bg-[#0d1411] shadow-[0_24px_60px_rgba(0,0,0,0.6)]">
+        <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-56 overflow-hidden rounded-2xl border border-white/10 bg-[#1b1730] shadow-[0_24px_60px_rgba(0,0,0,0.6)]">
           <div className="border-b border-white/8 px-4 py-3">
             <p className="truncate text-[13px] font-semibold">{user.name || "Account"}</p>
             <p className="truncate text-[11.5px] text-white/40">{user.email}</p>
@@ -666,7 +690,7 @@ function UserMenu({ go, user, setUser }) {
 function DesktopTopBar({ go, user, setUser, authReady, notifBadge }) {
   return (
     <div className="sticky top-0 z-30 hidden items-center justify-end gap-2 border-b border-white/8 bg-[#141517]/80 px-6 py-3 lg:flex">
-      {authReady && user && <NotifBell badge={notifBadge} align="right" onViewAll={() => go("notifications")} />}
+      {authReady && user && <NotifBell badge={notifBadge} align="right" onViewAll={() => go("notifications")} onNavigate={(link) => go(link, link === "profile" ? { userId: user.id } : undefined)} />}
       {authReady && (
         user ? (
           <UserMenu go={go} user={user} setUser={setUser} />
@@ -744,6 +768,7 @@ export default function AppShell({ children }) {
           badge={notifBadge}
           align="right"
           onViewAll={() => go("notifications")}
+          onNavigate={(link) => go(link, link === "profile" ? { userId: user?.id } : undefined)}
           buttonClassName="relative flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-white/80"
           dotClassName="absolute right-2 top-2 h-2 w-2 rounded-full bg-brand"
         />

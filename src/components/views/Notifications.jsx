@@ -21,7 +21,7 @@ function groupOf(iso) {
 }
 
 export default function Notifications() {
-  const { nav } = useNav();
+  const { nav, user } = useNav();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -38,10 +38,19 @@ export default function Notifications() {
   const unread = items.filter((n) => !n.read).length;
   const groups = ["Today", "Earlier"];
 
-  const markOneRead = (n) => {
-    if (n.read) return;
-    setItems((arr) => arr.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
-    markNotificationRead(n.id, getAccessToken()).catch(() => {});
+  // Дарахад уншсанаар тэмдэглээд, Notification.link байвал ШУУД тийш
+  // шилжинэ. Өмнө нь зөвхөн уншсан болгодог байсан тул хэрэглэгч мэдэгдлээ
+  // хараад дараа нь өөрөө холбогдох хуудсаа гараар хайх шаардлагатай байв.
+  const openNotification = (n) => {
+    if (!n.read) {
+      setItems((arr) => arr.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
+      markNotificationRead(n.id, getAccessToken()).catch(() => {});
+    }
+    // "profile" нь vнэлгээний мэдэгдэл — хэрэглэгчийн ӨӨРИЙН профайл.
+    // FreelancerProfile нь params.userId-гvйгээр хоосон хуудас гаргадаг тул
+    // заавал дамжуулна.
+    if (n.link === "profile") nav("profile", { userId: user?.id });
+    else if (n.link) nav(n.link);
   };
 
   const markAllRead = () => {
@@ -103,10 +112,10 @@ export default function Notifications() {
                   const meta = META[n.type] || META.system;
                   const { Icon, cls } = meta;
                   return (
-                    <div
+                    <button
                       key={n.id}
-                      onClick={() => markOneRead(n)}
-                      className={`group relative flex cursor-pointer items-start gap-4 rounded-2xl border p-4 transition-all ${
+                      onClick={() => openNotification(n)}
+                      className={`group relative flex w-full cursor-pointer items-start gap-4 rounded-2xl border p-4 text-left transition-all ${
                         n.read
                           ? "border-white/5 bg-white/[0.02] hover:border-white/15"
                           : "border-brand/30 bg-gradient-to-r from-brand/10 via-white/[0.04] to-transparent"
@@ -126,7 +135,7 @@ export default function Notifications() {
                       {!n.read && (
                         <span className="h-2 w-2 rounded-full bg-brand glow-brand shrink-0 mt-2" />
                       )}
-                    </div>
+                    </button>
                   );
                 })}
               </div>

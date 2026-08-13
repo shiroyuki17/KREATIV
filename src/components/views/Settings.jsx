@@ -513,7 +513,7 @@ function GigManager() {
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] outline-none focus:border-brand/50 [&>option]:bg-[#14141a]"
+            className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] outline-none focus:border-brand/50 [&>option]:bg-[#1b1730]"
           >
             {GIG_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
