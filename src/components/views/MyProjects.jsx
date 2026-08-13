@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Briefcase, FileText, Inbox, AlertCircle, Star, Check, Scale, LayoutGrid, ChevronDown } from "lucide-react";
+import { Briefcase, FileText, Inbox, AlertCircle, Star, Check, Scale, LayoutGrid, ChevronDown, ArrowRight } from "lucide-react";
 import { useNav } from "../../nav.jsx";
 import { getAccessToken, fetchFreelancerProfile, fetchClientProfile } from "../../lib/authApi.js";
 import { fetchMyJobs } from "../../lib/jobsApi.js";
@@ -24,6 +24,34 @@ const MILESTONE_BADGE = {
   DELIVERED: "border-amber-400/30 bg-amber-400/10 text-amber-300",
   APPROVED: "border-mint/30 bg-mint/10 text-mint",
   DISPUTED: "border-red-500/40 bg-red-500/10 text-red-400",
+};
+
+// Төлөв бүрд ХОЁУЛАА юу болж байгааг, хэний ээлж болохыг энгийн үгээр
+// хэлнэ. Өмнө нь товч нь зөвхөн ээлжтэй талд гардаг, нөгөө тал нь
+// "PENDING_FUNDING" гэсэн хуурай enum badge-аас өөр юу ч харахгүй тул
+// хүлээж байгаа юу, эсвэл өөрөөс нь ямар нэг зүйл хүлээж байна уу гэдгээ
+// мэдэхгүй байв.
+const NEXT_STEP = {
+  PENDING_FUNDING: {
+    client: "Escrow-д мөнгө байршуулснаар гүйцэтгэгч ажлаа эхэлнэ.",
+    freelancer: "Захиалагч escrow-д мөнгө байршуулахыг хүлээж байна. Байршуулмагц эхэлнэ.",
+  },
+  FUNDED: {
+    client: "Мөнгө escrow-д хамгаалагдсан. Гүйцэтгэгч ажиллаж байна — хүлээлгэн өгөхийг хүлээнэ.",
+    freelancer: "Мөнгө escrow-д баталгаажсан. Ажлаа эхлүүлж, дуусмагц “Хүлээлгэн өгөх” дар.",
+  },
+  DELIVERED: {
+    client: "Ажил хүлээлгэн өгсөн — шалгаад батлах, эсвэл засвар хүсэх боломжтой.",
+    freelancer: "Хүлээлгэн өгсөн. Захиалагчийн баталгааг хүлээж байна.",
+  },
+  APPROVED: {
+    client: "Батлагдсан — төлбөр гүйцэтгэгчид шилжсэн.",
+    freelancer: "Батлагдсан — төлбөр таны үлдэгдэлд шилжсэн.",
+  },
+  DISPUTED: {
+    client: "Маргаан нээгдсэн — админ шалгаж шийдвэрлэнэ.",
+    freelancer: "Маргаан нээгдсэн — админ шалгаж шийдвэрлэнэ.",
+  },
 };
 
 const PROPOSAL_BADGE = {
@@ -141,6 +169,13 @@ function MilestoneCard({ milestone: m, myRole, revisionLimit, onFund, onDeliver,
           {m.status.replace("_", " ")}
         </span>
       </div>
+
+      {NEXT_STEP[m.status]?.[myRole] && (
+        <p className="mt-2.5 flex items-start gap-1.5 text-[12px] leading-relaxed text-white/50">
+          <ArrowRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-soft" />
+          {NEXT_STEP[m.status][myRole]}
+        </p>
+      )}
 
       {m.deliveryNote && (
         <p className="mt-2.5 rounded-lg border border-white/8 bg-white/[0.03] p-2.5 text-[12px] text-white/60">
