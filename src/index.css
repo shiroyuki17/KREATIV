@@ -114,15 +114,15 @@ html { scroll-behavior: smooth; }
    доорх текст бүрэн харагддаг тул давхцал нүдэнд ил харагддаг). */
 section[id] { scroll-margin-top: 110px; }
 
-/* Visible keyboard focus (mouse clicks stay clean via :focus-visible).
-   No fixed border-radius here on purpose — a hardcoded value looked
-   mismatched against elements with a much larger radius (rounded-2xl
-   search bars vs. rounded-full pills), since the outline's corners
-   never matched the element's actual corners. Modern browsers already
-   shape the outline to follow the element's own border-radius. */
+/* Visible keyboard/click focus. A large border-radius (rounder than any
+   real element on the site) reads fine everywhere — pill search bars,
+   rounded-2xl cards, plain buttons — without needing per-component
+   tuning, since browsers don't reliably auto-match the outline's
+   corners to the focused element's own radius. */
 :where(a, button, input, textarea, select, [tabindex]):focus-visible {
   outline: 2px solid var(--color-brand);
   outline-offset: 2px;
+  border-radius: 30px;
 }
 
 /* Flat ground. The aurora gradients and the grid overlay are gone: colour on
