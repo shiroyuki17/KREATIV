@@ -18,6 +18,7 @@ import {
   X,
   Sparkles,
   BadgeCheck,
+  Plug,
 } from "lucide-react";
 import { getAccessToken } from "../../lib/authApi.js";
 import {
@@ -36,6 +37,7 @@ import {
   fetchReconciliation,
   fetchVerificationQueue,
   decideVerification,
+  fetchIntegrations,
 } from "../../lib/adminApi.js";
 
 const TABS = [
@@ -47,6 +49,7 @@ const TABS = [
   { id: "moderation", label: "Moderation", Icon: ShieldAlert },
   { id: "payouts", label: "Payouts", Icon: Banknote },
   { id: "ledger", label: "Ledger check", Icon: ClipboardCheck },
+  { id: "integrations", label: "Integrations", Icon: Plug },
 ];
 
 const ROLE_BADGE = {
@@ -82,6 +85,7 @@ export default function AdminPanel() {
   const [moderationQueue, setModerationQueue] = useState([]);
   const [payoutQueue, setPayoutQueue] = useState([]);
   const [reconciliation, setReconciliation] = useState(null);
+  const [integrations, setIntegrations] = useState(null);
   const [verifications, setVerifications] = useState([]);
   const [roleFilter, setRoleFilter] = useState("All");
   const [q, setQ] = useState("");
@@ -105,8 +109,9 @@ export default function AdminPanel() {
       fetchPayoutQueue(token),
       fetchReconciliation(token),
       fetchVerificationQueue("PENDING"),
+      fetchIntegrations(),
     ])
-      .then(([s, u, t, d, mod, payouts, recon, verif]) => {
+      .then(([s, u, t, d, mod, payouts, recon, verif, integ]) => {
         setStats(s);
         setUsers(u.users);
         setTransactions(t.transactions);
@@ -115,6 +120,7 @@ export default function AdminPanel() {
         setPayoutQueue(payouts.payouts);
         setReconciliation(recon);
         setVerifications(verif.profiles);
+        setIntegrations(integ);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -682,6 +688,65 @@ export default function AdminPanel() {
           )}
         </div>
       )}
+
+      {/* Аль гуравдагч үйлчилгээ БОДИТООР тохируулагдсаныг харуулна —
+          "имэйл ирэхгүй байна" гэх мэт асуудлыг Render dashboard руу
+          орохгүйгээр оношлох боломж. Түлхүүрийн утга хэзээ ч харагдахгүй. */}
+      {!loading && tab === "integrations" && integrations && (
+        <div className="mt-7 space-y-3">
+          <IntegrationRow
+            label="Имэйл (SMTP)"
+            ok={integrations.email.configured}
+            detail={
+              integrations.email.configured
+                ? `SMTP: ${integrations.email.host}`
+                : "Тохируулаагүй — имэйл Ethereal тест inbox руу очно, хэрэглэгчийн жинхэнэ хайрцагт ХҮРЭХГҮЙ"
+            }
+          />
+          <IntegrationRow
+            label="AI"
+            ok={integrations.ai.anyConfigured}
+            detail={`Anthropic: ${integrations.ai.anthropic ? "тийм" : "үгүй"} · Gemini: ${integrations.ai.gemini ? "тийм" : "үгүй"}`}
+          />
+          <IntegrationRow
+            label="Stripe төлбөр"
+            ok={integrations.payments.stripe}
+            detail={
+              integrations.payments.stripe
+                ? `${integrations.payments.stripeTestMode ? "TEST горим" : "LIVE горим"} · webhook: ${integrations.payments.stripeWebhook ? "тийм" : "ҮГҮЙ"} · provider: ${integrations.payments.provider}`
+                : "Тохируулаагүй"
+            }
+          />
+          <IntegrationRow
+            label="Google нэвтрэлт"
+            ok={integrations.googleOauth.configured}
+            detail={integrations.googleOauth.redirectUri || "Тохируулаагүй"}
+          />
+          <IntegrationRow
+            label="Файл хадгалалт (S3)"
+            ok={integrations.storage.s3}
+            detail={integrations.storage.s3 ? "S3 bucket холбогдсон" : "Локал диск ашиглаж байна"}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function IntegrationRow({ label, ok, detail }) {
+  return (
+    <div className="glass flex flex-wrap items-center justify-between gap-3 rounded-2xl p-5">
+      <div className="min-w-0">
+        <p className="text-[13.5px] font-semibold">{label}</p>
+        <p className="mt-1 break-all text-[12px] text-white/45">{detail}</p>
+      </div>
+      <span
+        className={`shrink-0 rounded-full border px-3 py-1 text-[10.5px] font-bold uppercase tracking-wider ${
+          ok ? "border-mint/30 bg-mint/10 text-mint" : "border-amber-400/30 bg-amber-400/10 text-amber-300"
+        }`}
+      >
+        {ok ? "Тохируулсан" : "Тохируулаагүй"}
+      </span>
     </div>
   );
 }

@@ -48,3 +48,6 @@ export const rejectPayout = (id) => apiJson(`/admin/payouts/${id}/reject`, { met
 
 // NFR-1: ledger reconciliation
 export const fetchReconciliation = () => apiJson("/admin/reconciliation");
+
+// Аль гуравдагч үйлчилгээ тохируулагдсаныг харах (түлхүүр буцаахгүй).
+export const fetchIntegrations = () => apiJson("/admin/integrations");
