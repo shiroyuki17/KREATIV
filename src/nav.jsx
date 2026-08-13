@@ -117,14 +117,6 @@ export function NavProvider({ children }) {
   };
 
   /**
-   * Ажлын горимыг солино (freelancer ⇄ client).
-   *
-   * Хэрэв тухайн горимын профайл хараахан үүсээгүй бол шууд сольж чадахгүй —
-   * жишээ нь client профайлгүй хүнийг client-dashboard руу оруулбал бүх
-   * хүсэлт 403 буцаана. Иймд эхлээд onboarding руу оруулж профайлыг нь
-   * үүсгүүлнэ; буцаж ирэхэд горим аль хэдийн сонгогдсон байна.
-   */
-  /**
    * Горимын сонголтыг ЗӨВХӨН хадгална — хаашаа ч шилжүүлэхгүй.
    *
    * Бүртгүүлэхэд сонгосон "I'm hiring" / "I'm freelancing" нь ҮНДСЭН горим
@@ -146,11 +138,14 @@ export function NavProvider({ children }) {
       setModePref(next);
       try { localStorage.setItem(MODE_KEY, next); } catch { /* private mode */ }
 
-      const ready = next === "freelancer" ? user?.hasFreelancerProfile : user?.hasClientProfile;
-      nav(ready ? DASHBOARD_FOR[next] : "onboarding", ready ? null : { role: next });
+      // Профайл хараахан үүсээгүй ч тухайн горимын dashboard руу шууд
+      // оруулна — dashboard-ууд профайлгvй vед "Complete your profile…"
+      // гэсэн empty-state-тэй graceful ажилладаг тул онбоардинг wizard-аар
+      // заавал хаах шаардлагагvй. Профайлаа хvссэн vедээ Settings-ээс
+      // бөглөнө.
+      nav(DASHBOARD_FOR[next]);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [user]
+    []
   );
 
   useEffect(() => {

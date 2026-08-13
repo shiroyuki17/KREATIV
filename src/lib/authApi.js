@@ -156,7 +156,11 @@ export async function resolveHomeRoute(user) {
     return { page: "freelancer-dashboard" };
   }
 
-  return { page: "onboarding", params: { role: "freelancer" } };
+  // Профайл огт байхгүй ч (onboarding дуусгаагүй хуучин акаунт, эсвэл
+  // Google-ээр анх удаа нэвтэрсэн) wizard-аар заавал хаахгүй — dashboard нь
+  // хоосон профайлтай vед graceful ажилладаг тул шууд оруулна. Профайлаа
+  // хvссэн vедээ Settings-ээс бөглөнө.
+  return { page: "freelancer-dashboard" };
 }
 
 const REDIRECT_KEY = "kreativ_redirect_after_login";

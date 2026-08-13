@@ -14,7 +14,10 @@ const envSchema = z.object({
   // ── Google OAuth (заавал биш — тохируулаагүй бол demo акаунтаар нэвтэрнэ) ──
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
-  GOOGLE_REDIRECT_URI: z.string().optional(),
+  // Төгсгөлийн "/"-ийг зайлуулна — Google-д бүртгэсэн URI яг үзэгтэй биш
+  // байвал OAuth redirect_uri_mismatch өгдөг тул Render дээр хэрэглэгч
+  // санамсаргүй "/"-тэй бичсэн ч Google руу үргэлж ижил хэлбэрээр илгээнэ.
+  GOOGLE_REDIRECT_URI: z.string().optional().transform((v) => v?.replace(/\/+$/, '')),
   FRONTEND_URL: z.string().default('http://localhost:5174'),
 
   // ── SMTP (заавал биш — тохируулаагүй бол Ethereal демо inbox ашиглана) ──
