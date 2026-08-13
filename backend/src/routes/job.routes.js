@@ -250,8 +250,11 @@ router.post('/:id/proposals', requireAuth, requireActiveUser, async (req, res, n
       return res.status(403).json({ error: 'Санал илгээхийн тулд эхлээд freelancer профайлаа үүсгэнэ үү' });
     }
 
-    const job = await prisma.job.findUnique({ where: { id: req.params.id } });
+    const job = await prisma.job.findUnique({ where: { id: req.params.id }, include: { client: { select: { userId: true } } } });
     if (!job) return res.status(404).json({ error: 'Олдсонгүй' });
+    if (job.client.userId === req.user.id) {
+      return res.status(400).json({ error: 'Өөрийн зарт санал илгээж болохгүй' });
+    }
     if (job.status !== 'OPEN') return res.status(409).json({ error: 'Энэ зар одоогоор санал хүлээж авахгүй байна' });
     if (job.moderationStatus !== 'APPROVED') return res.status(409).json({ error: 'Энэ зар админы хяналтад байгаа тул санал хүлээж авахгүй байна' });
 
