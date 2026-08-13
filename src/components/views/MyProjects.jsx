@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Briefcase, FileText, Inbox, AlertCircle, Star, Check, Scale, LayoutGrid, ChevronDown, ArrowRight } from "lucide-react";
+import { Briefcase, FileText, Inbox, AlertCircle, Star, Check, Scale, LayoutGrid, ChevronDown } from "lucide-react";
 import { useNav } from "../../nav.jsx";
 import { getAccessToken, fetchFreelancerProfile, fetchClientProfile } from "../../lib/authApi.js";
 import { fetchMyJobs } from "../../lib/jobsApi.js";
@@ -155,6 +155,13 @@ function MilestoneCard({ milestone: m, myRole, revisionLimit, onFund, onDeliver,
   const [showDispute, setShowDispute] = useState(false);
   const revisionsLeft = revisionLimit - (m.revisionsUsed || 0);
 
+  // Энэ төлөвт тухайн талд гүйцэтгэх үйлдэл байгаа эсэх — доорх товчнуудын
+  // нөхцөлтэй яг таарна.
+  const hasAction =
+    (myRole === "client" && m.status === "PENDING_FUNDING") ||
+    (myRole === "freelancer" && m.status === "FUNDED") ||
+    (myRole === "client" && m.status === "DELIVERED");
+
   return (
     <div className="rounded-xl border border-white/8 bg-white/[0.02] p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -170,9 +177,10 @@ function MilestoneCard({ milestone: m, myRole, revisionLimit, onFund, onDeliver,
         </span>
       </div>
 
-      {NEXT_STEP[m.status]?.[myRole] && (
-        <p className="mt-2.5 flex items-start gap-1.5 text-[12px] leading-relaxed text-white/50">
-          <ArrowRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-soft" />
+      {/* Зөвхөн ЭЭЛЖ БИШ үед л тайлбарлана. Товч гарч байгаа үед тэр товч
+          өөрөө юу хийхийг хэлж байгаа тул давхар тайлбар нь илүүц. */}
+      {!hasAction && NEXT_STEP[m.status]?.[myRole] && (
+        <p className="mt-2.5 text-[12px] leading-relaxed text-white/40">
           {NEXT_STEP[m.status][myRole]}
         </p>
       )}
@@ -238,12 +246,12 @@ export default function MyProjects() {
   const [contracts, setContracts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  // Ажлын явц (Kanban board) шууд харагдаж байхыг хvссэн тул анхнаасаа
-  // НЭЭЛТТЭЙ — хэрэглэгч бүрэн хаасан контрактуудыг л энд хадгална
-  // (нээлттэй байдал бол өгөгдмөл, хаасан нь тэмдэглэгдсэн зүйл).
-  const [closedWorkspace, setClosedWorkspace] = useState(() => new Set());
+  // Гэрээ бүрийн Kanban+цаг хэмжигчийг анхнаасаа нээлттэй болгож үзсэн
+  // боловч хэд хэдэн гэрээтэй үед хуудас хэт урт, замбараагүй болсон тул
+  // буцаан хаалттай (нээсэн гэрээг нь л энд тэмдэглэнэ).
+  const [openWorkspace, setOpenWorkspace] = useState(() => new Set());
   const toggleWorkspace = (id) =>
-    setClosedWorkspace((s) => {
+    setOpenWorkspace((s) => {
       const next = new Set(s);
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
@@ -419,9 +427,9 @@ export default function MyProjects() {
                     <LayoutGrid className="h-3.5 w-3.5 text-brand-soft" />
                     Workspace · Kanban board
                   </span>
-                  <ChevronDown className={`h-3.5 w-3.5 transition-transform ${!closedWorkspace.has(c.id) ? "rotate-180" : ""}`} />
+                  <ChevronDown className={`h-3.5 w-3.5 transition-transform ${openWorkspace.has(c.id) ? "rotate-180" : ""}`} />
                 </button>
-                {!closedWorkspace.has(c.id) && (
+                {openWorkspace.has(c.id) && (
                   <div className="mt-3 space-y-3">
                     <KanbanBoard contractId={c.id} />
                     {/* Бодит цаг бүртгэл — сервер эхлэл/төгсгөлийг хадгална.
