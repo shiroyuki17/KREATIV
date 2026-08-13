@@ -227,3 +227,7 @@ export const revokeOtherSessions = () =>
     method: "POST",
     body: { refreshToken: getRefreshToken() },
   });
+
+/** Нэрээ солих — Settings → Profile. */
+export const updateAccountName = (name) =>
+  apiJson("/profile/account", { method: "PATCH", body: { name } });

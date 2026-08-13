@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Search, Star, SlidersHorizontal, ChevronLeft, ChevronRight, AlertCircle, BadgeCheck, Clock, ImageIcon, Plus, X, Loader2 } from "lucide-react";
 import { useNav } from "../../nav.jsx";
 import { avatarSrc } from "../../lib/authApi.js";
-import { fetchGigs, createGig, uploadGigImage } from "../../lib/gigApi.js";
+import { fetchGigs, createGig, uploadGigImage, fetchMyGigs, updateGig, deleteGig } from "../../lib/gigApi.js";
 import { CardGridSkeleton } from "../ui/Skeleton.jsx";
 import Select from "../ui/Select.jsx";
 import { useEscapeKey } from "../../hooks/useEscapeKey.js";
@@ -275,6 +275,106 @@ function CreateGigModal({ onClose, onCreated }) {
   );
 }
 
+// Өөрийн үйлчилгээг удирдах — Settings → "My Services" таб байсныг энд
+// авчирсан: жагсаалтаа хараад тэндээсээ удирдах нь тохиргоо руу орохоос зөв.
+function MyGigs({ onCreate }) {
+  const { nav } = useNav();
+  const [gigs, setGigs] = useState(null);
+  const [busyId, setBusyId] = useState(null);
+  const [error, setError] = useState("");
+
+  const load = () => fetchMyGigs().then((r) => setGigs(r.gigs)).catch((e) => setError(e.message));
+  useEffect(() => { load(); }, []);
+
+  const toggleActive = async (g) => {
+    setBusyId(g.id);
+    setError("");
+    try {
+      const updated = await updateGig(g.id, { active: !g.active });
+      setGigs((arr) => arr.map((x) => (x.id === g.id ? updated : x)));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const remove = async (id) => {
+    setBusyId(id);
+    setError("");
+    try {
+      await deleteGig(id);
+      setGigs((arr) => arr.filter((x) => x.id !== id));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  if (gigs === null) return <p className="mt-6 text-[13px] text-white/40">Ачааллаж байна…</p>;
+
+  return (
+    <div className="mt-6 space-y-3">
+      {error && (
+        <p className="flex items-center gap-1.5 rounded-xl border border-red-500/30 bg-red-500/10 px-3.5 py-2.5 text-[12.5px] text-red-400">
+          <AlertCircle className="h-3.5 w-3.5 shrink-0" /> {error}
+        </p>
+      )}
+      {gigs.length === 0 && (
+        <div className="glass rounded-2xl p-10 text-center">
+          <p className="text-[14px] font-semibold">Танд одоогоор үйлчилгээ алга</p>
+          <p className="mt-1.5 text-[12.5px] text-white/45">Эхний үйлчилгээгээ нэмээд захиалга авч эхлээрэй.</p>
+          <button onClick={onCreate} className="mt-5 rounded-xl bg-brand px-5 py-2.5 text-[12.5px] font-bold text-fg-1 glow-brand">
+            Үйлчилгээ нэмэх
+          </button>
+        </div>
+      )}
+      {gigs.map((g) => (
+        <div key={g.id} className="glass flex flex-wrap items-center gap-4 rounded-2xl p-4">
+          {g.images?.[0] ? (
+            <img src={avatarSrc(g.images[0])} alt="" className="h-14 w-14 shrink-0 rounded-xl object-cover" />
+          ) : (
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-white/[0.03] text-white/20">
+              <ImageIcon className="h-5 w-5" />
+            </span>
+          )}
+          <div className="min-w-0 flex-1">
+            <button onClick={() => nav("gig", { id: g.id })} className="block truncate text-left text-[13.5px] font-semibold hover:text-brand-soft">
+              {g.title}
+            </button>
+            <p className="mt-0.5 text-[11.5px] text-white/40">
+              {g.category} · ${g.price} · {g.deliveryDays}d
+              {g.ordersCount > 0 && ` · ${g.ordersCount} захиалга`}
+            </p>
+          </div>
+          <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
+            g.active ? "border-mint/30 bg-mint/10 text-mint" : "border-white/15 bg-white/[0.05] text-white/45"
+          }`}>
+            {g.active ? "Идэвхтэй" : "Зогссон"}
+          </span>
+          <div className="flex shrink-0 gap-2">
+            <button
+              onClick={() => toggleActive(g)}
+              disabled={busyId === g.id}
+              className="rounded-lg border border-white/12 px-3 py-1.5 text-[11.5px] font-semibold text-white/70 transition-colors hover:border-white/25 hover:text-white disabled:opacity-50"
+            >
+              {g.active ? "Түр зогсоох" : "Идэвхжүүлэх"}
+            </button>
+            <button
+              onClick={() => remove(g.id)}
+              disabled={busyId === g.id}
+              className="rounded-lg border border-red-400/30 px-3 py-1.5 text-[11.5px] font-semibold text-red-300 transition-colors hover:bg-red-400/10 disabled:opacity-50"
+            >
+              Устгах
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function FindServices() {
   const { params, nav } = useNav();
   const [q, setQ] = useState(params?.query || "");
@@ -288,6 +388,7 @@ export default function FindServices() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showCreate, setShowCreate] = useState(false);
+  const [view, setView] = useState("all"); // all | mine
 
   useEffect(() => {
     const t = setTimeout(async () => {
@@ -340,6 +441,29 @@ export default function FindServices() {
         </button>
       </div>
 
+      <div className="mt-6 flex gap-2">
+        {[
+          { id: "all", label: "Бүх үйлчилгээ" },
+          { id: "mine", label: "Миний үйлчилгээ" },
+        ].map(({ id, label }) => (
+          <button
+            key={id}
+            onClick={() => setView(id)}
+            className={
+              view === id
+                ? "rounded-xl bg-brand px-4 py-2.5 text-[12.5px] font-semibold text-fg-1 glow-brand"
+                : "glass rounded-xl px-4 py-2.5 text-[12.5px] font-medium text-white/55 transition-colors hover:text-white"
+            }
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {view === "mine" && <MyGigs onCreate={() => setShowCreate(true)} />}
+
+      {view === "all" && (
+      <>
       <div className="mt-7 flex flex-wrap items-center gap-3">
         <div className="flex min-w-[240px] flex-1 items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 focus-within:border-brand/50">
           <Search className="h-4.5 w-4.5 shrink-0 text-white/40" />
@@ -420,6 +544,8 @@ export default function FindServices() {
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>
+      )}
+      </>
       )}
 
       {showCreate && (

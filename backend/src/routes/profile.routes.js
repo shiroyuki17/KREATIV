@@ -77,6 +77,29 @@ async function freelancerDisputeRate(freelancerId) {
   return totalContracts === 0 ? 0 : Math.round((disputedContracts / totalContracts) * 100);
 }
 
+// ── PATCH /profile/account ── (нэрээ солих)
+//
+// Өмнө нь User.name-ыг өөрчлөх ямар ч зам байгаагүй: Settings дээрх талбар
+// disabled, "нэр солихын тулд support-тай холбогдоно уу" гэсэн тайлбартай
+// байсан ч тийм support суваг ч байхгүй. Google-ээр нэвтэрсэн хэрэглэгчийн
+// нэр Google дээрхээрээ тогтдог тул энэ нь бодит асуудал байв.
+router.patch('/account', requireAuth, async (req, res, next) => {
+  try {
+    const name = String(req.body?.name || '').trim();
+    if (name.length < 2 || name.length > 60) {
+      return res.status(400).json({ error: 'Нэр 2-60 тэмдэгт байх ёстой' });
+    }
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data: { name },
+      select: { id: true, email: true, name: true, avatarUrl: true, role: true },
+    });
+    res.json(user);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── POST /profile/avatar ── (зураг оруулах — Day 7 File Upload)
 router.post('/avatar', requireAuth, (req, res, next) => {
   uploadAvatar(req, res, async (err) => {

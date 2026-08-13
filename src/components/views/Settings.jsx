@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { User, Bell, Lock, Check, AlertCircle, Loader2, ShieldCheck, Smartphone, Image as ImageIcon, Plus, X, Link as LinkIcon, Tag, Clock } from "lucide-react";
 import Magnet from "../fx/Magnet.jsx";
+import { useNav } from "../../nav.jsx";
 import {
   fetchMe,
   uploadAvatar,
@@ -17,6 +18,7 @@ import {
   createPortfolioItem,
   deletePortfolioItem,
   avatarSrc as fileSrc,
+  updateAccountName,
   fetchSessions,
   revokeOtherSessions,
 } from "../../lib/authApi.js";
@@ -328,7 +330,9 @@ function PortfolioManager({ items, onAdd, onRemove }) {
 const TABS = [
   { id: "profile", label: "Profile", Icon: User },
   { id: "portfolio", label: "Portfolio", Icon: ImageIcon, freelancerOnly: true },
-  { id: "gigs", label: "My Services", Icon: Tag, freelancerOnly: true },
+  // "My Services" таб энд байсныг хассан — үйлчилгээ нэмэх/удирдах нь одоо
+  // Services хуудсан дээрээ байна (жагсаалтаа хараад тэндээсээ нэмэх нь
+  // Settings руу орохоос зөв). Хоёр газар давхардуулах шаардлагагүй.
   { id: "notifications", label: "Notifications", Icon: Bell },
   { id: "security", label: "Security", Icon: Lock },
 ];
@@ -707,6 +711,8 @@ function Toggle({ label, desc, on, onToggle }) {
 }
 
 export default function Settings() {
+  // Нэр солиход sidebar/topbar дээрх нэр шууд шинэчлэгдэхийн тулд.
+  const { setUser } = useNav();
   const [tab, setTab] = useState("profile");
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -720,6 +726,7 @@ export default function Settings() {
   // Editable fields — seeded from the real fetched profile once it loads
   // (not hardcoded to a fake person), and this is what "Save changes"
   // actually persists.
+  const [fullName, setFullName] = useState("");
   const [headline, setHeadline] = useState("");
   const [rate, setRate] = useState("");
   const [bio, setBio] = useState("");
@@ -735,6 +742,7 @@ export default function Settings() {
       fetchClientProfile(token),
     ]).then(([user, freelancer, client]) => {
       setMe(user);
+      setFullName(user?.name || "");
       // A user could in principle have both profiles — default to editing
       // whichever one exists; freelancer wins if somehow both do.
       setIsFreelancer(!!freelancer || !client);
@@ -760,6 +768,15 @@ export default function Settings() {
     setSaving(true);
     setSaveError("");
     try {
+      // Нэр өөрчлөгдсөн бол эхлээд түүнийг хадгална — User.name нь
+      // freelancer/client профайлаас тусдаа мөр тул тусад нь дуудна.
+      const trimmedName = fullName.trim();
+      if (trimmedName && trimmedName !== me?.name) {
+        const updated = await updateAccountName(trimmedName);
+        setMe((prev) => ({ ...prev, name: updated.name }));
+        setUser((prev) => (prev ? { ...prev, name: updated.name } : prev));
+      }
+
       if (isFreelancer) {
         const nums = rate.match(/\d+/g)?.map(Number) || [];
         await saveFreelancerProfile(
@@ -881,9 +898,9 @@ export default function Settings() {
             <div className="grid gap-5 sm:grid-cols-2">
               <Field
                 label="Full name"
-                value={me?.name || ""}
-                disabled
-                title="Contact support to change your name"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Таны нэр"
               />
               <Field
                 label="Email"
@@ -938,14 +955,6 @@ export default function Settings() {
               onAdd={(item) => setFreelancerProfile((p) => ({ ...p, portfolio: [...(p.portfolio || []), item] }))}
               onRemove={(id) => setFreelancerProfile((p) => ({ ...p, portfolio: (p.portfolio || []).filter((i) => i.id !== id) }))}
             />
-          ) : (
-            <p className="text-[13px] text-white/45">Эхлээд "Profile" tab дээрээ мэдээллээ хадгална уу.</p>
-          )
-        )}
-
-        {tab === "gigs" && isFreelancer && (
-          freelancerProfile ? (
-            <GigManager />
           ) : (
             <p className="text-[13px] text-white/45">Эхлээд "Profile" tab дээрээ мэдээллээ хадгална уу.</p>
           )
