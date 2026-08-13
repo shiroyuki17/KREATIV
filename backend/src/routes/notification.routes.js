@@ -7,8 +7,30 @@ const router = Router();
 
 // Бусад route-ууд (job/payment/message) энэ функцээр бодит notification
 // үүсгэнэ — fire-and-forget байдлаар дуудна (эх үйлдлийг блоклохгүй).
+// Settings дээрх toggle бүр ЯГ ямар төрлийг хаадаг вэ. Энд байхгүй төрөл
+// (payment, review, system) нь заавал хүрэх ёстой мэдэгдэл тул тохиргоогүй —
+// мөнгө хөдөлсөн/маргаан шийдэгдсэнийг хэрэглэгч мэдэхгүй байж болохгүй.
+const PREF_FOR_TYPE = {
+  invite: 'notifyInvites',
+  job: 'notifyInvites',
+  message: 'notifyMessages',
+  milestone: 'notifyMilestones',
+};
+
 export async function createNotification({ userId, type, text, link }) {
   try {
+    const prefField = PREF_FOR_TYPE[type];
+    if (prefField) {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { [prefField]: true },
+      });
+      // Хэрэглэгч тухайн төрлийг хаасан бол мэдэгдэл огт үүсгэхгүй —
+      // toggle-ийг зөвхөн хадгалаад нөлөөгүй үлдээвэл өмнөхөөсөө сайн
+      // биш, зүгээр л илүү нарийн хууран мэхлэлт болно.
+      if (user && user[prefField] === false) return;
+    }
+
     const notification = await prisma.notification.create({ data: { userId, type, text, link } });
 
     // Socket-оор шууд түлхэнэ. Өмнө нь frontend-ийн LiveProvider нь 12
@@ -72,6 +94,44 @@ router.post('/read-all', requireAuth, async (req, res, next) => {
       data: { read: true },
     });
     res.json({ message: 'OK' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── Мэдэгдлийн тохиргоо ──
+// GET /:id гэсэн route байхгүй, PATCH ч өөр байхгүй тул `/prefs`-ийг
+// param route-ууд дарах эрсдэлгүй (Express дарааллаар тулгадаг).
+const PREF_FIELDS = ['notifyInvites', 'notifyMilestones', 'notifyMessages'];
+
+router.get('/prefs', requireAuth, async (req, res, next) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { notifyInvites: true, notifyMilestones: true, notifyMessages: true },
+    });
+    res.json(user || {});
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── PATCH /notifications/prefs ── body: { notifyInvites?, ... }
+router.patch('/prefs', requireAuth, async (req, res, next) => {
+  try {
+    const data = {};
+    for (const f of PREF_FIELDS) {
+      if (typeof req.body?.[f] === 'boolean') data[f] = req.body[f];
+    }
+    if (!Object.keys(data).length) {
+      return res.status(400).json({ error: 'Шинэчлэх тохиргоо байхгүй' });
+    }
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data,
+      select: { notifyInvites: true, notifyMilestones: true, notifyMessages: true },
+    });
+    res.json(user);
   } catch (err) {
     next(err);
   }

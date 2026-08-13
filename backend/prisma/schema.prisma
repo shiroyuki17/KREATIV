@@ -33,6 +33,13 @@ model User {
   passwordResetExpiresAt DateTime?
   phoneVerifiedAt   DateTime?
 
+  // Мэдэгдлийн тохиргоо. Settings дээрх toggle-ууд өмнө нь зөвхөн локал
+  // useState байсан тул refresh хийхэд л сэргэдэг, ямар ч нөлөө байгаагүй.
+  // Одоо эдгээрийг createNotification өөрөө хүндэтгэнэ.
+  notifyInvites   Boolean @default(true)
+  notifyMilestones Boolean @default(true)
+  notifyMessages  Boolean @default(true)
+
   refreshTokens     RefreshToken[]
   freelancerProfile FreelancerProfile?
   clientProfile     ClientProfile?

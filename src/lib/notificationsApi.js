@@ -18,3 +18,8 @@ export const markNotificationRead = (id, accessToken) =>
 
 export const markAllNotificationsRead = (accessToken) =>
   authedJson("/notifications/read-all", { method: "POST", accessToken });
+
+export const fetchNotificationPrefs = () => authedJson("/notifications/prefs");
+
+export const saveNotificationPrefs = (prefs) =>
+  authedJson("/notifications/prefs", { method: "PATCH", body: prefs });

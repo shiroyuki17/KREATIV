@@ -17,8 +17,11 @@ import {
   createPortfolioItem,
   deletePortfolioItem,
   avatarSrc as fileSrc,
+  fetchSessions,
+  revokeOtherSessions,
 } from "../../lib/authApi.js";
 import { fetchMyGigs, uploadGigImage, createGig, updateGig, deleteGig } from "../../lib/gigApi.js";
+import { fetchNotificationPrefs, saveNotificationPrefs } from "../../lib/notificationsApi.js";
 
 // FR-1.1 — жинхэнэ SMS gateway байхгүй тул демо горим: backend хариултад
 // demoCode-ыг шууд буцаадаг тул автоматаар талбарт бөглөж, ажиллаж байгааг
@@ -558,11 +561,128 @@ function Field({ label, disabled, ...props }) {
   );
 }
 
-function Toggle({ label, desc, defaultOn = true }) {
-  const [on, setOn] = useState(defaultOn);
+// Сервер дээр бодитоор хадгалагддаг мэдэгдлийн тохиргоо. Өмнө нь эдгээр
+// toggle-ууд зөвхөн локал useState байсан тул хуудсаа refresh хийхэд л
+// сэргэдэг, ямар ч мэдэгдлийг хаадаггүй байв. "AI match digest" гэсэн
+// дөрөв дэх toggle-ыг хассан: тийм digest илгээдэг код системд байхгүй.
+function NotificationPrefs() {
+  const [prefs, setPrefs] = useState(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetchNotificationPrefs()
+      .then(setPrefs)
+      .catch((err) => setError(err.message));
+  }, []);
+
+  // Тэр дор нь UI-г сольж (optimistic), сервер унавал эргүүлж буцаана.
+  async function toggle(field) {
+    const next = !prefs[field];
+    setPrefs((p) => ({ ...p, [field]: next }));
+    setError("");
+    try {
+      await saveNotificationPrefs({ [field]: next });
+    } catch (err) {
+      setPrefs((p) => ({ ...p, [field]: !next }));
+      setError(err.message);
+    }
+  }
+
+  if (error && !prefs) {
+    return <p className="text-[13px] text-red-400">{error}</p>;
+  }
+  if (!prefs) {
+    return <p className="text-[13px] text-white/40">Ачааллаж байна…</p>;
+  }
+
+  return (
+    <div className="space-y-3">
+      {error && <p className="text-[12.5px] text-red-400">{error}</p>}
+      <Toggle
+        label="New project invites"
+        desc="Get notified the moment a client invites you"
+        on={prefs.notifyInvites}
+        onToggle={() => toggle("notifyInvites")}
+      />
+      <Toggle
+        label="Milestone updates"
+        desc="Escrow funding, approvals, and releases"
+        on={prefs.notifyMilestones}
+        onToggle={() => toggle("notifyMilestones")}
+      />
+      <Toggle
+        label="Messages"
+        desc="Real-time alerts for new messages"
+        on={prefs.notifyMessages}
+        onToggle={() => toggle("notifyMessages")}
+      />
+      <p className="pt-1 text-[11.5px] text-white/35">
+        Төлбөр, үнэлгээ, маргааны мэдэгдлийг хаах боломжгүй.
+      </p>
+    </div>
+  );
+}
+
+// Бодит session-ууд (RefreshToken мөр тутам нэг). User-Agent/IP хадгалдаггүй
+// тул төхөөрөмжийн нэр/хот зохиохгүй — зөвхөн бодитоор мэдэх зүйлээ харуулна.
+function ActiveSessions() {
+  const [sessions, setSessions] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const load = () => fetchSessions().then((r) => setSessions(r.sessions)).catch((e) => setError(e.message));
+  useEffect(() => { load(); }, []);
+
+  async function revokeOthers() {
+    setBusy(true);
+    setError("");
+    try {
+      await revokeOtherSessions();
+      await load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-white/8 bg-white/[0.03] p-4">
+      <p className="text-[13px] font-semibold">Active sessions</p>
+      {error && <p className="mt-1.5 text-[12px] text-red-400">{error}</p>}
+      {sessions == null ? (
+        <p className="mt-1.5 text-[12px] text-white/40">Ачааллаж байна…</p>
+      ) : (
+        <>
+          <p className="mt-1.5 text-[12px] text-white/45">
+            {sessions.length} нэвтэрсэн төхөөрөмж
+          </p>
+          <div className="mt-2.5 space-y-1">
+            {sessions.map((s) => (
+              <p key={s.id} className="text-[11.5px] text-white/35">
+                Нэвтэрсэн: {new Date(s.createdAt).toLocaleString("mn-MN")}
+              </p>
+            ))}
+          </div>
+          {sessions.length > 1 && (
+            <button
+              onClick={revokeOthers}
+              disabled={busy}
+              className="mt-3 rounded-lg border border-white/12 bg-white/[0.04] px-3.5 py-2 text-[12px] font-semibold text-white/75 transition-colors hover:border-white/25 hover:text-white disabled:opacity-50"
+            >
+              {busy ? "Гаргаж байна…" : "Бусад төхөөрөмжөөс гарах"}
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function Toggle({ label, desc, on, onToggle }) {
   return (
     <button
-      onClick={() => setOn(!on)}
+      onClick={onToggle}
       className="flex w-full items-center justify-between gap-4 rounded-xl border border-white/8 bg-white/[0.03] p-4 text-left transition-colors hover:border-white/15"
       role="switch"
       aria-checked={on}
@@ -831,14 +951,7 @@ export default function Settings() {
           )
         )}
 
-        {tab === "notifications" && (
-          <div className="space-y-3">
-            <Toggle label="New project invites" desc="Get notified the moment a client invites you" />
-            <Toggle label="Milestone updates" desc="Escrow funding, approvals, and releases" />
-            <Toggle label="Messages" desc="Real-time alerts for new messages" />
-            <Toggle label="AI match digest" desc="A daily digest of briefs matched to your skills" defaultOn={false} />
-          </div>
-        )}
+        {tab === "notifications" && <NotificationPrefs />}
 
         {tab === "security" && (
           <div className="space-y-5">
@@ -860,13 +973,16 @@ export default function Settings() {
               <Field label="Current password" type="password" placeholder="••••••••" />
               <Field label="New password" type="password" placeholder="Min. 12 characters" />
             </div>
-            <Toggle label="Two-factor authentication" desc="Require a code from your authenticator app" />
-            <div className="rounded-xl border border-white/8 bg-white/[0.03] p-4">
-              <p className="text-[13px] font-semibold">Active sessions</p>
-              <p className="mt-1.5 text-[12px] text-white/45">
-                Windows · Chrome · Ulaanbaatar — <span className="text-mint">this device</span>
-              </p>
-            </div>
+            {/* "Two-factor authentication" toggle-ыг ХАССАН: ямар ч TOTP/SMS
+                хэрэгжилт байхгүй байсан тул хэрэглэгч уншаад "хамгаалалт
+                асаалаа" гэж бодох боловч бодитоор юу ч болдоггүй байв.
+                Байхгүй хамгаалалтыг байгаа мэт харуулахаас хасах нь дээр.
+
+                "Active sessions" нь "Windows · Chrome · Ulaanbaatar" гэсэн
+                хатуу бичсэн зохиомол мөр байв — хэн ямар төхөөрөмжөөс
+                орсноос үл хамааран ижил харагдана. Одоо RefreshToken-оос
+                бодит session-уудыг харуулна. */}
+            <ActiveSessions />
           </div>
         )}
 

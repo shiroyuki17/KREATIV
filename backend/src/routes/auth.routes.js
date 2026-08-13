@@ -178,6 +178,48 @@ router.post('/refresh', authLimiter, async (req, res, next) => {
   }
 });
 
+// ── GET /auth/sessions ── (бодит идэвхтэй session-ууд)
+//
+// Settings дээр өмнө нь "Windows · Chrome · Ulaanbaatar" гэсэн хатуу
+// бичсэн мөр байсан — хэрэглэгч ямар ч төхөөрөмжөөс орсон байсан ижил
+// харагдана. Бодит эх сурвалж нь RefreshToken: session тутамд нэг мөр.
+//
+// User-Agent/IP-г хадгалдаггүй тул төхөөрөмжийн нэр зохиохгүй — зөвхөн
+// бодитоор мэдэх зүйлээ (хэзээ нэвтэрсэн, хэзээ дуусах) харуулна.
+router.get('/sessions', requireAuth, async (req, res, next) => {
+  try {
+    const rows = await prisma.refreshToken.findMany({
+      where: { userId: req.user.id, revoked: false, expiresAt: { gt: new Date() } },
+      select: { id: true, createdAt: true, expiresAt: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ sessions: rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /auth/sessions/revoke-others ── body: { refreshToken }
+// Бусад бүх төхөөрөмжөөс гаргана. Аль нь "энэ төхөөрөмж" гэдгийг сервер
+// өөрөө мэдэх аргагүй тул клиент өөрийн refresh token-ыг илгээж, түүнээс
+// бусдыг хүчингүй болгоно (токен нь аль хэдийн клиентийн гарт байгаа тул
+// нэмэлт эрсдэл үүсгэхгүй).
+router.post('/sessions/revoke-others', requireAuth, async (req, res, next) => {
+  try {
+    const { data, error } = validate(refreshSchema, req.body);
+    if (error) return res.status(400).json({ error });
+
+    const keepHash = hashToken(data.refreshToken);
+    const result = await prisma.refreshToken.updateMany({
+      where: { userId: req.user.id, revoked: false, tokenHash: { not: keepHash } },
+      data: { revoked: true },
+    });
+    res.json({ revoked: result.count });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── POST /logout ── (refresh token-ийг хүчингүй болгох)
 router.post('/logout', async (req, res, next) => {
   try {

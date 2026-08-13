@@ -217,3 +217,13 @@ export async function uploadAvatar(file) {
   if (!res.ok) throw new ApiError(errorMessage(data), res.status);
   return data;
 }
+
+// ── Идэвхтэй session-ууд (Settings → Security) ──
+export const fetchSessions = () => apiJson("/auth/sessions");
+
+/** Бусад бүх төхөөрөмжөөс гаргана — өөрийн refresh token-ыг үлдээнэ. */
+export const revokeOtherSessions = () =>
+  apiJson("/auth/sessions/revoke-others", {
+    method: "POST",
+    body: { refreshToken: getRefreshToken() },
+  });
