@@ -228,6 +228,60 @@ router.get('/freelancer/:userId', async (req, res, next) => {
   }
 });
 
+// ── Дагах (Follow) ──
+// FindTalent/FreelancerProfile дээрх "Follow" товч нь өмнө нь onClick ч
+// байхгүй, зөвхөн харагдах зорилготой байв. Одоо бодит хавчуурга.
+
+// ── POST /profile/follows ── body: { userId }
+router.post('/follows', requireAuth, async (req, res, next) => {
+  try {
+    const targetId = req.body?.userId;
+    if (!targetId || targetId === req.user.id) {
+      return res.status(400).json({ error: 'Буруу хэрэглэгч' });
+    }
+    const target = await prisma.user.findUnique({ where: { id: targetId }, select: { id: true } });
+    if (!target) return res.status(404).json({ error: 'Хэрэглэгч олдсонгүй' });
+
+    // Давхар дарахад 409 өгөхгүй — үр дүн ижил (idempotent).
+    await prisma.follow.upsert({
+      where: { followerId_followingId: { followerId: req.user.id, followingId: targetId } },
+      update: {},
+      create: { followerId: req.user.id, followingId: targetId },
+    });
+    const followerCount = await prisma.follow.count({ where: { followingId: targetId } });
+    res.status(201).json({ following: true, userId: targetId, followerCount });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── DELETE /profile/follows/:userId ──
+router.delete('/follows/:userId', requireAuth, async (req, res, next) => {
+  try {
+    await prisma.follow.deleteMany({
+      where: { followerId: req.user.id, followingId: req.params.userId },
+    });
+    const followerCount = await prisma.follow.count({ where: { followingId: req.params.userId } });
+    res.json({ following: false, userId: req.params.userId, followerCount });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /profile/follows/mine ── (миний дагаж байгаа бүх userId)
+// Жагсаалтын хуудсууд нэг дуудлагаар бүх товчны төлөвийг мэдэхэд хэрэглэнэ.
+router.get('/follows/mine', requireAuth, async (req, res, next) => {
+  try {
+    const rows = await prisma.follow.findMany({
+      where: { followerId: req.user.id },
+      select: { followingId: true },
+    });
+    res.json({ following: rows.map((r) => r.followingId) });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── POST /profile/freelancer/portfolio/image ── (portfolio-д зориулсан зураг оруулах, URL буцаана)
 router.post('/freelancer/portfolio/image', requireAuth, (req, res, next) => {
   uploadPortfolioImage(req, res, async (err) => {

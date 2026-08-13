@@ -20,6 +20,14 @@ function formatFileSize(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+// Emoji сонгогчийн жагсаалт — гуравдагч сан татахгүй (bundle-д 100KB+
+// нэмэхээс аврах), ажлын чатад бодитоор хэрэглэгддэг 21-ийг гараар сонгов.
+const QUICK_EMOJI = [
+  "👍", "🙏", "🔥", "✅", "🎉", "👀", "💜",
+  "😀", "😅", "🤔", "😍", "😭", "🙌", "🤝",
+  "💡", "⚡", "📎", "⏰", "❤️", "😎", "🚀",
+];
+
 // FR-2.3 (light version, no API): Figma/GitHub линкийг таньж, урьдчилан
 // харах карт болгож харуулна — жинхэнэ Figma/GitHub API дуудахгүй, зөвхөн
 // URL хэлбэрээр таньж дизайны хувьд онцолно.
@@ -236,6 +244,8 @@ export default function Messages() {
   const [blockBusy, setBlockBusy] = useState(false);
   const [people, setPeople] = useState([]);
   const [peopleLoading, setPeopleLoading] = useState(false);
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const emojiRef = useRef(null);
   const menuRef = useRef(null);
   const typingStopTimer = useRef(null);
   const typingSentAt = useRef(0);
@@ -264,6 +274,16 @@ export default function Messages() {
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, [menuOpen]);
+
+  useEscapeKey(() => setEmojiOpen(false), emojiOpen);
+  useEffect(() => {
+    if (!emojiOpen) return;
+    const onClick = (e) => {
+      if (emojiRef.current && !emojiRef.current.contains(e.target)) setEmojiOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [emojiOpen]);
 
   // Хайлт бичихэд платформ дээрх хүмүүсийг хайж, шинэ чат эхлүүлэх
   // боломж санал болгоно (өмнө нь зөвхөн одоо байгаа яриа шүүгддэг байв).
@@ -832,9 +852,34 @@ export default function Messages() {
                     placeholder="Write a message…"
                     className="flex-1 bg-transparent text-[13.5px] outline-none placeholder:text-white/25"
                   />
-                  <button className="shrink-0 text-white/30 transition hover:text-white/60">
-                    <Smile className="h-4 w-4" />
-                  </button>
+                  {/* Өмнө нь onClick огт байхгүй, зүгээр л зурагтай товч
+                      байв. Жижиг emoji сонгогч — гадуур дарахад хаагдана. */}
+                  <div ref={emojiRef} className="relative shrink-0">
+                    <button
+                      onClick={() => setEmojiOpen((o) => !o)}
+                      aria-label="Insert emoji"
+                      className="text-white/30 transition hover:text-white/60"
+                    >
+                      <Smile className="h-4 w-4" />
+                    </button>
+                    {emojiOpen && (
+                      <div className="absolute bottom-[calc(100%+10px)] right-0 z-30 grid w-[212px] grid-cols-7 gap-0.5 rounded-xl border border-white/10 bg-[#1b1730] p-2 shadow-xl shadow-black/40">
+                        {QUICK_EMOJI.map((e) => (
+                          <button
+                            key={e}
+                            onClick={() => {
+                              setDraft((d) => d + e);
+                              setEmojiOpen(false);
+                              inputRef.current?.focus();
+                            }}
+                            className="rounded-lg py-1 text-[17px] leading-none transition-colors hover:bg-white/10"
+                          >
+                            {e}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <button
                   onClick={send}

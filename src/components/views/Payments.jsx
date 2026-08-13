@@ -416,14 +416,33 @@ export default function Payments() {
             </div>
 
             <div className="space-y-5">
+              {/* Өмнө нь энд "No payout method on file yet" + "Add a method"
+                  гэсэн карт байсан: систем нь payout method гэж юу ч
+                  хадгалдаггүй (гаргалтыг админ гараар боловсруулдаг) тул
+                  товч нь юу ч хийдэггүй, бичиг нь ч бодит биш байв. Оронд нь
+                  бодит урсгалыг тайлбарлаж, ажилладаг товч тавьсан. */}
               <div className="glass rounded-2xl p-6">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40">Payout method</p>
-                <div className="mt-4 flex flex-col items-center gap-2 rounded-xl border border-dashed border-white/15 bg-white/[0.02] p-6 text-center">
-                  <CreditCard className="h-6 w-6 text-white/30" />
-                  <p className="text-[12.5px] text-white/45">No payout method on file yet</p>
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40">Payouts</p>
+                <div className="mt-4 space-y-2.5">
+                  {[
+                    "Withdraw дарж дүнгээ оруулна",
+                    "Хүсэлт админд шалгагдана",
+                    "Батлагдмагц банк руу шилжинэ",
+                  ].map((step, i) => (
+                    <div key={step} className="flex items-start gap-2.5">
+                      <span className="mt-px flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-brand/15 text-[9.5px] font-bold text-brand-soft">
+                        {i + 1}
+                      </span>
+                      <p className="text-[12px] leading-relaxed text-white/55">{step}</p>
+                    </div>
+                  ))}
                 </div>
-                <button className="glass mt-4 w-full rounded-xl py-2.5 text-[12.5px] font-semibold text-white/75 transition-colors hover:border-white/25">
-                  Add a method
+                <button
+                  onClick={() => setShowWithdraw(true)}
+                  disabled={balance < minWithdrawal}
+                  className="glass mt-4 w-full rounded-xl py-2.5 text-[12.5px] font-semibold text-white/75 transition-colors hover:border-white/25 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {balance < minWithdrawal ? `Доод дүн $${minWithdrawal}` : "Withdraw"}
                 </button>
               </div>
 

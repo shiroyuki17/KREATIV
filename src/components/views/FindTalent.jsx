@@ -3,7 +3,7 @@ import Avatar from "../ui/Avatar.jsx";
 import { Search, Star, BadgeCheck, SlidersHorizontal, Sparkles, ChevronLeft, ChevronRight, AlertCircle } from "lucide-react";
 import { useNav } from "../../nav.jsx";
 import { avatarSrc } from "../../lib/authApi.js";
-import { fetchFreelancers } from "../../lib/talentApi.js";
+import { fetchFreelancers, followUser, unfollowUser, fetchMyFollowing } from "../../lib/talentApi.js";
 import AiPanel from "../ui/AiPanel.jsx";
 import { CardGridSkeleton } from "../ui/Skeleton.jsx";
 import Select from "../ui/Select.jsx";
@@ -38,7 +38,7 @@ function Stat({ label, value, star }) {
   );
 }
 
-function TalentCard({ f, nav, style }) {
+function TalentCard({ f, nav, style, isFollowing, onToggleFollow }) {
   const isNew = f.ratingAvg === 0 && f.jobsCompleted === 0;
   const topRated = f.ratingAvg >= 4.8;
   const avatarUrl = avatarSrc(f.avatarUrl);
@@ -56,8 +56,15 @@ function TalentCard({ f, nav, style }) {
           </div>
         </div>
         <div className="flex shrink-0 gap-2">
-          <button className="rounded-full border border-white/15 px-5 py-2.5 text-[13px] font-semibold text-white/80 transition-colors hover:border-white/30 hover:text-white">
-            Follow
+          <button
+            onClick={() => onToggleFollow(f.userId)}
+            className={
+              isFollowing
+                ? "rounded-full border border-brand/50 bg-brand/15 px-5 py-2.5 text-[13px] font-semibold text-brand-soft transition-colors"
+                : "rounded-full border border-white/15 px-5 py-2.5 text-[13px] font-semibold text-white/80 transition-colors hover:border-white/30 hover:text-white"
+            }
+          >
+            {isFollowing ? "Following" : "Follow"}
           </button>
           <button
             onClick={() => nav("messages", { withUserId: f.userId })}
@@ -129,6 +136,37 @@ export default function FindTalent() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // Дагаж байгаа хүмүүсийг НЭГ дуудлагаар татна — карт тус бүр өөрөө
+  // асуувал 12 хүсэлт зэрэг явна.
+  const [following, setFollowing] = useState(() => new Set());
+
+  useEffect(() => {
+    fetchMyFollowing()
+      .then((res) => setFollowing(new Set(res.following || [])))
+      .catch(() => {}); // нэвтрээгүй бол дагах товч ажиллахгүй, хуудас хэвийн
+  }, []);
+
+  // Хариу хүлээхгүй тэр дор нь UI-г сольж (optimistic), сервер унавал
+  // эргүүлж буцаана — дагах нь эргэлт буцалтгүй үйлдэл биш тул зохимжтой.
+  const toggleFollow = async (userId) => {
+    const wasFollowing = following.has(userId);
+    setFollowing((s) => {
+      const next = new Set(s);
+      wasFollowing ? next.delete(userId) : next.add(userId);
+      return next;
+    });
+    try {
+      if (wasFollowing) await unfollowUser(userId);
+      else await followUser(userId);
+    } catch (err) {
+      setFollowing((s) => {
+        const next = new Set(s);
+        wasFollowing ? next.add(userId) : next.delete(userId);
+        return next;
+      });
+      setError(err.message);
+    }
+  };
 
   useEffect(() => {
     if (params?.query) setQ(params.query);
@@ -230,7 +268,14 @@ export default function FindTalent() {
         {loading && <CardGridSkeleton count={5} className="mt-4 space-y-4" />}
         <div className="mt-4 space-y-4">
           {!loading && freelancers.map((f, i) => (
-            <TalentCard key={f.id} f={f} nav={nav} style={{ animationDelay: `${Math.min(i, 8) * 45}ms` }} />
+            <TalentCard
+              key={f.id}
+              f={f}
+              nav={nav}
+              style={{ animationDelay: `${Math.min(i, 8) * 45}ms` }}
+              isFollowing={following.has(f.userId)}
+              onToggleFollow={toggleFollow}
+            />
           ))}
         </div>
 

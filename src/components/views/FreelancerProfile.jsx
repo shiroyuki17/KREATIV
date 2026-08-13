@@ -3,7 +3,7 @@ import { ArrowLeft, BadgeCheck, Star, MessageSquare, Sparkles, Loader2, AlertCir
 import Magnet from "../fx/Magnet.jsx";
 import { useNav } from "../../nav.jsx";
 import { avatarSrc } from "../../lib/authApi.js";
-import { fetchFreelancerByUserId } from "../../lib/talentApi.js";
+import { fetchFreelancerByUserId, followUser, unfollowUser, fetchMyFollowing } from "../../lib/talentApi.js";
 import { fetchReviewsFor } from "../../lib/contractApi.js";
 
 // StandoutWork.jsx-ийн CAT_GRAD-тай ижил санаа — категори бүр өөрийн өнгөтэй
@@ -60,6 +60,7 @@ export default function FreelancerProfile() {
   const [loading, setLoading] = useState(!!params?.userId);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("about");
+  const [isFollowing, setIsFollowing] = useState(false);
 
   useEffect(() => {
     if (!params?.userId) return;
@@ -70,7 +71,24 @@ export default function FreelancerProfile() {
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
     fetchReviewsFor(params.userId).then((r) => setReviews(r.reviews)).catch(() => {});
+    // Нэвтрээгүй хүнд дагах товч ажиллахгүй ч хуудас хэвийн харагдана.
+    fetchMyFollowing()
+      .then((res) => setIsFollowing((res.following || []).includes(params.userId)))
+      .catch(() => {});
   }, [params?.userId]);
+
+  // Optimistic — сервер унавал төлөвийг эргүүлж буцаана.
+  async function toggleFollow() {
+    const was = isFollowing;
+    setIsFollowing(!was);
+    try {
+      if (was) await unfollowUser(params.userId);
+      else await followUser(params.userId);
+    } catch (err) {
+      setIsFollowing(was);
+      setError(err.message);
+    }
+  }
 
   // Профайл руу орох бүх зам userId дамжуулдаг (FindTalent, BentoShowcase,
   // StandoutWork, dashboard, mobile tab). Өмнө нь userId байхгүй үед mock
@@ -194,7 +212,13 @@ export default function FreelancerProfile() {
               ) : (
                 <>
                   <Magnet strength={0.15} className="w-full">
-                    <button className="w-full rounded-xl bg-brand py-3.5 text-[14px] font-semibold glow-brand transition-shadow">
+                    {/* Өмнө нь onClick огт байхгүй байсан — хуудасны ГОЛ
+                        товч дарахад юу ч болдоггүй байв. Хөлслөх урсгал нь
+                        зар нийтлэхээс эхэлдэг тул тийш чиглүүлнэ. */}
+                    <button
+                      onClick={() => nav("post-job")}
+                      className="w-full rounded-xl bg-brand py-3.5 text-[14px] font-semibold glow-brand transition-shadow"
+                    >
                       Hire {f.name.split(" ")[0]}
                     </button>
                   </Magnet>
@@ -206,8 +230,15 @@ export default function FreelancerProfile() {
                       <MessageSquare className="h-4 w-4" />
                       Message
                     </button>
-                    <button className="glass rounded-xl px-4 py-3 text-[13.5px] font-semibold text-white/70 transition-colors hover:border-white/25 hover:text-white">
-                      Follow
+                    <button
+                      onClick={toggleFollow}
+                      className={
+                        isFollowing
+                          ? "rounded-xl border border-brand/50 bg-brand/15 px-4 py-3 text-[13.5px] font-semibold text-brand-soft transition-colors"
+                          : "glass rounded-xl px-4 py-3 text-[13.5px] font-semibold text-white/70 transition-colors hover:border-white/25 hover:text-white"
+                      }
+                    >
+                      {isFollowing ? "Following" : "Follow"}
                     </button>
                   </div>
                 </>
