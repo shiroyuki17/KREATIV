@@ -14,10 +14,12 @@ const envSchema = z.object({
   // ── Google OAuth (заавал биш — тохируулаагүй бол demo акаунтаар нэвтэрнэ) ──
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
-  // Төгсгөлийн "/"-ийг зайлуулна — Google-д бүртгэсэн URI яг үзэгтэй биш
-  // байвал OAuth redirect_uri_mismatch өгдөг тул Render дээр хэрэглэгч
-  // санамсаргүй "/"-тэй бичсэн ч Google руу үргэлж ижил хэлбэрээр илгээнэ.
-  GOOGLE_REDIRECT_URI: z.string().optional().transform((v) => v?.replace(/\/+$/, '')),
+  // ЯГ ХЭВЭЭР нь дамжуулна — Google-ийн redirect_uri тулгалт нь тэмдэгт
+  // тэмдэгтээрээ таарах шаардлагатай. Энд төгсгөлийн "/"-ийг зайлуулж
+  // үзсэн боловч Google Cloud Console-д бүртгэсэн хаяг нь "/"-тэй байсан
+  // тул харин ч redirect_uri_mismatch өгч эхэлсэн — нормчлол хийхгүй,
+  // Console-д бүртгэсэнтэй яг ижлээр Render дээр тохируулах ёстой.
+  GOOGLE_REDIRECT_URI: z.string().optional(),
   FRONTEND_URL: z.string().default('http://localhost:5174'),
 
   // ── SMTP (заавал биш — тохируулаагүй бол Ethereal демо inbox ашиглана) ──
