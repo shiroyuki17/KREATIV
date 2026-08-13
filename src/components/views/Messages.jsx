@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Search, Send, Info, X, AlertCircle, ShieldAlert, Phone, Video, MoreHorizontal, Smile, Paperclip, Check, CheckCheck, FileText, FileArchive, Figma, Github, Download, Loader2, Ban } from "lucide-react";
+import { Search, Send, Info, X, AlertCircle, ShieldAlert, Phone, Video, MoreHorizontal, Smile, Paperclip, Check, CheckCheck, FileText, FileArchive, Figma, Github, Download, Loader2, Ban, Image as ImageIcon } from "lucide-react";
 import { useNav } from "../../nav.jsx";
 import { getAccessToken, avatarSrc, API_BASE } from "../../lib/authApi.js";
 import { fetchConversations, startConversation, fetchThread, sendMessage, sendFile, blockUser, unblockUser, searchPeople } from "../../lib/messagesApi.js";
@@ -126,7 +126,10 @@ function Avatar({ name, avatarUrl, size = "md", online = false }) {
   );
 }
 
-function DetailsPanel({ contact, onVoiceCall, onVideoCall }) {
+function DetailsPanel({ contact, messages = [], onVoiceCall, onVideoCall, onViewProfile }) {
+  // Энэ ярианд солилцсон БОДИТ файлууд — Message мөрүүдээс шүүнэ, тусад нь
+  // хүсэлт явуулах шаардлагагүй (thread аль хэдийн ачаалагдсан).
+  const attachments = messages.filter((m) => m.fileUrl);
   // FR-2.1: skills/stats нь өмнө нь бүх хэн нэгэнд ижилхэн "98% Success /
   // 142 Projects" гэсэн ХАРДКОД байсан — одоо тухайн хэрэглэгчийн бодит
   // freelancer профайлаас татна. Client-той чатлаж байгаа бол (freelancer
@@ -161,6 +164,12 @@ function DetailsPanel({ contact, onVoiceCall, onVideoCall }) {
           <span className="mt-1 text-[11px] text-white/35">Offline</span>
         )}
         {profile?.headline && <p className="mt-2 text-[12px] text-white/45">{profile.headline}</p>}
+        <button
+          onClick={onViewProfile}
+          className="mt-3 rounded-lg border border-white/12 bg-white/[0.04] px-3.5 py-1.5 text-[11.5px] font-semibold text-white/70 transition-colors hover:border-white/25 hover:text-white"
+        >
+          View profile
+        </button>
       </div>
 
       <div className="h-px mx-5" style={{ background: "rgba(255,255,255,0.06)" }} />
@@ -206,8 +215,46 @@ function DetailsPanel({ contact, onVoiceCall, onVideoCall }) {
         </>
       ) : null}
 
+      {/* Энэ ярианд илгээсэн файлууд. Чат дотор нь дээш гүйлгэж хайхын
+          оронд нэг дор жагсаана — бүгд бодит Message мөрөөс гаралтай. */}
+      {attachments.length > 0 && (
+        <>
+          <div className="p-5">
+            <p className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-white/30">
+              Attachments
+              <span className="rounded-full bg-white/8 px-1.5 py-0.5 text-[10px] text-white/50">{attachments.length}</span>
+            </p>
+            <div className="space-y-1.5">
+              {attachments.map((m) => (
+                <a
+                  key={m.id}
+                  href={fileSrc(m.fileUrl)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2.5 rounded-lg border border-white/8 bg-white/[0.03] px-2.5 py-2 transition-colors hover:border-white/20"
+                >
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/8 text-white/60">
+                    {m.fileType?.startsWith("image/")
+                      ? <ImageIcon className="h-3.5 w-3.5" />
+                      : m.fileType === "application/pdf"
+                      ? <FileText className="h-3.5 w-3.5" />
+                      : <FileArchive className="h-3.5 w-3.5" />}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[11.5px] font-medium text-white/80">{m.fileName}</span>
+                    <span className="block text-[10px] text-white/35">{formatFileSize(m.fileSize)}</span>
+                  </span>
+                  <Download className="h-3.5 w-3.5 shrink-0 text-white/30" />
+                </a>
+              ))}
+            </div>
+          </div>
+          <div className="h-px mx-5" style={{ background: "rgba(255,255,255,0.06)" }} />
+        </>
+      )}
+
       {/* Actions */}
-      <div className="space-y-2 p-5 pt-0">
+      <div className="space-y-2 p-5">
         <button
           onClick={onVoiceCall}
           className="flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-[13px] font-semibold transition-all hover:brightness-110"
@@ -226,7 +273,7 @@ function DetailsPanel({ contact, onVoiceCall, onVideoCall }) {
 }
 
 export default function Messages() {
-  const { params, user } = useNav();
+  const { params, user, nav } = useNav();
   const myId = user?.id;
   const [conversations, setConversations] = useState([]);
   const [activeId, setActiveId] = useState(null);
@@ -646,9 +693,14 @@ export default function Messages() {
                       )}
                     </span>
                     <span className="mt-0.5 flex items-center justify-between gap-2">
+                      {/* Файл зурвасын text нь хоосон тул зүгээр л
+                          хэвлэвэл мөр хоосон харагдана — файлын нэрийг нь
+                          харуулна. */}
                       <span className="truncate text-[12px] text-white/40">
                         {c.lastMessage
-                          ? `${c.lastMessage.senderId === myId ? "You: " : ""}${c.lastMessage.text}`
+                          ? `${c.lastMessage.senderId === myId ? "You: " : ""}${
+                              c.lastMessage.text || (c.lastMessage.fileName ? `📎 ${c.lastMessage.fileName}` : "📎 Файл")
+                            }`
                           : "No messages yet"}
                       </span>
                       {c.unread > 0 && (
@@ -919,8 +971,10 @@ export default function Messages() {
           <div className="hidden xl:block w-[260px] shrink-0" style={{ borderLeft: "1px solid rgba(255,255,255,0.06)" }}>
             <DetailsPanel
               contact={active.with}
+              messages={thread}
               onVoiceCall={() => call.startCall(active.with.id, activeId, false)}
               onVideoCall={() => call.startCall(active.with.id, activeId, true)}
+              onViewProfile={() => nav("profile", { userId: active.with.id })}
             />
           </div>
         )}
@@ -950,8 +1004,10 @@ export default function Messages() {
             </div>
             <DetailsPanel
               contact={active.with}
+              messages={thread}
               onVoiceCall={() => call.startCall(active.with.id, activeId, false)}
               onVideoCall={() => call.startCall(active.with.id, activeId, true)}
+              onViewProfile={() => nav("profile", { userId: active.with.id })}
             />
           </div>
         </>
