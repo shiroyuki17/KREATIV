@@ -259,6 +259,41 @@ router.post('/conversations/:id/attachments', requireAuth, (req, res, next) => {
   });
 });
 
+// ── GET /messages/people?q= ── (шинэ чат эхлүүлэхийн тулд хүн хайх)
+//
+// Хайлтын талбар өмнө нь ЗӨВХӨН одоо байгаа яриануудыг шүүдэг байсан тул
+// шинэ хэрэглэгчтэй чат эхлүүлэх ямар ч зам байсангүй: яриа 0 байхад юу
+// бичсэн ч "No results found" гардаг байв.
+router.get('/people', requireAuth, async (req, res, next) => {
+  try {
+    const q = String(req.query.q || '').trim();
+    if (q.length < 2) return res.json({ people: [] });
+
+    // Блоклосон/блоклуулсан хүмүүсийг хайлтаас бүрэн хасна.
+    const blocks = await prisma.block.findMany({
+      where: { OR: [{ blockerId: req.user.id }, { blockedId: req.user.id }] },
+      select: { blockerId: true, blockedId: true },
+    });
+    const hidden = new Set(blocks.flatMap((b) => [b.blockerId, b.blockedId]));
+    hidden.add(req.user.id);
+
+    const users = await prisma.user.findMany({
+      where: {
+        name: { contains: q, mode: 'insensitive' },
+        isActive: true,
+        id: { notIn: [...hidden] },
+      },
+      select: { id: true, name: true, avatarUrl: true },
+      take: 8,
+      orderBy: { name: 'asc' },
+    });
+
+    res.json({ people: users });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── POST /messages/blocks ── (хэрэглэгч блоклох, body: { userId })
 router.post('/blocks', requireAuth, async (req, res, next) => {
   try {

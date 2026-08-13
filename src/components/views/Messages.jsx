@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Search, Send, Info, X, AlertCircle, ShieldAlert, Phone, Video, MoreHorizontal, Smile, Paperclip, Check, CheckCheck, FileText, FileArchive, Figma, Github, Download, Loader2, Ban } from "lucide-react";
 import { useNav } from "../../nav.jsx";
 import { getAccessToken, avatarSrc, API_BASE } from "../../lib/authApi.js";
-import { fetchConversations, startConversation, fetchThread, sendMessage, sendFile, blockUser, unblockUser } from "../../lib/messagesApi.js";
+import { fetchConversations, startConversation, fetchThread, sendMessage, sendFile, blockUser, unblockUser, searchPeople } from "../../lib/messagesApi.js";
 import { fetchFreelancerByUserId } from "../../lib/talentApi.js";
 import { connectSocket, getSocket } from "../../lib/socket.js";
 import { useEscapeKey } from "../../hooks/useEscapeKey.js";
@@ -234,6 +234,8 @@ export default function Messages() {
   const [peerTyping, setPeerTyping] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [blockBusy, setBlockBusy] = useState(false);
+  const [people, setPeople] = useState([]);
+  const [peopleLoading, setPeopleLoading] = useState(false);
   const menuRef = useRef(null);
   const typingStopTimer = useRef(null);
   const typingSentAt = useRef(0);
@@ -262,6 +264,34 @@ export default function Messages() {
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, [menuOpen]);
+
+  // Хайлт бичихэд платформ дээрх хүмүүсийг хайж, шинэ чат эхлүүлэх
+  // боломж санал болгоно (өмнө нь зөвхөн одоо байгаа яриа шүүгддэг байв).
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (q.length < 2) { setPeople([]); return; }
+    setPeopleLoading(true);
+    const t = setTimeout(() => {
+      searchPeople(q)
+        .then((res) => setPeople(res.people || []))
+        .catch(() => setPeople([]))
+        .finally(() => setPeopleLoading(false));
+    }, 300);
+    return () => { clearTimeout(t); setPeopleLoading(false); };
+  }, [searchQuery]);
+
+  // Хайлтаас олдсон хүнтэй чат нээх (эсвэл аль хэдийн байгаа руу үсрэх).
+  async function openChatWith(userId) {
+    try {
+      const convo = await startConversation(userId);
+      const res = await fetchConversations();
+      setConversations(res.conversations);
+      setActiveId(convo.id);
+      setSearchQuery("");
+    } catch (err) {
+      setError(err.message);
+    }
+  }
 
   // Ярианы жагсаалтыг дахин татахгүйгээр тухайн хүний блок төлөвийг шинэчилнэ.
   async function toggleBlock() {
@@ -543,15 +573,35 @@ export default function Messages() {
 
           {/* Conversations List */}
           <div className="flex-1 overflow-y-auto">
-            {filteredConvos.length === 0 && (
+            {filteredConvos.length === 0 && !searchQuery && (
               <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
                 <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl"
                   style={{ background: "rgba(123, 57, 252, 0.08)" }}>
                   <Search className="h-5 w-5" style={{ color: "rgba(123, 57, 252, 0.5)" }} />
                 </div>
                 <p className="text-[12.5px] text-white/40">
-                  {searchQuery ? "No results found" : "No conversations yet — message a freelancer or client to start one."}
+                  No conversations yet — search a name above to start one.
                 </p>
+              </div>
+            )}
+
+            {/* Хайлтаар олдсон хүмүүс — шинэ чат эхлүүлэх */}
+            {searchQuery.trim().length >= 2 && (
+              <div className="border-b border-white/6 pb-2">
+                <p className="px-4 pb-1.5 pt-3 text-[10px] font-bold uppercase tracking-widest text-white/30">
+                  {peopleLoading ? "Хайж байна…" : people.length ? "Шинэ чат эхлүүлэх" : "Хүн олдсонгүй"}
+                </p>
+                {people.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => openChatWith(p.id)}
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left transition-colors hover:bg-white/5"
+                  >
+                    <Avatar name={p.name} avatarUrl={p.avatarUrl} size="sm" />
+                    <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-white/85">{p.name}</span>
+                    <Send className="h-3.5 w-3.5 shrink-0 text-white/25" />
+                  </button>
+                ))}
               </div>
             )}
             {filteredConvos.map((c) => {

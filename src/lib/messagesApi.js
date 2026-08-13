@@ -40,6 +40,9 @@ export async function sendFile(conversationId, file) {
 export const fetchMessageUnreadCount = (accessToken) =>
   authedJson("/messages/unread-count", { accessToken });
 
+export const searchPeople = (q) =>
+  authedJson(`/messages/people?q=${encodeURIComponent(q)}`);
+
 export const blockUser = (userId) =>
   authedJson("/messages/blocks", { method: "POST", body: { userId } });
 
