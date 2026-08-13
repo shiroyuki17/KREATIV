@@ -592,16 +592,16 @@ function NotifBell({ collapsed, badge, onViewAll, onNavigate, align, buttonClass
   );
 }
 
-function Brand({ go, collapsed }) {
+function Brand({ go, collapsed, homePage }) {
   if (collapsed) {
     return (
-      <button onClick={() => go("home")} className="flex justify-center py-5 font-display text-lg font-bold tracking-tight" aria-label="KREATIV home">
+      <button onClick={() => go(homePage)} className="flex justify-center py-5 font-display text-lg font-bold tracking-tight" aria-label="KREATIV home">
         <span className="bg-gradient-to-r from-brand-soft to-neon bg-clip-text text-transparent">K</span>
       </button>
     );
   }
   return (
-    <button onClick={() => go("home")} className="flex items-center gap-2 px-5 py-5 font-display text-lg tracking-tight">
+    <button onClick={() => go(homePage)} className="flex items-center gap-2 px-5 py-5 font-display text-lg tracking-tight">
       <span className="font-bold">KRE</span>
       <span className="bg-gradient-to-r from-brand-soft to-neon bg-clip-text font-bold text-transparent">ATIV</span>
     </button>
@@ -727,6 +727,9 @@ export default function AppShell({ children }) {
     });
   };
   const notifBadge = unread.notifications || 0;
+  // Логог дарахад "home" руу явбал App.jsx нэвтэрсэн хэрэглэгчийг шууд
+  // дашбоард руу нь буцаана — дэмий нэг үсрэлт. Шууд дашбоард руу нь заана.
+  const homePage = DASHBOARD_FOR[mode] || DASHBOARD_FOR.freelancer;
 
   const go = (p, params) => { setOpen(false); nav(p, params); };
 
@@ -739,7 +742,7 @@ export default function AppShell({ children }) {
     <div className={`min-h-screen bg-ink text-white lg:grid ${collapsed ? "lg:grid-cols-[76px_1fr]" : "lg:grid-cols-[264px_1fr]"}`}>
       {/* Desktop sidebar — always shows icon + label, no more hover-to-reveal */}
       <aside className={`sticky top-0 z-30 hidden h-screen flex-col border-r border-white/8 bg-[#141517]/95 lg:flex ${collapsed ? "w-[76px]" : "w-[264px]"}`}>
-        <Brand go={go} collapsed={collapsed} />
+        <Brand go={go} collapsed={collapsed} homePage={homePage} />
         <ModeSwitcher collapsed={collapsed} mode={mode} user={user} onSwitch={switchMode} />
         <NavList page={page} go={go} collapsed={collapsed} role={role} mode={mode} />
         <button
@@ -780,7 +783,7 @@ export default function AppShell({ children }) {
           <div className="fixed inset-0 z-[45] bg-black/50 lg:hidden" onClick={() => setOpen(false)} />
           <aside className="fixed inset-y-0 left-0 z-50 flex w-[280px] max-w-[85vw] animate-feed-in flex-col border-r border-white/10 bg-[#141517] lg:hidden">
             <div className="flex items-center justify-between pr-3">
-              <Brand go={go} collapsed={false} />
+              <Brand go={go} collapsed={false} homePage={homePage} />
               <button onClick={() => setOpen(false)} aria-label="Close menu" className="rounded-lg p-2 text-white/50 hover:text-white">
                 <X className="h-5 w-5" />
               </button>

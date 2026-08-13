@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect } from "react";
 import { MotionConfig } from "framer-motion";
-import { NavProvider, useNav } from "./nav.jsx";
+import { NavProvider, useNav, DASHBOARD_FOR } from "./nav.jsx";
 import { LiveProvider } from "./live.jsx";
 import { hasSession, stashRedirect } from "./lib/authApi.js";
 import LiveToasts from "./components/LiveToasts.jsx";
@@ -161,7 +161,18 @@ function RequireAuth() {
 }
 
 function Shell() {
-  const { page } = useNav();
+  const { page, user, authReady, mode, nav } = useNav();
+
+  // Нэвтэрсэн хэрэглэгчийг landing page дээр барихгүй — root хаяг руу орох,
+  // sidebar-ийн логог дарах бүрд маркетингийн хуудас гарч, дашбоард руугаа
+  // гараар буцах шаардлагатай байв. authReady болтол хүлээнэ: эс тэгвээс
+  // эхний хормын "хэрэглэгч алга" төлөвөөр буруу шийдэж анивчина.
+  useEffect(() => {
+    if (page === "home" && authReady && user) {
+      nav(DASHBOARD_FOR[mode] || DASHBOARD_FOR.freelancer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, authReady, user, mode]);
 
   // Full-screen flows — no site chrome
   if (page === "auth" || page === "auth-callback" || page === "reset-password" || page === "onboarding") {
