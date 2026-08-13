@@ -73,6 +73,12 @@ function GigCard({ g, nav, i = 0 }) {
 
 const GIG_CATEGORIES = ["Design", "Dev", "AI", "Motion", "Writing", "Marketing"];
 
+// Settings.jsx-ийн Field component-тэй ижил хэв маяг — сайт даяар формын
+// label/input нэг л харагдалттай байх ёстой.
+const LABEL = "text-[11px] font-semibold uppercase tracking-widest text-white/40";
+const INPUT =
+  "w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[14px] outline-none transition-colors placeholder:text-white/25 focus:border-brand/50";
+
 // Үйлчилгээ нэмэх модал. Settings → My Services-ийн формтой ижил
 // талбарууд, ижил validation — гэхдээ хэрэглэгч зар үзэж байгаа хуудсаа
 // орхихгүйгээр нэмнэ.
@@ -154,64 +160,116 @@ function CreateGigModal({ onClose, onCreated }) {
           </p>
         )}
 
-        <div className="mt-4 space-y-3">
-          <div className="flex flex-wrap gap-2">
-            {imageUrls.map((u) => (
-              <img key={u} src={avatarSrc(u)} alt="" className="h-16 w-16 rounded-xl object-cover" />
-            ))}
-            <button
-              onClick={() => fileRef.current?.click()}
-              disabled={uploading}
-              className="flex h-16 w-16 items-center justify-center rounded-xl border border-dashed border-white/20 text-white/40 transition-colors hover:border-brand/50 hover:text-white/70 disabled:opacity-50"
-            >
-              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            </button>
-            <input ref={fileRef} type="file" accept="image/png,image/jpeg" onChange={onImageSelected} className="hidden" />
+        <div className="mt-5 space-y-5">
+          <div>
+            <p className={LABEL}>Зураг</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {imageUrls.map((u) => (
+                <div key={u} className="relative">
+                  <img src={avatarSrc(u)} alt="" className="h-[68px] w-[68px] rounded-xl object-cover" />
+                  <button
+                    onClick={() => setImageUrls((arr) => arr.filter((x) => x !== u))}
+                    aria-label="Зураг хасах"
+                    className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-white/15 bg-[#1b1730] text-white/60 transition-colors hover:text-white"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                className="flex h-[68px] w-[68px] flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-white/20 text-white/40 transition-colors hover:border-brand/50 hover:text-white/70 disabled:opacity-50"
+              >
+                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                {!uploading && <span className="text-[9.5px] font-medium">Нэмэх</span>}
+              </button>
+              <input ref={fileRef} type="file" accept="image/png,image/jpeg" onChange={onImageSelected} className="hidden" />
+            </div>
+            <p className="mt-1.5 text-[11px] text-white/30">PNG эсвэл JPG · заавал биш</p>
           </div>
 
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder='Гарчиг — e.g. "I will design a modern minimalist logo"'
-            className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[13.5px] outline-none placeholder:text-white/30 focus:border-brand/50"
-          />
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={4}
-            placeholder="Юу багтдаг, хэдэн засвар орно, гэх мэт дэлгэрэнгүй"
-            className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[13.5px] outline-none placeholder:text-white/30 focus:border-brand/50"
-          />
-          <div className="grid grid-cols-3 gap-2">
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-3 text-[13px] text-white/80 outline-none focus:border-brand/50 [&>option]:bg-[#1b1730]"
-            >
-              {GIG_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
+          <label className="block">
+            <span className={LABEL}>Гарчиг</span>
             <input
-              value={price}
-              onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, ""))}
-              placeholder="Үнэ ($)"
-              className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-3 text-[13px] outline-none placeholder:text-white/30 focus:border-brand/50"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="I will design a modern minimalist logo"
+              className={`${INPUT} mt-2`}
             />
-            <input
-              value={deliveryDays}
-              onChange={(e) => setDeliveryDays(e.target.value.replace(/[^0-9]/g, ""))}
-              placeholder="Хугацаа (өдөр)"
-              className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-3 text-[13px] outline-none placeholder:text-white/30 focus:border-brand/50"
+          </label>
+
+          <label className="block">
+            <span className={LABEL}>Тайлбар</span>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={4}
+              placeholder="Юу багтдаг, хэдэн засвар орно, ямар файл хүлээлгэн өгөх вэ…"
+              className={`${INPUT} mt-2 resize-none`}
             />
+            <span className="mt-1.5 block text-[11px] text-white/30">{description.trim().length}/20 тэмдэгт доод хэмжээ</span>
+          </label>
+
+          <div>
+            <p className={LABEL}>Категори</p>
+            <div className="mt-2">
+              {/* Native <select>-ийн оронд custom Select: browser-ийн
+                  өгөгдмөл цагаан dropdown нь бараан theme-тэй зөрчилддөг. */}
+              <Select
+                value={category}
+                onChange={setCategory}
+                options={GIG_CATEGORIES.map((c) => ({ value: c, label: c }))}
+                className="w-full [&>button]:w-full [&>button]:justify-between [&>button]:rounded-xl [&>button]:text-[14px]"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className={LABEL}>Үнэ (USD)</span>
+              <div className="relative mt-2">
+                <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[14px] text-white/35">$</span>
+                <input
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, ""))}
+                  inputMode="numeric"
+                  placeholder="25"
+                  className={`${INPUT} pl-8`}
+                />
+              </div>
+            </label>
+            <label className="block">
+              <span className={LABEL}>Хүргэх хугацаа</span>
+              <div className="relative mt-2">
+                <input
+                  value={deliveryDays}
+                  onChange={(e) => setDeliveryDays(e.target.value.replace(/[^0-9]/g, ""))}
+                  inputMode="numeric"
+                  placeholder="3"
+                  className={`${INPUT} pr-14`}
+                />
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[13px] text-white/35">өдөр</span>
+              </div>
+            </label>
           </div>
         </div>
 
-        <button
-          onClick={submit}
-          disabled={saving}
-          className="mt-5 w-full rounded-xl bg-brand py-3 text-[13.5px] font-bold text-fg-1 glow-brand disabled:opacity-50"
-        >
-          {saving ? "Нэмж байна…" : "Үйлчилгээ нэмэх"}
-        </button>
+        <div className="mt-6 flex gap-2.5 border-t border-white/8 pt-5">
+          <button
+            onClick={onClose}
+            className="rounded-xl border border-white/12 bg-white/[0.03] px-5 py-3 text-[13.5px] font-semibold text-white/70 transition-colors hover:border-white/25 hover:text-white"
+          >
+            Болих
+          </button>
+          <button
+            onClick={submit}
+            disabled={saving}
+            className="flex-1 rounded-xl bg-brand py-3 text-[13.5px] font-bold text-fg-1 glow-brand disabled:opacity-50"
+          >
+            {saving ? "Нэмж байна…" : "Үйлчилгээ нэмэх"}
+          </button>
+        </div>
       </div>
     </div>
   );
