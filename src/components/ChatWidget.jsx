@@ -31,12 +31,11 @@ const DYNAMIC_RULES = [
       if (!res.ok) throw new Error("plans unavailable");
       const { plans } = await res.json();
       const by = Object.fromEntries(plans.map((p) => [p.key, p]));
-      if (!by.starter || !by.pro || !by.enterprise) throw new Error("plans incomplete");
+      if (!by.starter || !by.pro) throw new Error("plans incomplete");
       return t("cw.fees", {
         starter: by.starter.commissionPct,
         pro: by.pro.commissionPct,
         proPrice: by.pro.monthlyUsd,
-        enterprise: by.enterprise.commissionPct,
       });
     },
   },
@@ -79,7 +78,7 @@ const RULES = [
 // Тэр үед {proPrice} гэх орлуулга дүүргэгдэхгүй тул шимтгэлийн хувийг
 // backend-ийн PLANS-тай таарсан утгуудаар бөглөнө — эдгээр нь Stripe-аас
 // хамаардаггүй тогтмолууд.
-const STATIC_FEE_VARS = { starter: 10, pro: 5, enterprise: 2, proPrice: "29.99" };
+const STATIC_FEE_VARS = { starter: 10, pro: 5, proPrice: "29.99" };
 
 async function reply(input, t) {
   for (const r of DYNAMIC_RULES) {

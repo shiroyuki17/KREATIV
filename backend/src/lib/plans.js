@@ -56,26 +56,6 @@ export const PLANS = {
     popular: true,
     purchasable: true,
   },
-  enterprise: {
-    key: 'enterprise',
-    name: 'Enterprise',
-    tagline: 'For scaled hiring',
-    // Үнэ нь хэлэлцээрээр — self-serve худалдан авалт байхгүй тул
-    // Checkout-д огт ордоггүй, "Talk to sales" руу чиглүүлнэ.
-    monthlyUsd: null,
-    yearlyUsd: null,
-    commissionPct: 2,
-    maxActiveProposals: null,
-    features: [
-      '2% escrow commission',
-      'Dedicated success manager',
-      'Custom contracts & SSO',
-      'API access',
-      'White-glove onboarding',
-    ],
-    cta: 'Talk to sales',
-    purchasable: false,
-  },
 };
 
 export const DEFAULT_PLAN_KEY = 'starter';

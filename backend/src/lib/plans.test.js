@@ -40,7 +40,6 @@ describe('publicPlans', () => {
   it('үнэгүй/захиалгат бус багцууд хэзээ ч purchasable биш', () => {
     const plans = publicPlans();
     expect(plans.find((p) => p.key === 'starter').purchasable).toBe(false);
-    expect(plans.find((p) => p.key === 'enterprise').purchasable).toBe(false);
   });
 
   it('комиссын хувь нь plans.js-ийн эх сурвалжтай таарна', () => {
@@ -53,6 +52,8 @@ describe('publicPlans', () => {
 describe('stripePriceIdFor', () => {
   it('Pro биш багцад Price ID байхгүй', () => {
     expect(stripePriceIdFor('starter', 'monthly')).toBeNull();
+    // Багцын жагсаалтад байхгүй түлхүүр ирсэн ч (жишээ нь хуучин
+    // захиалгын planKey) Price ID зохиож гаргахгүй.
     expect(stripePriceIdFor('enterprise', 'yearly')).toBeNull();
   });
 });

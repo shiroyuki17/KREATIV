@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, Feather, Rocket, Building2, Loader2, AlertCircle } from "lucide-react";
+import { Check, Feather, Rocket, Loader2, AlertCircle } from "lucide-react";
 import StarBorder from "../fx/StarBorder.jsx";
 import Magnet from "../fx/Magnet.jsx";
 import BlurText from "../fx/BlurText.jsx";
@@ -8,15 +8,13 @@ import { useT } from "../../i18n.jsx";
 import { hasSession } from "../../lib/authApi.js";
 import { fetchPlans, startSubscriptionCheckout } from "../../lib/billingApi.js";
 
-const PLAN_ICON = { Starter: Feather, Pro: Rocket, Enterprise: Building2 };
+const PLAN_ICON = { Starter: Feather, Pro: Rocket };
 
 // Багцууд одоо GET /plans-аас ирнэ (backend/src/lib/plans.js). Өмнө нь
 // src/data/mock.js-д hardcode байсан бөгөөд товч нь onClick ч үгүй байв —
 // өөрөөр хэлбэл "Pro $29/сар" гэдэг нь ердөө зурсан текст байлаа.
 
 function Price({ plan, yearly, t }) {
-  if (plan.monthlyUsd === null)
-    return <p className="font-display text-4xl font-bold">{t("prc.custom")}</p>;
   if (plan.monthlyUsd === 0)
     return <p className="font-display text-4xl font-bold">{t("prc.free")}</p>;
   // Жилийн үнийг серверийн yearlyUsd-аас гаргана — 0.8-аар үржүүлж
@@ -141,8 +139,6 @@ export default function Pricing() {
   async function selectPlan(plan) {
     setError("");
 
-    // Enterprise бол self-serve биш — борлуулалттай холбоно.
-    if (plan.key === "enterprise") { nav("contact"); return; }
     // Үнэгүй багц авах гэж төлбөрийн урсгал руу оруулах шаардлагагүй.
     if (plan.key === "starter") { nav("auth"); return; }
 
@@ -229,7 +225,10 @@ export default function Pricing() {
           </div>
         )}
 
-        <div className="mt-12 grid items-stretch gap-5 md:grid-cols-3">
+        {/* Хоёр багц — картуудыг дэлгэцийн бүтэн өргөнд сунгахгүй, голлуулна.
+            Өмнө нь гурван баганатай байсныг Enterprise хассны дараа шууд
+            үлдээвэл хоосон багана үүснэ. */}
+        <div className="mx-auto mt-12 grid max-w-3xl items-stretch gap-5 md:grid-cols-2">
           {plans.map((plan) => {
             const card = (
               <PlanCard

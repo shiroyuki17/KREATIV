@@ -35,7 +35,6 @@ function yearlySavings(plans) {
 }
 
 function priceFor(plan, yearly, t) {
-  if (plan.monthlyUsd === null) return { text: t("sb.custom"), sub: t("sb.talkToSales") };
   if (plan.monthlyUsd === 0) return { text: t("sb.free"), sub: t("sb.noCard") };
   const monthly = yearly && plan.yearlyUsd != null
     ? Math.round(plan.yearlyUsd / 12)
@@ -95,7 +94,6 @@ export default function Subscription() {
 
   async function choosePlan(plan) {
     setError("");
-    if (plan.key === "enterprise") { nav("contact"); return; }
     if (plan.key === "starter") return; // үнэгүй багц — Checkout шаардлагагүй
 
     setBusyKey(plan.key);
@@ -124,8 +122,8 @@ export default function Subscription() {
     return (
       <div className="mx-auto max-w-4xl px-6 py-10">
         <div className="animate-pulse-soft h-28 rounded-2xl bg-white/[0.06]" />
-        <div className="mt-4 grid gap-4 md:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => (
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          {Array.from({ length: 2 }).map((_, i) => (
             <div key={i} className="animate-pulse-soft h-64 rounded-2xl bg-white/[0.06]" />
           ))}
         </div>
@@ -233,8 +231,8 @@ export default function Subscription() {
         </div>
       </div>
 
-      {/* Багцууд */}
-      <div className="mt-6 grid gap-4 md:grid-cols-3">
+      {/* Багцууд — Starter, Pro хоёр (Enterprise хасагдсан) */}
+      <div className="mt-6 grid gap-4 md:grid-cols-2">
         {plans.map((plan) => {
           const current = (sub?.planKey || "starter") === plan.key;
           const price = priceFor(plan, yearly, t);
@@ -285,7 +283,7 @@ export default function Subscription() {
                 ) : (
                   <button
                     onClick={() => choosePlan(plan)}
-                    disabled={!canBuy && plan.key !== "enterprise"}
+                    disabled={!canBuy}
                     title={
                       !canBuy && plan.key === "pro" && !billingEnabled
                         ? t("sb.notConfiguredShort")
@@ -295,7 +293,7 @@ export default function Subscription() {
                       plan.popular
                         ? "bg-brand text-ink glow-brand"
                         : "border border-white/12 text-white/80 hover:border-brand/40 hover:text-white"
-                    } ${!canBuy && plan.key !== "enterprise" ? "cursor-not-allowed opacity-40" : ""}`}
+                    } ${!canBuy ? "cursor-not-allowed opacity-40" : ""}`}
                   >
                     {busyKey === plan.key ? (
                       <>
