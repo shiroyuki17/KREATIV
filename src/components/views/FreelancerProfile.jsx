@@ -89,6 +89,20 @@ export default function FreelancerProfile() {
       .finally(() => setLoading(false));
   }, [params?.userId, params?.username]);
 
+  // Хуудсын гарчиг/тайлбарыг тухайн хүнээр солино. Facebook-ийн OG картыг
+  // энэ шийдэхгүй (crawler нь JS ажиллуулдаггүй) ч browser-ийн таб, хавчуурга,
+  // мөн JS гүйцэтгэдэг индексжүүлэгчид (Google) зөв гарчиг харна.
+  useEffect(() => {
+    const previous = document.title;
+    if (real) {
+      const who = real.user?.name || "Freelancer";
+      document.title = real.headline ? `${who} — ${real.headline} · KREATIV` : `${who} · KREATIV`;
+      const desc = document.querySelector('meta[name="description"]');
+      if (desc && real.bio) desc.setAttribute("content", real.bio.slice(0, 160));
+    }
+    return () => { document.title = previous; };
+  }, [real]);
+
   // Нэвтрээгүй зочин профайл үзэж болно (нийтэд нээлттэй) ч дагах/бичих
   // нь акаунт шаардана — 401 харуулахын оронд нэвтрэх рүү чиглүүлнэ.
   const requireLogin = () => { nav("auth"); };
