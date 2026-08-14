@@ -267,7 +267,11 @@ router.get('/export', requireAuth, async (req, res, next) => {
     ];
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="kreativ-transactions.csv"');
-    res.send(rows.join('\n'));
+    // UTF-8 BOM. Excel/WPS нь charset толгойг үл тоомсорлож, файлыг
+    // системийн legacy кодчлолоор уншдаг тул кирилл толгой мөр ("Огноо",
+    // "Төрөл", "Дүн") эвдэрч, хятад ханз мэт харагддаг байв. BOM нь
+    // тэдгээрт UTF-8 гэдгийг хоёрдмол утгагүй хэлнэ.
+    res.send('﻿' + rows.join('\r\n'));
   } catch (err) {
     next(err);
   }
