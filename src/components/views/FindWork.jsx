@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Search, Star, BadgeCheck, ChevronLeft, ChevronRight as ChevronRightIcon, Sparkles, SlidersHorizontal, X, ChevronRight, ChevronDown, AlertCircle, Loader2, Wand2, Users } from "lucide-react";
 import SpotlightCard from "../fx/SpotlightCard.jsx";
 import { useNav } from "../../nav.jsx";
+import { useT } from "../../i18n.jsx";
 import { fetchJobs, searchJobsByPrompt } from "../../lib/jobsApi.js";
 import { useEscapeKey } from "../../hooks/useEscapeKey.js";
 import { CardGridSkeleton } from "../ui/Skeleton.jsx";
@@ -14,14 +15,15 @@ const LANGUAGES = ["English", "Spanish", "French", "German", "Portuguese", "Japa
 // Backend орders бүгд createdAt desc-ээр буцаадаг тул "Most relevant"/"Newest
 // first" хоёул ижил дараалал өгнө — "fewest proposals" бодит Job model-д
 // proposals тоо байдаггүй тул хассан (mock-only талбар байсан).
-const SORTS = { relevant: "Most relevant", newest: "Newest first" };
+const SORT_KEYS = { relevant: "fw.sortRelevant", newest: "fw.sortNewest" };
 
-function timeAgo(iso) {
+// t()-г параметрээр авна — энэ нь компонент биш тул дотор нь hook болохгүй.
+function timeAgo(iso, t) {
   const diffMs = Date.now() - new Date(iso).getTime();
   const hours = Math.floor(diffMs / 3_600_000);
-  if (hours < 1) return "just now";
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
+  if (hours < 1) return t("fw.justNow");
+  if (hours < 24) return t("fw.hoursAgo", { h: hours });
+  return t("fw.daysAgo", { d: Math.floor(hours / 24) });
 }
 
 function Section({ title, children }) {
@@ -53,14 +55,15 @@ function Check({ label, checked, onChange }) {
 }
 
 function Filters({ cat, setCat, type, setType, skills, toggleSkill, budget, setBudget, langs, toggleLang, onClear }) {
+  const t = useT();
   return (
     <div className="glass overflow-hidden rounded-2xl">
       <div className="flex items-center justify-between px-5 py-4">
-        <p className="inline-flex items-center gap-2 text-[13.5px] font-bold"><SlidersHorizontal className="h-4 w-4 text-brand-soft" /> Filter by</p>
-        <button onClick={onClear} className="text-[11.5px] font-semibold text-white/40 transition-colors hover:text-brand-soft">Clear</button>
+        <p className="inline-flex items-center gap-2 text-[13.5px] font-bold"><SlidersHorizontal className="h-4 w-4 text-brand-soft" /> {t("fw.filterBy")}</p>
+        <button onClick={onClear} className="text-[11.5px] font-semibold text-white/40 transition-colors hover:text-brand-soft">{t("fw.clear")}</button>
       </div>
 
-      <Section title="Category">
+      <Section title={t("fw.category")}>
         <div className="space-y-0.5">
           {CATS.map((c) => (
             <button
@@ -68,28 +71,33 @@ function Filters({ cat, setCat, type, setType, skills, toggleSkill, budget, setB
               onClick={() => setCat(c)}
               className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors ${cat === c ? "bg-brand/15 font-semibold text-brand-soft" : "text-white/60 hover:bg-white/5 hover:text-white"}`}
             >
-              {c}
+              {t(`cat.${c}`)}
               {cat === c && <ChevronRight className="h-3.5 w-3.5" />}
             </button>
           ))}
         </div>
       </Section>
 
-      <Section title="Project type">
-        {TYPES.map((t) => (
-          <Check key={t} label={t} checked={type === t} onChange={() => setType(t)} />
+      <Section title={t("fw.projectType")}>
+        {TYPES.map((val) => (
+          <Check
+            key={val}
+            label={val === "Any" ? t("fw.any") : val === "Fixed" ? t("fw.fixed") : t("fw.hourly")}
+            checked={type === val}
+            onChange={() => setType(val)}
+          />
         ))}
       </Section>
 
-      <Section title="Budget">
+      <Section title={t("fw.budget")}>
         <div className="space-y-2">
-          {[["any", "Any budget"], ["low", "Under $5,000"], ["mid", "$5,000 – $10,000"], ["high", "$10,000+"]].map(([k, label]) => (
+          {[["any", t("fw.anyBudget")], ["low", t("fw.budgetLow")], ["mid", t("fw.budgetMid")], ["high", t("fw.budgetHigh")]].map(([k, label]) => (
             <Check key={k} label={label} checked={budget === k} onChange={() => setBudget(k)} />
           ))}
         </div>
       </Section>
 
-      <Section title="Skills">
+      <Section title={t("fw.skills")}>
         <div className="flex flex-wrap gap-1.5">
           {SKILLS.map((s) => (
             <button
@@ -105,9 +113,9 @@ function Filters({ cat, setCat, type, setType, skills, toggleSkill, budget, setB
         </div>
       </Section>
 
-      <Section title="Languages">
+      <Section title={t("fw.languages")}>
         {LANGUAGES.map((l) => (
-          <Check key={l} label={l} checked={langs.includes(l)} onChange={() => toggleLang(l)} />
+          <Check key={l} label={t(`lang.${l}`)} checked={langs.includes(l)} onChange={() => toggleLang(l)} />
         ))}
       </Section>
     </div>
@@ -115,6 +123,7 @@ function Filters({ cat, setCat, type, setType, skills, toggleSkill, budget, setB
 }
 
 export default function FindWork() {
+  const t = useT();
   const { params, nav } = useNav();
   const [q, setQ] = useState(params?.query || "");
   const [cat, setCat] = useState("All");
@@ -233,17 +242,17 @@ export default function FindWork() {
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-[12px] text-white/35">
         <button onClick={() => nav("home")} className="transition-colors hover:text-brand-soft">KREATIV</button>
-        <span>›</span><span>Jobs</span><span>›</span>
-        <span className="text-white/60">Browse all briefs</span>
+        <span>›</span><span>{t("fw.breadcrumbJobs")}</span><span>›</span>
+        <span className="text-white/60">{t("fw.breadcrumbAll")}</span>
       </nav>
 
       <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-[clamp(1.9rem,3.6vw,2.8rem)] font-bold text-brand text-glow tracking-tight">
-            Open briefs for you
+            {t("fw.title")}
           </h1>
           <p className="mt-2 inline-flex items-center gap-2 text-[12.5px] text-white/45">
-            <Sparkles className="h-3.5 w-3.5 text-brand-soft" /> Live from KREATIV's Jobs API
+            <Sparkles className="h-3.5 w-3.5 text-brand-soft" /> {t("fw.liveFrom")}
           </p>
         </div>
       </div>
@@ -252,7 +261,7 @@ export default function FindWork() {
           доорх шүүлтүүрүүд рүү хөрвүүлнэ (жагсаалтыг өөрөө зохиодоггүй). */}
       <div className="glass mt-6 rounded-2xl p-4">
         <label htmlFor="ai-prompt" className="inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-widest text-brand-soft">
-          <Wand2 className="h-3.5 w-3.5" /> Describe what you're looking for
+          <Wand2 className="h-3.5 w-3.5" /> {t("fw.describeWhat")}
         </label>
         <div className="mt-2.5 flex flex-col gap-2.5 sm:flex-row">
           <textarea
@@ -264,7 +273,7 @@ export default function FindWork() {
               if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); runAiSearch(); }
             }}
             rows={2}
-            placeholder="Жишээ: React болон TypeScript-ийн цагийн ажил, сард $3000-аас дээш"
+            placeholder={t("fw.aiPlaceholder")}
             className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[14px] outline-none transition-colors placeholder:text-white/30 focus:border-brand/50"
           />
           <button
@@ -273,13 +282,13 @@ export default function FindWork() {
             className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-brand px-5 py-3 text-[13.5px] font-semibold text-fg-1 glow-brand transition-all disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
           >
             {aiBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            {aiBusy ? "Searching…" : "Find matches"}
+            {aiBusy ? t("fw.searching") : t("fw.findMatches")}
           </button>
         </div>
         <div className="mt-1.5 flex items-center justify-between gap-3 text-[10.5px] text-white/30">
           <span>{aiPrompt.length}/400</span>
           {aiInfo?.quotaRemaining != null && (
-            <span>{aiInfo.quotaRemaining} AI searches left today</span>
+            <span>{t("fw.aiSearchesLeft", { count: aiInfo.quotaRemaining })}</span>
           )}
         </div>
 
@@ -290,10 +299,10 @@ export default function FindWork() {
             <p className="text-[12.5px] leading-relaxed text-white/70">
               {aiInfo.source === "ai" && aiInfo.interpretation
                 ? aiInfo.interpretation
-                : "AI matching is not enabled — searched by keywords instead."}
+                : t("fw.aiOff")}
             </p>
             <p className="mt-1.5 text-[10.5px] text-white/35">
-              Filters below were set from your description — adjust them any time.
+              {t("fw.filtersSetFromAi")}
             </p>
           </div>
         )}
@@ -306,22 +315,22 @@ export default function FindWork() {
           <input
             value={q}
             onChange={(e) => { setQ(e.target.value); setPage(1); }}
-            placeholder="Search briefs by skill, title, or client…"
+            placeholder={t("fw.searchPlaceholder")}
             className="w-full bg-transparent text-[14px] outline-none placeholder:text-white/30"
           />
-          {q && <button onClick={() => setQ("")} aria-label="Clear search"><X className="h-4 w-4 text-white/35 hover:text-white" /></button>}
+          {q && <button onClick={() => setQ("")} aria-label={t("fw.clearSearch")}><X className="h-4 w-4 text-white/35 hover:text-white" /></button>}
         </div>
         <button
           onClick={() => setShowFilters((s) => !s)}
           className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[13px] font-medium text-white/70 lg:hidden"
         >
-          <SlidersHorizontal className="h-4 w-4" /> Filters
+          <SlidersHorizontal className="h-4 w-4" /> {t("fw.filters")}
           {activeCount > 0 && <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-fg-1">{activeCount}</span>}
         </button>
         <Select
           value={sort}
           onChange={setSort}
-          options={Object.entries(SORTS).map(([k, v]) => ({ value: k, label: v }))}
+          options={Object.entries(SORT_KEYS).map(([k, v]) => ({ value: k, label: t(v) }))}
         />
       </div>
 
@@ -353,10 +362,10 @@ export default function FindWork() {
         <div className="min-w-0">
           <div className="flex items-center justify-between">
             <p className="text-[13px] text-white/50">
-              {loading ? "Loading briefs…" : <><b className="text-white">{total}</b> {total === 1 ? "brief" : "briefs"} found</>}
+              {loading ? t("fw.loadingBriefs") : <><b className="text-white">{total}</b> {t("fw.briefsFound")}</>}
             </p>
             {activeCount > 0 && (
-              <button onClick={clear} className="text-[12px] font-semibold text-brand-soft hover:text-white">Clear filters</button>
+              <button onClick={clear} className="text-[12px] font-semibold text-brand-soft hover:text-white">{t("fw.clearFilters")}</button>
             )}
           </div>
 
@@ -382,15 +391,15 @@ export default function FindWork() {
                       <span className={job.budgetType === "FIXED"
                         ? "rounded-full border border-mint/30 bg-mint/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-mint"
                         : "rounded-full border border-neon/30 bg-neon/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-neon"}>
-                        {job.budgetType === "FIXED" ? "Fixed" : "Hourly"}
+                        {job.budgetType === "FIXED" ? t("fw.fixed") : t("fw.hourly")}
                       </span>
                       <span className="rounded-full border border-brand/25 bg-brand/8 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-brand-soft">{job.category}</span>
-                      <span className="text-[11px] text-white/35">{timeAgo(job.createdAt)}</span>
+                      <span className="text-[11px] text-white/35">{timeAgo(job.createdAt, t)}</span>
                     </div>
                     <h3 className="mt-2.5 font-display text-[16.5px] font-semibold leading-snug">{job.title}</h3>
                     <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-white/45">
                       <span className="inline-flex items-center gap-1">
-                        {job.client?.name || job.client?.orgName || "Client"}
+                        {job.client?.name || job.client?.orgName || t("fw.client")}
                         {job.client?.verifiedPayer && <BadgeCheck className="h-3.5 w-3.5 text-neon" />}
                       </span>
                       {job.client?.ratingAvg > 0 && (
@@ -399,10 +408,8 @@ export default function FindWork() {
                       <span className={`inline-flex items-center gap-1 ${!job.proposalCount ? "font-semibold text-mint" : ""}`}>
                         <Users className="h-3 w-3" />
                         {!job.proposalCount
-                          ? "Be the first to apply"
-                          : job.proposalCount === 1
-                          ? "1 proposal"
-                          : `${job.proposalCount} proposals`}
+                          ? t("fw.beFirst")
+                          : t("fw.proposalCount", { count: job.proposalCount })}
                       </span>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-1.5">
@@ -419,7 +426,7 @@ export default function FindWork() {
                       onClick={(e) => { e.stopPropagation(); nav("project", job); }}
                       className="rounded-xl bg-brand px-5 py-2.5 text-[12.5px] font-bold text-fg-1 glow-brand transition-shadow"
                     >
-                      Apply
+                      {t("fw.apply")}
                     </button>
                   </div>
                 </div>
@@ -430,10 +437,10 @@ export default function FindWork() {
           {!loading && jobs.length === 0 && !error && (
             <div className="glass mt-4 rounded-2xl p-12 text-center">
               <Search className="mx-auto h-9 w-9 text-white/20" />
-              <p className="mt-4 text-[14.5px] font-semibold">No briefs match those filters</p>
-              <p className="mt-1.5 text-[12.5px] text-white/45">Try a broader category, clear the budget range, or remove some skills.</p>
+              <p className="mt-4 text-[14.5px] font-semibold">{t("fw.noMatch")}</p>
+              <p className="mt-1.5 text-[12.5px] text-white/45">{t("fw.noMatchHint")}</p>
               <button onClick={clear} className="mt-5 rounded-xl bg-brand px-5 py-2.5 text-[12.5px] font-bold text-fg-1 glow-brand">
-                Reset filters
+                {t("fw.resetFilters")}
               </button>
             </div>
           )}
@@ -447,7 +454,7 @@ export default function FindWork() {
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <span className="text-[12.5px] text-white/50">Page {page} of {totalPages}</span>
+              <span className="text-[12.5px] text-white/50">{t("fw.pageOf", { page, total: totalPages })}</span>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}

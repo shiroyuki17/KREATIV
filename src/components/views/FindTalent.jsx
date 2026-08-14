@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Avatar from "../ui/Avatar.jsx";
 import { Search, Star, BadgeCheck, SlidersHorizontal, Sparkles, ChevronLeft, ChevronRight, AlertCircle } from "lucide-react";
 import { useNav } from "../../nav.jsx";
+import { useT } from "../../i18n.jsx";
 import { avatarSrc } from "../../lib/authApi.js";
 import { fetchFreelancers, followUser, unfollowUser, fetchMyFollowing } from "../../lib/talentApi.js";
 import AiPanel from "../ui/AiPanel.jsx";
@@ -10,14 +11,14 @@ import Select from "../ui/Select.jsx";
 
 const CATS = ["All", "Design", "Dev", "AI", "Motion", "Writing", "Marketing"];
 const SORTS = {
-  relevant: "Most relevant",
-  rateLow: "Rate: low to high",
-  rateHigh: "Rate: high to low",
-  rating: "Top rated",
+  relevant: "ft.sortRelevant",
+  rateLow: "ft.sortRateLow",
+  rateHigh: "ft.sortRateHigh",
+  rating: "ft.sortRating",
 };
 
-function rateLabel(f) {
-  if (f.priceMin == null) return "Rate on request";
+function rateLabel(f, t) {
+  if (f.priceMin == null) return t("ft.rateOnRequest");
   if (f.priceMax && f.priceMax !== f.priceMin) return `$${f.priceMin}–${f.priceMax}/hr`;
   return `$${f.priceMin}/hr`;
 }
@@ -39,6 +40,7 @@ function Stat({ label, value, star }) {
 }
 
 function TalentCard({ f, nav, style, isFollowing, onToggleFollow }) {
+  const t = useT();
   const isNew = f.ratingAvg === 0 && f.jobsCompleted === 0;
   const topRated = f.ratingAvg >= 4.8;
   const avatarUrl = avatarSrc(f.avatarUrl);
@@ -52,7 +54,7 @@ function TalentCard({ f, nav, style, isFollowing, onToggleFollow }) {
             <p className="flex items-center gap-1.5 text-[14.5px] font-semibold">
               <span className="truncate">{f.name}</span>
             </p>
-            <p className="truncate text-[12px] text-white/45">{f.headline || "Freelancer"}</p>
+            <p className="truncate text-[12px] text-white/45">{f.headline || t("ft.freelancer")}</p>
           </div>
         </div>
         <div className="flex shrink-0 gap-2">
@@ -64,32 +66,32 @@ function TalentCard({ f, nav, style, isFollowing, onToggleFollow }) {
                 : "rounded-full border border-white/15 px-5 py-2.5 text-[13px] font-semibold text-white/80 transition-colors hover:border-white/30 hover:text-white"
             }
           >
-            {isFollowing ? "Following" : "Follow"}
+            {isFollowing ? t("ft.following") : t("ft.follow")}
           </button>
           <button
             onClick={() => nav("messages", { withUserId: f.userId })}
             className="rounded-full bg-brand px-5 py-2.5 text-[13px] font-bold text-fg-1 glow-brand transition-shadow"
           >
-            Message
+            {t("ft.message")}
           </button>
         </div>
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2.5 border-y border-white/8 py-3.5">
-        <Stat label="Rating" value={f.ratingAvg > 0 ? f.ratingAvg.toFixed(1) : "—"} star={f.ratingAvg > 0} />
-        <Stat label="Hired" value={`${f.jobsCompleted}x`} />
+        <Stat label={t("ft.rating")} value={f.ratingAvg > 0 ? f.ratingAvg.toFixed(1) : "—"} star={f.ratingAvg > 0} />
+        <Stat label={t("ft.hired")} value={`${f.jobsCompleted}x`} />
         <div className="ml-auto flex items-center gap-2">
           {isNew && (
             <span className="inline-flex items-center gap-1 rounded-full border border-neon/40 bg-neon/10 px-2.5 py-1 text-[10.5px] font-bold text-neon">
-              New on KREATIV
+              {t("ft.newHere")}
             </span>
           )}
           {topRated && (
             <span className="inline-flex items-center gap-1 rounded-full border border-brand/40 bg-brand/10 px-2.5 py-1 text-[10.5px] font-bold text-brand-soft">
-              <Sparkles className="h-3 w-3" /> Top Rated
+              <Sparkles className="h-3 w-3" /> {t("ft.topRated")}
             </span>
           )}
-          <span className="font-display text-[14px] font-bold text-mint">{rateLabel(f)}</span>
+          <span className="font-display text-[14px] font-bold text-mint">{rateLabel(f, t)}</span>
         </div>
       </div>
 
@@ -116,7 +118,7 @@ function TalentCard({ f, nav, style, isFollowing, onToggleFollow }) {
           onClick={() => nav("profile", { userId: f.userId })}
           className="ml-auto text-[12px] font-semibold text-brand-soft transition-colors hover:text-white"
         >
-          View profile →
+          {t("ft.viewProfile")}
         </button>
       </div>
     </div>
@@ -124,6 +126,7 @@ function TalentCard({ f, nav, style, isFollowing, onToggleFollow }) {
 }
 
 export default function FindTalent() {
+  const t = useT();
   const { params, nav } = useNav();
   const [q, setQ] = useState(params?.query || "");
   // Home хуудасны категорийн картууд `{ category: "Dev" }` дамжуулна.
@@ -177,10 +180,10 @@ export default function FindTalent() {
   }, [params]);
 
   const chips = [
-    { label: "Top rated", run: () => setSort("rating") },
-    { label: "Best rate for your budget", run: () => setSort("rateLow") },
-    { label: "AI specialists", run: () => setCat("AI") },
-    { label: "Designers", run: () => setCat("Design") },
+    { label: t("ft.chipTopRated"), run: () => setSort("rating") },
+    { label: t("ft.chipBestRate"), run: () => setSort("rateLow") },
+    { label: t("ft.chipAi"), run: () => setCat("AI") },
+    { label: t("ft.chipDesigners"), run: () => setCat("Design") },
   ];
 
   useEffect(() => {
@@ -212,10 +215,10 @@ export default function FindTalent() {
     <div className="mx-auto max-w-[1400px] px-6 pb-24 pt-8 xl:flex xl:items-start xl:gap-8">
       <div className="min-w-0 flex-1">
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-soft">
-          — Find talent
+          {t("ft.eyebrow")}
         </p>
         <h1 className="mt-3 font-display text-[clamp(1.9rem,3.6vw,2.8rem)] font-bold text-brand text-glow tracking-tight">
-          Hire vetted specialists
+          {t("ft.title")}
         </h1>
 
         {/* Search + sort */}
@@ -225,7 +228,7 @@ export default function FindTalent() {
             <input
               value={q}
               onChange={(e) => { setQ(e.target.value); setPage(1); }}
-              placeholder="Search by skill, role, or name…"
+              placeholder={t("ft.searchPlaceholder")}
               className="w-full bg-transparent text-[14px] outline-none placeholder:text-white/30"
             />
           </div>
@@ -233,7 +236,7 @@ export default function FindTalent() {
             icon={SlidersHorizontal}
             value={sort}
             onChange={(v) => { setSort(v); setPage(1); }}
-            options={Object.entries(SORTS).map(([k, v]) => ({ value: k, label: v }))}
+            options={Object.entries(SORTS).map(([k, v]) => ({ value: k, label: t(v) }))}
           />
         </div>
 
@@ -249,13 +252,13 @@ export default function FindTalent() {
                   : "rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-medium text-white/55 transition-colors hover:border-brand/40 hover:text-white"
               }
             >
-              {c}
+              {t(`cat.${c}`)}
             </button>
           ))}
         </div>
 
         <p className="mt-6 text-[12.5px] text-white/40">
-          {loading ? "Loading specialists…" : <>{total} {total === 1 ? "specialist" : "specialists"} found</>}
+          {loading ? t("ft.loading") : <>{total} {t("ft.found")}</>}
         </p>
 
         {error && (
@@ -281,15 +284,15 @@ export default function FindTalent() {
 
         {!loading && freelancers.length === 0 && !error && (
           <div className="glass mt-4 rounded-2xl p-12 text-center">
-            <p className="text-[14px] font-semibold">No specialists match those filters</p>
+            <p className="text-[14px] font-semibold">{t("ft.noMatch")}</p>
             <p className="mt-1.5 text-[12.5px] text-white/45">
-              Try a broader category or a different search term.
+              {t("ft.noMatchHint")}
             </p>
             <button
               onClick={() => { setQ(""); setCat("All"); setPage(1); }}
               className="mt-5 rounded-xl bg-brand px-5 py-2.5 text-[12.5px] font-bold text-fg-1 glow-brand"
             >
-              Reset filters
+              {t("ft.resetFilters")}
             </button>
           </div>
         )}
@@ -303,7 +306,7 @@ export default function FindTalent() {
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <span className="text-[12.5px] text-white/50">Page {page} of {totalPages}</span>
+            <span className="text-[12.5px] text-white/50">{t("fw.pageOf", { page, total: totalPages })}</span>
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page >= totalPages}
@@ -315,7 +318,7 @@ export default function FindTalent() {
         )}
       </div>
 
-      <AiPanel title="AI Talent Match" chips={chips} onRefine={setQ} />
+      <AiPanel title={t("ft.aiPanelTitle")} chips={chips} onRefine={setQ} />
     </div>
   );
 }
