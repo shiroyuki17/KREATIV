@@ -10,6 +10,7 @@
 import { Router } from 'express';
 import prisma from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
+import { rollOverRunningEntries } from '../lib/timeEntries.js';
 
 const router = Router();
 
@@ -62,6 +63,10 @@ router.get('/contracts/:id/time', requireAuth, async (req, res, next) => {
     const isParticipant =
       contract.freelancer?.userId === req.user.id || contract.client?.userId === req.user.id;
     if (!isParticipant) return res.status(403).json({ error: 'Хандах эрхгүй' });
+
+    // Тоолуур гэрээ үүсэх мөчид автоматаар асдаг тул шөнө дундуур гаталсан
+    // бүртгэлийг эндээс нөхөж таслана (cron байхгүй — lib/timeEntries.js-ийг үз).
+    await rollOverRunningEntries(contract.id);
 
     const entries = await prisma.timeEntry.findMany({
       where: { contractId: contract.id },
@@ -119,6 +124,10 @@ router.post('/contracts/:id/time/stop', requireAuth, async (req, res, next) => {
   try {
     const { contract, error } = await loadContractAsFreelancer(req.user.id, req.params.id);
     if (error) return res.status(error).json({ error: error === 404 ? 'Олдсонгүй' : 'Хандах эрхгүй' });
+
+    // Зогсоохоос өмнө өдрийн заагаар тасалсан байх ёстой — эс бөгөөс өчигдөр
+    // эхэлсэн тоолуур бүтнээрээ өнөөдрийн бүртгэл болно.
+    await rollOverRunningEntries(contract.id);
 
     const running = await prisma.timeEntry.findFirst({
       where: { contractId: contract.id, endedAt: null },

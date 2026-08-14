@@ -10,7 +10,8 @@ import { uploadPortfolioImage } from '../middleware/upload.js';
 import { saveUpload } from '../lib/storage.js';
 import { gigCreateSchema, gigUpdateSchema, gigQuerySchema } from '../validators/gig.schema.js';
 import { createNotification } from './notification.routes.js';
-import { logEvent } from '../lib/logger.js';
+import { logEvent, logError } from '../lib/logger.js';
+import { ensureTimerRunning } from '../lib/timeEntries.js';
 
 const router = Router();
 
@@ -306,6 +307,11 @@ router.post('/gigs/:id/order', requireAuth, requireClientProfile, async (req, re
       milestones: contract.milestones,
     });
     logEvent('gig_ordered', { gigId: gig.id, contractId: contract.id, amount: gig.price });
+
+    // Gig захиалга нь шууд идэвхтэй гэрээ үүсгэдэг тул тоолуур мөн тэр
+    // дороо явж эхэлнэ (proposal accept-тэй ижил).
+    ensureTimerRunning(contract.id).catch((err) =>
+      logError(err, { at: 'time_autostart', contractId: contract.id }));
     createNotification({
       userId: gig.freelancer.userId,
       type: 'job',

@@ -7,7 +7,8 @@ import { requireAuth, requireClientProfile } from '../middleware/auth.js';
 import { acceptProposalSchema, deliverMilestoneSchema } from '../validators/contract.schema.js';
 import { computeBalance, PENDING_HOLD_DAYS } from '../lib/wallet.js';
 import { createNotification } from './notification.routes.js';
-import { logEvent } from '../lib/logger.js';
+import { logEvent, logError } from '../lib/logger.js';
+import { ensureTimerRunning } from '../lib/timeEntries.js';
 
 const router = Router();
 
@@ -170,6 +171,12 @@ router.post('/proposals/:id/accept', requireAuth, requireClientProfile, async (r
 
     res.status(201).json(publicContract(contract));
     logEvent('contract_created', { contractId: contract.id, jobId: proposal.jobId, totalAmount: proposal.price });
+
+    // Ажил авмагц цаг явж эхэлнэ — "Start дарахаа мартсан" гэсэн шалтгаанаар
+    // цаг алдагдахгүй. Гэрээ аль хэдийн үүссэн тул энд алдаа гарвал хариултыг
+    // унагахгүй: тоолуурыг фрилансер гараар ч эхлүүлж болно.
+    ensureTimerRunning(contract.id).catch((err) =>
+      logError(err, { at: 'time_autostart', contractId: contract.id }));
 
     const freelancerUser = await prisma.freelancerProfile.findUnique({ where: { id: proposal.freelancerId }, select: { userId: true } });
     if (freelancerUser) {

@@ -11,6 +11,11 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(4000),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 
+  // Цагийн бүртгэлийн "өдөр" аль бүсээр тоологдохыг тодорхойлно. Сервер нь
+  // Render дээр UTC-ээр ажилладаг тул үүнгүйгээр тоолуур UB-ийн орой 08:00
+  // цагт "шөнө дунд" гэж таслагдана.
+  TIME_ZONE: z.string().default('Asia/Ulaanbaatar'),
+
   // ── Google OAuth (заавал биш — тохируулаагүй бол demo акаунтаар нэвтэрнэ) ──
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
@@ -33,6 +38,12 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   SMTP_FROM: z.string().optional(),
+
+  // Холбоо барих формын зурвас хаашаа очих вэ. Аль нь ч тохируулаагүй бол
+  // зурвас өгөгдлийн санд хадгалагдана — Admin Panel-ээс уншина, имэйл
+  // явахгүй (алдагдахгүй).
+  SUPPORT_EMAIL: z.string().optional(),
+  ADMIN_EMAIL: z.string().optional(),
 
   // ── QPay (заавал биш — тохируулаагүй бол демо invoice/confirm ашиглана) ──
   QPAY_BASE_URL: z.string().optional(),
