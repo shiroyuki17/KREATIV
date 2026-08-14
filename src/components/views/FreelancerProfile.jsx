@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, BadgeCheck, Star, MessageSquare, Sparkles, Loader2, AlertCircle, Pencil, Image as ImageIcon, ShieldCheck, Play, X } from "lucide-react";
 import Magnet from "../fx/Magnet.jsx";
 import { useNav } from "../../nav.jsx";
+import { useT } from "../../i18n.jsx";
 import { avatarSrc } from "../../lib/authApi.js";
 import { fetchFreelancerByUserId, fetchFreelancerByUsername, fetchFreelancerStats, recordProfileView, followUser, unfollowUser, fetchMyFollowing } from "../../lib/talentApi.js";
 import { fetchReviewsFor } from "../../lib/contractApi.js";
@@ -26,18 +27,19 @@ function initialsOf(name) {
 
 // Ажил авах боломж — захиалагчийн хамгийн эхэнд хайдаг дохио.
 const AVAILABILITY = {
-  OPEN: { label: "Ажил авч байна", cls: "border-mint/35 bg-mint/10 text-mint", dot: "bg-mint" },
-  BUSY: { label: "Ачаалалтай", cls: "border-amber-400/35 bg-amber-400/10 text-amber-300", dot: "bg-amber-300" },
-  CLOSED: { label: "Ажил авахгүй", cls: "border-white/15 bg-white/[0.05] text-white/45", dot: "bg-white/40" },
+  OPEN: { labelKey: "fp.availOpen", cls: "border-mint/35 bg-mint/10 text-mint", dot: "bg-mint" },
+  BUSY: { labelKey: "fp.availBusy", cls: "border-amber-400/35 bg-amber-400/10 text-amber-300", dot: "bg-amber-300" },
+  CLOSED: { labelKey: "fp.availClosed", cls: "border-white/15 bg-white/[0.05] text-white/45", dot: "bg-white/40" },
 };
 
 function AvailabilityBadge({ value }) {
+  const t = useT();
   const a = AVAILABILITY[value];
   if (!a) return null;
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold ${a.cls}`}>
       <span className={`h-1.5 w-1.5 rounded-full ${a.dot} ${value === "OPEN" ? "animate-pulse" : ""}`} />
-      {a.label}
+      {t(a.labelKey)}
     </span>
   );
 }
@@ -51,8 +53,8 @@ function StatTile({ label, value }) {
   );
 }
 
-function rateLabel(priceMin, priceMax) {
-  if (priceMin == null) return "Rate on request";
+function rateLabel(priceMin, priceMax, t) {
+  if (priceMin == null) return t("fp.rateOnRequest");
   if (priceMax && priceMax !== priceMin) return `$${priceMin}–${priceMax}/hr`;
   return `$${priceMin}/hr`;
 }
@@ -63,18 +65,18 @@ function rateLabel(priceMin, priceMax) {
 // review system exists yet). Mock talent (Home's decorative tiles) keeps
 // its richer hardcoded shape since that's clearly marketing content, not
 // a real person's profile.
-function normalizeReal(profile, userId) {
+function normalizeReal(profile, userId, t) {
   return {
     isReal: true,
     userId,
-    name: profile.user?.name || "Freelancer",
+    name: profile.user?.name || t("fp.freelancer"),
     initials: initialsOf(profile.user?.name),
     avatarUrl: avatarSrc(profile.user?.avatarUrl),
-    role: profile.headline || "Freelancer",
+    role: profile.headline || t("fp.freelancer"),
     category: profile.category,
     rating: profile.ratingAvg,
     hired: profile.jobsCompleted,
-    rate: rateLabel(profile.priceMin, profile.priceMax),
+    rate: rateLabel(profile.priceMin, profile.priceMax, t),
     skills: profile.skills || [],
     tagline: profile.bio,
     portfolio: profile.portfolio || [],
@@ -84,6 +86,7 @@ function normalizeReal(profile, userId) {
 }
 
 export default function FreelancerProfile() {
+  const t = useT();
   const { params, nav, user } = useNav();
   const [real, setReal] = useState(null);
   const [reviews, setReviews] = useState([]);
@@ -133,7 +136,7 @@ export default function FreelancerProfile() {
   useEffect(() => {
     const previous = document.title;
     if (real) {
-      const who = real.user?.name || "Freelancer";
+      const who = real.user?.name || t("fp.freelancer");
       document.title = real.headline ? `${who} — ${real.headline} · KREATIV` : `${who} · KREATIV`;
       const desc = document.querySelector('meta[name="description"]');
       if (desc && real.bio) desc.setAttribute("content", real.bio.slice(0, 160));
@@ -170,9 +173,9 @@ export default function FreelancerProfile() {
     return (
       <div className="mx-auto max-w-xl px-6 pb-24 pt-20 text-center">
         <AlertCircle className="mx-auto h-8 w-8 text-white/30" />
-        <p className="mt-4 text-[14px] text-white/60">Профайл сонгогдоогүй байна.</p>
+        <p className="mt-4 text-[14px] text-white/60">{t("fp.noProfileSelected")}</p>
         <button onClick={() => nav("find-talent")} className="mt-5 text-[13px] font-semibold text-brand-soft hover:text-white">
-          ← Back to talent
+          {t("fp.backToTalent")}
         </button>
       </div>
     );
@@ -195,13 +198,13 @@ export default function FreelancerProfile() {
         <div className="mx-auto max-w-xl px-6 pb-24 pt-20 text-center">
           <AlertCircle className="mx-auto h-8 w-8 text-red-400" />
           <p className="mt-4 text-[14px] text-white/60">
-            {isOwn ? "Танд freelancer профайл байхгүй байна — та зөвхөн client акаунттай байж болзошгүй." : (error || "Профайл олдсонгүй.")}
+            {isOwn ? t("fp.noOwnProfile") : (error || t("fp.notFound"))}
           </p>
           <button
             onClick={() => nav(isOwn ? "settings" : "find-talent")}
             className="mt-5 text-[13px] font-semibold text-brand-soft hover:text-white"
           >
-            {isOwn ? "← Тохиргоо руу очих" : "← Back to talent"}
+            {isOwn ? t("fp.toSettings") : t("fp.backToTalent")}
           </button>
         </div>
       );
@@ -209,7 +212,7 @@ export default function FreelancerProfile() {
   }
 
   // username-ээр орж ирэхэд userId нь зөвхөн серверийн хариултад байна.
-  const f = normalizeReal(real, real.userId || params.userId);
+  const f = normalizeReal(real, real.userId || params.userId, t);
   const topRated = f.rating >= 4.8;
   const isNew = f.rating === 0 && f.hired === 0;
   const isOwn = user?.id === f.userId;
@@ -249,12 +252,12 @@ export default function FreelancerProfile() {
                 <AvailabilityBadge value={real.availability} />
                 {isNew && (
                   <span className="inline-flex items-center gap-1 rounded-full border border-neon/40 bg-neon/10 px-2.5 py-1 text-[10.5px] font-bold text-neon">
-                    New on KREATIV
+                    {t("fp.newHere")}
                   </span>
                 )}
                 {topRated && (
                   <span className="inline-flex items-center gap-1 rounded-full border border-brand/40 bg-brand/10 px-2.5 py-1 text-[10.5px] font-bold text-brand-soft">
-                    <Sparkles className="h-3 w-3" /> Top Rated
+                    <Sparkles className="h-3 w-3" /> {t("fp.topRated")}
                   </span>
                 )}
                 {f.rating > 0 && (
@@ -267,7 +270,7 @@ export default function FreelancerProfile() {
               <p className="mt-4 font-display text-3xl font-bold">{f.rate}</p>
               {isOwn && (
                 <span className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.03] px-2.5 py-1 text-[10.5px] font-semibold text-white/50">
-                  This is how clients see you
+                  {t("fp.howClientsSeeYou")}
                 </span>
               )}
             </div>
@@ -280,7 +283,7 @@ export default function FreelancerProfile() {
                     className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand py-3.5 text-[14px] font-semibold glow-brand transition-shadow"
                   >
                     <Pencil className="h-4 w-4" />
-                    Edit profile
+                    {t("fp.editProfile")}
                   </button>
                 </Magnet>
               ) : (
@@ -293,7 +296,7 @@ export default function FreelancerProfile() {
                       onClick={() => (user ? nav("post-job") : requireLogin())}
                       className="w-full rounded-xl bg-brand py-3.5 text-[14px] font-semibold glow-brand transition-shadow"
                     >
-                      Hire {f.name.split(" ")[0]}
+                      {t("fp.hire", { name: f.name.split(" ")[0] })}
                     </button>
                   </Magnet>
                   <div className="flex gap-2">
@@ -302,7 +305,7 @@ export default function FreelancerProfile() {
                       className="glass inline-flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-[13.5px] font-semibold text-white/85 transition-colors hover:border-white/25"
                     >
                       <MessageSquare className="h-4 w-4" />
-                      Message
+                      {t("fp.message")}
                     </button>
                     <button
                       onClick={toggleFollow}
@@ -312,7 +315,7 @@ export default function FreelancerProfile() {
                           : "glass rounded-xl px-4 py-3 text-[13.5px] font-semibold text-white/70 transition-colors hover:border-white/25 hover:text-white"
                       }
                     >
-                      {isFollowing ? "Following" : "Follow"}
+                      {isFollowing ? t("fp.following") : t("fp.follow")}
                     </button>
                   </div>
                 </>
@@ -321,9 +324,9 @@ export default function FreelancerProfile() {
 
 
             <div className="mt-5 space-y-2.5 border-t border-white/8 px-7 pb-7 pt-5 text-[12px] text-white/50">
-              <p className="flex justify-between"><span>Jobs completed</span><b className="text-white/80">{f.hired}</b></p>
+              <p className="flex justify-between"><span>{t("fp.jobsCompleted")}</span><b className="text-white/80">{f.hired}</b></p>
               {f.disputeRate > 0 && (
-                <p className="flex justify-between"><span>Dispute rate</span><b className={f.disputeRate > 20 ? "text-red-400" : "text-amber-300"}>{f.disputeRate}%</b></p>
+                <p className="flex justify-between"><span>{t("fp.disputeRate")}</span><b className={f.disputeRate > 20 ? "text-red-400" : "text-amber-300"}>{f.disputeRate}%</b></p>
               )}
             </div>
 
@@ -336,17 +339,16 @@ export default function FreelancerProfile() {
               <div className="border-t border-white/8 px-7 pb-7 pt-5">
                 <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-mint">
                   <ShieldCheck className="h-3.5 w-3.5" />
-                  Escrow-оор баталгаажсан
+                  {t("fp.escrowVerified")}
                 </p>
                 <div className="mt-3 grid grid-cols-2 gap-2.5">
-                  <StatTile label="Escrow-оор дамжсан" value={`$${stats.escrowPaidOut.toLocaleString("en-US")}`} />
-                  <StatTile label="Батлагдсан milestone" value={stats.milestonesApproved} />
-                  <StatTile label="Захиалагч" value={stats.clientsTotal} />
-                  <StatTile label="Давтан захиалагч" value={stats.repeatClients} />
+                  <StatTile label={t("fp.escrowPaidOut")} value={`$${stats.escrowPaidOut.toLocaleString("en-US")}`} />
+                  <StatTile label={t("fp.milestonesApproved")} value={stats.milestonesApproved} />
+                  <StatTile label={t("fp.clientsTotal")} value={stats.clientsTotal} />
+                  <StatTile label={t("fp.repeatClients")} value={stats.repeatClients} />
                 </div>
                 <p className="mt-2.5 text-[10.5px] leading-relaxed text-white/30">
-                  Эдгээр тоог системд бүртгэгдсэн гэрээ, escrow гүйлгээнээс шууд
-                  тооцсон — гараар оруулах боломжгүй.
+                  {t("fp.statsNote")}
                 </p>
               </div>
             )}
@@ -357,13 +359,13 @@ export default function FreelancerProfile() {
         <div>
           <div className="flex gap-2 border-b border-white/8">
             {[
-              { id: "about", label: "About" },
+              { id: "about", label: t("fp.tabAbout") },
               // Contra дээр service бол профайлын гол хэсэг — өмнө нь манай
               // Gig-үүд зөвхөн Find Services дээр л харагддаг тул хүн
               // профайл руу ороод юу захиалж болохыг огт мэдэхгүй байв.
-              ...(gigs.length ? [{ id: "services", label: `Services (${gigs.length})` }] : []),
-              { id: "portfolio", label: `Portfolio${f.portfolio.length ? ` (${f.portfolio.length})` : ""}` },
-              { id: "reviews", label: `Reviews${reviews.length ? ` (${reviews.length})` : ""}` },
+              ...(gigs.length ? [{ id: "services", label: `${t("fp.tabServices")} (${gigs.length})` }] : []),
+              { id: "portfolio", label: `${t("fp.tabPortfolio")}${f.portfolio.length ? ` (${f.portfolio.length})` : ""}` },
+              { id: "reviews", label: `${t("fp.tabReviews")}${reviews.length ? ` (${reviews.length})` : ""}` },
             ].map((t) => (
               <button
                 key={t.id}
@@ -386,7 +388,7 @@ export default function FreelancerProfile() {
                 {f.tagline ? (
                   <p className="max-w-2xl text-[13.5px] leading-relaxed text-white/60">{f.tagline}</p>
                 ) : (
-                  <p className="text-[13px] text-white/40">No bio yet.</p>
+                  <p className="text-[13px] text-white/40">{t("fp.noBio")}</p>
                 )}
                 {f.skills.length > 0 && (
                   <div className="mt-5 flex flex-wrap gap-2">
@@ -418,11 +420,11 @@ export default function FreelancerProfile() {
                     <div className="p-4">
                       <p className="line-clamp-2 text-[13.5px] font-semibold leading-snug">{g.title}</p>
                       <div className="mt-3 flex items-center justify-between border-t border-white/8 pt-3">
-                        <span className="text-[11px] text-white/40">{g.deliveryDays} өдөр</span>
+                        <span className="text-[11px] text-white/40">{t("fp.days", { n: g.deliveryDays })}</span>
                         <span className="font-display text-[15px] font-bold text-mint">${g.price}</span>
                       </div>
                       {g.ordersCount > 0 && (
-                        <p className="mt-1.5 text-[10.5px] text-white/35">{g.ordersCount} захиалагдсан</p>
+                        <p className="mt-1.5 text-[10.5px] text-white/35">{t("fp.ordered", { n: g.ordersCount })}</p>
                       )}
                     </div>
                   </button>
@@ -465,7 +467,7 @@ export default function FreelancerProfile() {
                         {p.description && <p className="mt-1.5 line-clamp-2 text-[12.5px] text-white/50">{p.description}</p>}
                         <div className="mt-2 flex flex-wrap items-center gap-3">
                           {p.link && (
-                            <span className="text-[12px] font-semibold text-brand-soft group-hover:text-white">View project →</span>
+                            <span className="text-[12px] font-semibold text-brand-soft group-hover:text-white">{t("fp.viewProject")}</span>
                           )}
                           {toEmbed(p.embedUrl) && (
                             <span
@@ -475,11 +477,11 @@ export default function FreelancerProfile() {
                               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); setEmbedItem(p); } }}
                               className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-violet-soft hover:text-white"
                             >
-                              <Play className="h-3 w-3" /> Үзэх
+                              <Play className="h-3 w-3" /> {t("fp.watch")}
                             </span>
                           )}
                           {p.images?.length > 1 && (
-                            <span className="text-[11.5px] text-white/35">{p.images.length} зураг</span>
+                            <span className="text-[11.5px] text-white/35">{t("fp.imageCount", { n: p.images.length })}</span>
                           )}
                         </div>
                       </div>
@@ -487,7 +489,7 @@ export default function FreelancerProfile() {
                   ))}
                 </div>
               ) : (
-                <p className="glass rounded-2xl p-6 text-[13px] text-white/45">No portfolio items yet.</p>
+                <p className="glass rounded-2xl p-6 text-[13px] text-white/45">{t("fp.noPortfolio")}</p>
               )
             )}
 
@@ -512,7 +514,7 @@ export default function FreelancerProfile() {
                   ))}
                 </div>
               ) : (
-                <p className="glass rounded-2xl p-6 text-[13px] text-white/45">Одоогоор review алга.</p>
+                <p className="glass rounded-2xl p-6 text-[13px] text-white/45">{t("fp.noReviews")}</p>
               )
             )}
           </div>

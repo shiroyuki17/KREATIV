@@ -72,6 +72,40 @@ for (const file of jsxFiles(SRC)) {
 const unknown = [...usedKeys].filter((k) => !(k in mn) || !(k in en)).sort();
 for (const k of unknown) problems.push(`missing key in dictionaries: "${k}"`);
 
+// Тусламжийн функц t()-г параметрээр авдаг бол дуудлага бүр түүнийг
+// ДАМЖУУЛСАН байх ёстой. Мартвал build ч, толь бичгийн шалгуур ч барихгүй —
+// зөвхөн тухайн мөр рендэрлэгдэх агшинд "t is not defined" гэж унана.
+function argCount(src, from) {
+  let depth = 0, args = from < src.length ? 1 : 0;
+  for (let i = from; i < src.length; i++) {
+    const c = src[i];
+    if (c === "(" || c === "[" || c === "{") depth++;
+    else if (c === ")" || c === "]" || c === "}") {
+      if (depth === 0) return args;
+      depth--;
+    } else if (c === "," && depth === 0) args++;
+  }
+  return args;
+}
+
+for (const file of jsxFiles(SRC)) {
+  if (file.endsWith("i18n.jsx")) continue;
+  const src = readFileSync(file, "utf8");
+  const rel = file.slice(SRC.length).replace(/\\/g, "/");
+  for (const m of src.matchAll(/^function (\w+)\s*\(([^)]*)\)/gm)) {
+    const params = m[2].split(",").map((s) => s.trim()).filter(Boolean);
+    const tIndex = params.indexOf("t");
+    if (tIndex === -1) continue;
+    for (const call of src.matchAll(new RegExp(`(?<![\\w.])${m[1]}\\s*\\(`, "g"))) {
+      const open = call.index + call[0].length;
+      if (src.slice(0, call.index).match(/function\s+$/)) continue; // тодорхойлолт өөрөө
+      if (argCount(src, open) <= tIndex) {
+        problems.push(`${rel}: ${m[1]}() called without its t argument`);
+      }
+    }
+  }
+}
+
 // Хэрэглэгдэхгүй болсон түлхүүрийг АЛДАА гэж үзэхгүй — зарим нь өөр
 // хувьсагчаар (labelKey) дамжин дуудагддаг тул статикаар олдохгүй.
 
