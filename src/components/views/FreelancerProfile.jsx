@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, BadgeCheck, Star, MessageSquare, Sparkles, Loader2, AlertCircle, Pencil, Image as ImageIcon, ShieldCheck } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Star, MessageSquare, Sparkles, Loader2, AlertCircle, Pencil, Image as ImageIcon, ShieldCheck, Play, X } from "lucide-react";
 import Magnet from "../fx/Magnet.jsx";
 import { useNav } from "../../nav.jsx";
 import { avatarSrc } from "../../lib/authApi.js";
 import { fetchFreelancerByUserId, fetchFreelancerByUsername, fetchFreelancerStats, recordProfileView, followUser, unfollowUser, fetchMyFollowing } from "../../lib/talentApi.js";
 import { fetchReviewsFor } from "../../lib/contractApi.js";
 import { fetchGigs } from "../../lib/gigApi.js";
+import { toEmbed } from "../../lib/embed.js";
+import { useEscapeKey } from "../../hooks/useEscapeKey.js";
 
 // StandoutWork.jsx-ийн CAT_GRAD-тай ижил санаа — категори бүр өөрийн өнгөтэй
 // тул декоратив cover зурган оронд категориороо л ялгаатай харагдана.
@@ -91,6 +93,7 @@ export default function FreelancerProfile() {
   const [isFollowing, setIsFollowing] = useState(false);
   const [stats, setStats] = useState(null);
   const [gigs, setGigs] = useState([]);
+  const [embedItem, setEmbedItem] = useState(null);
 
   // Хоёр замаар орж ирж болно: жагсаалтаас дарж (userId) эсвэл хуваалцсан
   // богино хаягаар (/#/u/bat-erdene → username).
@@ -140,6 +143,8 @@ export default function FreelancerProfile() {
 
   // Нэвтрээгүй зочин профайл үзэж болно (нийтэд нээлттэй) ч дагах/бичих
   // нь акаунт шаардана — 401 харуулахын оронд нэвтрэх рүү чиглүүлнэ.
+  useEscapeKey(() => setEmbedItem(null), !!embedItem);
+
   const requireLogin = () => { nav("auth"); };
 
   // Optimistic — сервер унавал төлөвийг эргүүлж буцаана.
@@ -462,8 +467,16 @@ export default function FreelancerProfile() {
                           {p.link && (
                             <span className="text-[12px] font-semibold text-brand-soft group-hover:text-white">View project →</span>
                           )}
-                          {p.embedUrl && (
-                            <span className="text-[11.5px] text-white/35">Embed бий</span>
+                          {toEmbed(p.embedUrl) && (
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEmbedItem(p); }}
+                              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); setEmbedItem(p); } }}
+                              className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-violet-soft hover:text-white"
+                            >
+                              <Play className="h-3 w-3" /> Үзэх
+                            </span>
                           )}
                           {p.images?.length > 1 && (
                             <span className="text-[11.5px] text-white/35">{p.images.length} зураг</span>
@@ -505,6 +518,59 @@ export default function FreelancerProfile() {
           </div>
         </div>
       </div>
+
+      {/* Embed-ийг зөвхөн ХҮН дарсан үед л ачаална — профайл нээх бүрд
+          гуравдагч frame автоматаар татагдах нь хурд, нууцлал хоёуланд
+          гай. sandbox нь тухайн frame-д top-level navigation, popup,
+          form submit хийхийг хориглоно; allow-scripts зайлшгүй (video
+          player ажиллахгүй) ч allow-same-origin ХАМТ өгөхгүй — тэр хоёр
+          зэрэг байвал sandbox өөрөө утгагүй болно. */}
+      {embedItem && (() => {
+        const em = toEmbed(embedItem.embedUrl);
+        if (!em) return null;
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4"
+            onClick={() => setEmbedItem(null)}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label={embedItem.title}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-4xl overflow-hidden rounded-2xl border border-white/10 bg-[#1b1730]"
+            >
+              <div className="flex items-center justify-between gap-3 px-5 py-3">
+                <p className="min-w-0 truncate text-[13.5px] font-semibold">{embedItem.title}</p>
+                <div className="flex shrink-0 items-center gap-3">
+                  <a
+                    href={embedItem.embedUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11.5px] font-semibold text-brand-soft hover:text-white"
+                  >
+                    Шинэ цонхонд →
+                  </a>
+                  <button onClick={() => setEmbedItem(null)} aria-label="Хаах" className="rounded-lg p-1.5 text-white/45 hover:text-white">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+              <div className="aspect-video w-full bg-black">
+                <iframe
+                  src={em.src}
+                  title={em.title}
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                  sandbox="allow-scripts allow-presentation"
+                  allow="fullscreen; picture-in-picture"
+                  className="h-full w-full border-0"
+                />
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
