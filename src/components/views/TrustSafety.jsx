@@ -213,9 +213,13 @@ export default function TrustSafety() {
         <h2 className="mt-4 font-display text-2xl font-bold tracking-tight">
           Work with confidence
         </h2>
+        {/* Өмнө нь "Join 12,000+ freelancers and thousands of teams" гэж
+            бичсэн байв — платформ дээр бодитоор хэдэн арван хэрэглэгч
+            байхад. Сайтын бусад газарт зохиомол статистикийг аль хэдийн
+            цэвэрлэсэн тул энд ч тоо зарлахгүй: амлалтаа хэлье, тоог биш. */}
         <p className="mx-auto mt-2 max-w-md text-[13.5px] text-white/50">
-          Join 12,000+ freelancers and thousands of teams who never worry about
-          getting paid — or getting delivered.
+          Мөнгө нь escrow-д хамгаалагдсан, ажил нь milestone тутамд
+          баталгаажсан үед хоёр тал хоёулаа эрсдэлгүй.
         </p>
         <Magnet strength={0.15} className="mt-6">
           <button
