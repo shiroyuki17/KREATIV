@@ -337,7 +337,7 @@ export default function PostJob() {
             <div className="flex items-center gap-3">
               <span className="h-px flex-1 bg-white/8" />
               <span className="text-[10.5px] font-semibold uppercase tracking-widest text-white/25">
-                эсвэл гараар бөглөнө үү
+                {t("pj.orManual")}
               </span>
               <span className="h-px flex-1 bg-white/8" />
             </div>

@@ -8,6 +8,7 @@ import {
   Radio,
 } from "lucide-react";
 import EmptyState from "../ui/EmptyState.jsx";
+import { useT } from "../../i18n.jsx";
 
 const META = {
   commit: { Icon: GitCommitHorizontal, cls: "text-brand-soft border-brand/30 bg-brand/10" },
@@ -21,15 +22,16 @@ const FALLBACK_META = { Icon: Bell, cls: "text-white/60 border-white/15 bg-white
 
 /** Toast-style chronological feed with entrance animations. */
 export default function ActivityFeed({ feed }) {
+  const t = useT();
   return (
     <div className="glass flex h-full flex-col rounded-2xl p-6">
       <div className="flex items-center justify-between">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
-          Live activity
+          {t("af.liveActivity")}
         </p>
         <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-mint">
           <span className="h-1.5 w-1.5 animate-pulse-soft rounded-full bg-mint" />
-          Streaming
+          {t("af.streaming")}
         </span>
       </div>
 
@@ -37,8 +39,8 @@ export default function ActivityFeed({ feed }) {
         {feed.length === 0 && (
           <EmptyState
             Icon={Radio}
-            title="It's quiet in here"
-            desc="Job posts, proposals, and payments will show up here the moment something happens."
+            title={t("af.empty")}
+            desc={t("af.emptyDesc")}
             compact
           />
         )}

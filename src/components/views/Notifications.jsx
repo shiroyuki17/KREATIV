@@ -97,14 +97,6 @@ export default function Notifications() {
 
       {!loading && items.length === 0 && !error && (
         <div className="glass mt-8 rounded-2xl p-12 text-center">
-          <Info className="mx-auto h-10 w-10 text-white/20" />
-          <p className="mt-4 text-[14.5px] font-semibold text-white/70">No notifications yet</p>
-          <p className="mt-1 text-[12.5px] text-white/40">You're all set! Activity on your jobs and messages will appear here.</p>
-        </div>
-      )}
-
-      {!loading && items.length === 0 && !error && (
-        <div className="glass mt-8 rounded-2xl p-12 text-center">
           <Bell className="mx-auto h-8 w-8 text-white/20" />
           <p className="mt-4 text-[14px] font-semibold">{t("nt.empty")}</p>
           <p className="mt-1.5 text-[12.5px] text-white/45">{t("nt.emptyHint")}</p>

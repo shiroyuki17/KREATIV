@@ -995,7 +995,7 @@ export default function Messages() {
             style={{ background: "#1b1730", borderLeft: "1px solid rgba(255,255,255,0.08)" }}
           >
             <div className="flex items-center justify-between px-4 py-3.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-              <p className="text-[13px] font-bold">Contact Info</p>
+              <p className="text-[13px] font-bold">{t("msg.contactInfo")}</p>
               <button
                 onClick={() => setShowDetails(false)}
                 aria-label={t("msg.closeDetails")}

@@ -196,13 +196,13 @@ export default function Onboarding() {
               {isFl ? (
                 <>
                   <Field label={t("onb.fullName")} placeholder="Daniel Kim" value={fullName} onChange={(e) => setFullName(e.target.value)} />
-                  <Field label={t("onb.professionalTitle")} placeholder="Full-Stack Developer" value={title} onChange={(e) => setTitle(e.target.value)} />
+                  <Field label={t("onb.professionalTitle")} placeholder={t("onb.titlePh")} value={title} onChange={(e) => setTitle(e.target.value)} />
                   <Field label={t("onb.hourlyRate")} placeholder="$95/hr" value={rate} onChange={(e) => setRate(e.target.value)} />
                 </>
               ) : (
                 <>
                   <Field label={t("onb.companyName")} placeholder="Nova Studio" value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
-                  <Field label={t("onb.yourRole")} placeholder="Head of Product" value={yourRole} onChange={(e) => setYourRole(e.target.value)} />
+                  <Field label={t("onb.yourRole")} placeholder={t("onb.rolePh")} value={yourRole} onChange={(e) => setYourRole(e.target.value)} />
                   <Field label={t("onb.teamSize")} placeholder="11 – 50" value={teamSize} onChange={(e) => setTeamSize(e.target.value)} />
                 </>
               )}

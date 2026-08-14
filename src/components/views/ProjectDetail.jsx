@@ -60,8 +60,8 @@ export default function ProjectDetail() {
     const token = getAccessToken();
     if (!token) { nav("auth"); return; }
     const price = parseInt(bid.replace(/[^0-9]/g, ""), 10);
-    if (!price) { setProposalError("Үнийн саналаа тоогоор оруулна уу"); return; }
-    if (coverLetter.trim().length < 10) { setProposalError("Cover note дор хаяж 10 тэмдэгт байх ёстой"); return; }
+    if (!price) { setProposalError(t("pd.errBid")); return; }
+    if (coverLetter.trim().length < 10) { setProposalError(t("pd.errCoverLetter")); return; }
     setSubmitting(true);
     setProposalError("");
     try {

@@ -21,6 +21,8 @@ import {
   Plug,
 } from "lucide-react";
 import { getAccessToken, avatarSrc } from "../../lib/authApi.js";
+import { useI18n } from "../../i18n.jsx";
+import { dateTime, numericDate } from "../../lib/dates.js";
 import {
   fetchAdminStats,
   fetchAdminUsers,
@@ -41,15 +43,15 @@ import {
 } from "../../lib/adminApi.js";
 
 const TABS = [
-  { id: "overview", label: "Overview", Icon: LayoutDashboard },
-  { id: "users", label: "Users & Roles", Icon: Users },
-  { id: "transactions", label: "Transactions", Icon: Wallet },
-  { id: "disputes", label: "Disputes", Icon: Scale },
-  { id: "verifications", label: "Verifications", Icon: BadgeCheck },
-  { id: "moderation", label: "Moderation", Icon: ShieldAlert },
-  { id: "payouts", label: "Payouts", Icon: Banknote },
-  { id: "ledger", label: "Ledger check", Icon: ClipboardCheck },
-  { id: "integrations", label: "Integrations", Icon: Plug },
+  { id: "overview", labelKey: "adm.tabOverview", Icon: LayoutDashboard },
+  { id: "users", labelKey: "adm.tabUsers", Icon: Users },
+  { id: "transactions", labelKey: "adm.tabTransactions", Icon: Wallet },
+  { id: "disputes", labelKey: "adm.tabDisputes", Icon: Scale },
+  { id: "verifications", labelKey: "adm.tabVerifications", Icon: BadgeCheck },
+  { id: "moderation", labelKey: "adm.tabModeration", Icon: ShieldAlert },
+  { id: "payouts", labelKey: "adm.tabPayouts", Icon: Banknote },
+  { id: "ledger", labelKey: "adm.tabLedger", Icon: ClipboardCheck },
+  { id: "integrations", labelKey: "adm.tabIntegrations", Icon: Plug },
 ];
 
 const ROLE_BADGE = {
@@ -59,8 +61,36 @@ const ROLE_BADGE = {
   Unassigned: "border-white/15 bg-white/[0.05] text-white/50",
 };
 
+// Backend-ийн буцаадаг эрхийн нэрс ("Client", "Freelancer", "Admin"…) →
+// орчуулгын түлхүүр. Утга нь API-гаас ирдэг тул англи хэвээрээ дэлгэц дээр
+// гарч байсныг сольж, шүүлтүүрийн утга нь хөндөгдөхгүй.
+const ROLE_KEY = {
+  ADMIN: "adm.roleAdmin",
+  Admin: "adm.roleAdmin",
+  Client: "adm.roleClient",
+  Freelancer: "adm.roleFreelancer",
+  Unassigned: "adm.roleUnassigned",
+};
+
+// Шүүлтүүрийн товчнууд — утга нь API-д очдог тул хөрвүүлэхгүй, зөвхөн шошго.
+const ROLE_FILTERS = [
+  { value: "All", labelKey: "adm.roleAll" },
+  { value: "Client", labelKey: "adm.roleClients" },
+  { value: "Freelancer", labelKey: "adm.roleFreelancers" },
+  { value: "ADMIN", labelKey: "adm.roleAdmins" },
+];
+
+// Маргааны шийдвэр (API-ийн enum) → товчны шошго. Санал болголтыг ч, эцсийн
+// шийдвэрийн тэмдэглэгээг ч нэг эх сурвалжаас авна.
+const RESOLUTION_KEY = {
+  FREELANCER: "adm.awardFreelancer",
+  CLIENT: "adm.refundClient",
+  SPLIT: "adm.split",
+};
+
 export default function AdminPanel() {
   const { role, nav, user, authReady, mode } = useNav();
+  const { t, locale } = useI18n();
 
   // Direct hash navigation (#/admin) bypasses the sidebar's gating, so guard
   // the view itself too. `nav` is a fresh closure every NavProvider render
@@ -111,10 +141,10 @@ export default function AdminPanel() {
       fetchVerificationQueue("PENDING"),
       fetchIntegrations(),
     ])
-      .then(([s, u, t, d, mod, payouts, recon, verif, integ]) => {
+      .then(([s, u, tx, d, mod, payouts, recon, verif, integ]) => {
         setStats(s);
         setUsers(u.users);
-        setTransactions(t.transactions);
+        setTransactions(tx.transactions);
         setDisputes(d.disputes);
         setModerationQueue(mod.jobs);
         setPayoutQueue(payouts.payouts);
@@ -221,18 +251,16 @@ export default function AdminPanel() {
         <div>
           <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-300">
             <Crown className="h-3.5 w-3.5" />
-            — Platform control
+            {t("adm.eyebrow")}
           </p>
           <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">
-            Welcome, {user?.name?.split(" ")[0] || "Admin"}
+            {t("adm.welcome", { name: user?.name?.split(" ")[0] || t("adm.fallbackName") })}
           </h1>
-          <p className="mt-1.5 text-[13px] text-white/45">
-            Real visibility over every account, role, and transaction on KREATIV.
-          </p>
+          <p className="mt-1.5 text-[13px] text-white/45">{t("adm.subtitle")}</p>
         </div>
         <span className="inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-400/10 px-5 py-2.5 text-[11px] font-bold uppercase tracking-widest text-amber-300 shadow-[0_0_24px_rgba(251,191,36,0.25)]">
           <Crown className="h-4 w-4" />
-          Superadmin
+          {t("adm.superadmin")}
         </span>
       </div>
 
@@ -243,7 +271,7 @@ export default function AdminPanel() {
       )}
 
       <div className="mt-7 flex flex-wrap gap-2">
-        {TABS.map(({ id, label, Icon }) => (
+        {TABS.map(({ id, labelKey, Icon }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
@@ -254,26 +282,26 @@ export default function AdminPanel() {
             }
           >
             <Icon className="h-4 w-4" />
-            {label}
+            {t(labelKey)}
           </button>
         ))}
       </div>
 
-      {loading && <p className="mt-8 text-center text-[13px] text-white/40">Ачааллаж байна…</p>}
+      {loading && <p className="mt-8 text-center text-[13px] text-white/40">{t("common.loading")}</p>}
 
       {/* ================= OVERVIEW ================= */}
       {!loading && stats && tab === "overview" && (
         <>
           <div className="mt-7 grid grid-cols-2 gap-4 lg:grid-cols-4">
             {[
-              { label: "Total users", value: stats.totalUsers },
-              { label: "Freelancers", value: stats.totalFreelancers },
-              { label: "Clients", value: stats.totalClients },
-              { label: "Jobs posted", value: stats.totalJobs },
+              { key: "adm.statUsers", value: stats.totalUsers },
+              { key: "adm.statFreelancers", value: stats.totalFreelancers },
+              { key: "adm.statClients", value: stats.totalClients },
+              { key: "adm.statJobs", value: stats.totalJobs },
             ].map((s) => (
-              <div key={s.label} className="glass rounded-2xl p-5">
+              <div key={s.key} className="glass rounded-2xl p-5">
                 <p className="font-display text-2xl font-bold">{s.value.toLocaleString("en-US")}</p>
-                <p className="mt-1 text-[11px] font-medium uppercase tracking-wider text-white/40">{s.label}</p>
+                <p className="mt-1 text-[11px] font-medium uppercase tracking-wider text-white/40">{t(s.key)}</p>
               </div>
             ))}
           </div>
@@ -282,7 +310,7 @@ export default function AdminPanel() {
             <div className="glass rounded-2xl p-6 lg:col-span-2">
               <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-white/40">
                 <Activity className="h-3.5 w-3.5 text-neon" />
-                Signups · last 6 months
+                {t("adm.signups")}
               </p>
               <div className="mt-5 flex h-40 items-end gap-3">
                 {stats.signupsByMonth.map((s, i) => {
@@ -306,12 +334,12 @@ export default function AdminPanel() {
             </div>
 
             <div className="glass rounded-2xl p-6">
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40">Role distribution</p>
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40">{t("adm.roleDist")}</p>
               <div className="mt-4 space-y-4">
                 {stats.roleDistribution.map((r) => (
                   <div key={r.role}>
                     <div className="flex items-center justify-between text-[12px]">
-                      <span className="font-semibold text-white/75">{r.role}</span>
+                      <span className="font-semibold text-white/75">{ROLE_KEY[r.role] ? t(ROLE_KEY[r.role]) : r.role}</span>
                       <span className="text-white/40">{r.count}</span>
                     </div>
                     <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/8">
@@ -337,21 +365,21 @@ export default function AdminPanel() {
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Search name or email…"
+                placeholder={t("adm.searchPh")}
                 className="w-full bg-transparent text-[13px] outline-none placeholder:text-white/30"
               />
             </div>
-            {["All", "Client", "Freelancer", "ADMIN"].map((r) => (
+            {ROLE_FILTERS.map((r) => (
               <button
-                key={r}
-                onClick={() => setRoleFilter(r)}
+                key={r.value}
+                onClick={() => setRoleFilter(r.value)}
                 className={
-                  roleFilter === r
+                  roleFilter === r.value
                     ? "rounded-full bg-brand px-4 py-2 text-[12px] font-semibold glow-brand"
                     : "rounded-full border border-white/10 px-4 py-2 text-[12px] font-medium text-white/55 transition-colors hover:border-brand/40 hover:text-white"
                 }
               >
-                {r === "All" ? "All roles" : r === "ADMIN" ? "Admins" : r + "s"}
+                {t(r.labelKey)}
               </button>
             ))}
           </div>
@@ -372,18 +400,18 @@ export default function AdminPanel() {
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="flex items-center gap-2 text-[13.5px] font-semibold">
-                    {u.name || "(no name)"}
+                    {u.name || t("adm.noName")}
                     {u.role === "ADMIN" && <Crown className="h-3.5 w-3.5 text-amber-300" />}
                   </p>
                   <p className="truncate text-[11.5px] text-white/40">
-                    {u.email} · joined {new Date(u.createdAt).toLocaleDateString()}
+                    {u.email} · {t("adm.joined", { date: numericDate(u.createdAt, locale) })}
                   </p>
                 </div>
                 <span className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${ROLE_BADGE[u.role === "ADMIN" ? "ADMIN" : u.type]}`}>
-                  {u.role === "ADMIN" ? "Admin" : u.type}
+                  {t(ROLE_KEY[u.role === "ADMIN" ? "ADMIN" : u.type] || "adm.roleUnassigned")}
                 </span>
                 <span className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${u.isActive ? "border-mint/30 bg-mint/10 text-mint" : "border-red-500/40 bg-red-500/10 text-red-400"}`}>
-                  {u.isActive ? "Active" : "Suspended"}
+                  {u.isActive ? t("adm.active") : t("adm.suspended")}
                 </span>
                 {u.id !== user?.id && u.role !== "ADMIN" && (
                   <button
@@ -395,13 +423,13 @@ export default function AdminPanel() {
                     }
                   >
                     {u.isActive ? <Ban className="h-3.5 w-3.5" /> : <RotateCcw className="h-3.5 w-3.5" />}
-                    {u.isActive ? "Suspend" : "Restore"}
+                    {u.isActive ? t("adm.suspend") : t("adm.restore")}
                   </button>
                 )}
               </div>
             ))}
             {shown.length === 0 && (
-              <p className="py-8 text-center text-[13px] text-white/35">No users match that search.</p>
+              <p className="py-8 text-center text-[13px] text-white/35">{t("adm.noUsers")}</p>
             )}
           </div>
         </div>
@@ -412,7 +440,7 @@ export default function AdminPanel() {
         <div className="glass mt-7 rounded-2xl p-6">
           <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-white/40">
             <Wallet className="h-3.5 w-3.5 text-mint" />
-            Platform-wide transactions
+            {t("adm.txTitle")}
           </p>
           <div className="mt-3 divide-y divide-white/6">
             {transactions.map((tx) => (
@@ -420,26 +448,26 @@ export default function AdminPanel() {
                 <div className="min-w-0 flex-1">
                   <p className="text-[13.5px] font-semibold">{tx.user?.name || tx.user?.email}</p>
                   <p className="mt-0.5 text-[11.5px] text-white/40">
-                    {tx.provider} · {new Date(tx.createdAt).toLocaleString()}
+                    {tx.provider} · {dateTime(tx.createdAt, locale)}
                   </p>
                 </div>
                 <p className={`font-display text-[15px] font-bold ${["DEPOSIT", "ESCROW_RELEASE"].includes(tx.kind) ? "text-mint" : "text-white/70"}`}>
                   {["DEPOSIT", "ESCROW_RELEASE"].includes(tx.kind) ? "+" : "−"}${tx.amount.toLocaleString("en-US")}
                 </p>
                 <span className="rounded-full border border-white/10 px-2.5 py-1 text-[9.5px] font-bold uppercase tracking-wider text-white/45">
-                  {tx.kind.replace("_", " ")}
+                  {t(`tx.${tx.kind}`)}
                 </span>
                 <span
                   className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${
                     tx.status === "COMPLETED" ? "border-mint/30 bg-mint/10 text-mint" : "border-amber-400/30 bg-amber-400/10 text-amber-300"
                   }`}
                 >
-                  {tx.status}
+                  {tx.status === "COMPLETED" ? t("tx.completed") : tx.status === "FAILED" ? t("tx.rejected") : t("tx.pending")}
                 </span>
               </div>
             ))}
             {transactions.length === 0 && (
-              <p className="py-8 text-center text-[13px] text-white/35">No transactions yet.</p>
+              <p className="py-8 text-center text-[13px] text-white/35">{t("adm.noTx")}</p>
             )}
           </div>
         </div>
@@ -461,7 +489,12 @@ export default function AdminPanel() {
                       <span className="text-[10.5px] font-bold text-white/30">{milestone.title}</span>
                     </p>
                     <p className="mt-1 text-[12px] text-white/40">
-                      {contract.client?.user?.name} ↔ {contract.freelancer?.user?.name} · ${milestone.amount.toLocaleString("en-US")} escrow-д · нээгдсэн {new Date(d.createdAt).toLocaleDateString()}
+                      {t("adm.disputeMeta", {
+                        client: contract.client?.user?.name,
+                        freelancer: contract.freelancer?.user?.name,
+                        amount: milestone.amount.toLocaleString("en-US"),
+                        date: numericDate(d.createdAt, locale),
+                      })}
                     </p>
                     <p className="mt-2 text-[12.5px] text-white/60">"{d.reason}"</p>
                   </div>
@@ -470,7 +503,9 @@ export default function AdminPanel() {
                       resolved ? "border-mint/30 bg-mint/10 text-mint" : "border-amber-400/30 bg-amber-400/10 text-amber-300"
                     }`}
                   >
-                    {resolved ? `Resolved · ${d.resolution}` : "Open"}
+                    {resolved
+                      ? t("adm.disputeResolved", { resolution: t(RESOLUTION_KEY[d.resolution] || "adm.split") })
+                      : t("adm.disputeOpen")}
                   </span>
                 </div>
                 {!resolved && (
@@ -481,28 +516,28 @@ export default function AdminPanel() {
                       className="flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/[0.04] px-3.5 py-2 text-[11.5px] font-bold text-white/70 transition-all hover:bg-white/10 disabled:opacity-50"
                     >
                       <Sparkles className="h-3.5 w-3.5" />
-                      {aiAnalyses[d.id]?.loading ? "Шинжилж байна…" : "AI-ийн зөвлөмж авах"}
+                      {aiAnalyses[d.id]?.loading ? t("adm.aiAnalyzing") : t("adm.aiAsk")}
                     </button>
                     <button
                       onClick={() => handleResolve(d.id, "FREELANCER")}
                       disabled={resolving}
                       className="rounded-lg border border-mint/40 bg-mint/10 px-3.5 py-2 text-[11.5px] font-bold text-mint transition-all hover:bg-mint hover:text-ink disabled:opacity-50"
                     >
-                      Freelancer-д бүтнээр нь олгох
+                      {t("adm.awardFreelancer")}
                     </button>
                     <button
                       onClick={() => handleResolve(d.id, "SPLIT")}
                       disabled={resolving}
                       className="rounded-lg border border-neon/40 bg-neon/10 px-3.5 py-2 text-[11.5px] font-bold text-neon transition-all hover:bg-neon hover:text-ink disabled:opacity-50"
                     >
-                      Тэнцүү хуваах
+                      {t("adm.split")}
                     </button>
                     <button
                       onClick={() => handleResolve(d.id, "CLIENT")}
                       disabled={resolving}
                       className="rounded-lg border border-brand/40 bg-brand/10 px-3.5 py-2 text-[11.5px] font-bold text-brand-soft transition-all hover:bg-brand hover:text-white disabled:opacity-50"
                     >
-                      Client-д бүтнээр нь буцаах
+                      {t("adm.refundClient")}
                     </button>
                   </div>
                 )}
@@ -513,14 +548,16 @@ export default function AdminPanel() {
                   <div className="mt-4 rounded-xl border border-neon/25 bg-neon/[0.06] p-4">
                     <div className="flex items-center justify-between gap-3">
                       <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-neon">
-                        <Sparkles className="h-3.5 w-3.5" /> AI зөвлөмж — эцсийн шийдвэр биш
+                        <Sparkles className="h-3.5 w-3.5" /> {t("adm.aiTitle")}
                       </p>
                       <span className="rounded-full border border-white/15 px-2.5 py-1 text-[10px] font-bold uppercase text-white/50">
-                        {aiAnalyses[d.id].data.confidence} confidence
+                        {t("adm.aiConfidence", { level: aiAnalyses[d.id].data.confidence })}
                       </span>
                     </div>
                     <p className="mt-2 text-[13px] font-bold text-white">
-                      Санал: {{ FREELANCER: "Freelancer-д бүтнээр нь олгох", CLIENT: "Client-д бүтнээр нь буцаах", SPLIT: "Тэнцүү хуваах" }[aiAnalyses[d.id].data.recommendation]}
+                      {t("adm.aiSuggestion", {
+                        what: t(RESOLUTION_KEY[aiAnalyses[d.id].data.recommendation] || "adm.split"),
+                      })}
                     </p>
                     <p className="mt-1.5 text-[12.5px] leading-relaxed text-white/65">{aiAnalyses[d.id].data.reasoning}</p>
                     {aiAnalyses[d.id].data.keyEvidence?.length > 0 && (
@@ -539,7 +576,7 @@ export default function AdminPanel() {
             );
           })}
           {disputes.length === 0 && (
-            <div className="glass rounded-2xl p-10 text-center text-[13px] text-white/40">Одоогоор маргаан алга.</div>
+            <div className="glass rounded-2xl p-10 text-center text-[13px] text-white/40">{t("adm.noDisputes")}</div>
           )}
         </div>
       )}
@@ -553,7 +590,8 @@ export default function AdminPanel() {
                 <div className="min-w-0">
                   <p className="text-[14.5px] font-semibold">{p.user?.name}</p>
                   <p className="mt-0.5 text-[12px] text-white/40">
-                    {p.user?.email} · {p.headline || "Профайл гарчиггүй"} · хүсэлт {new Date(p.verificationRequestedAt).toLocaleDateString()}
+                    {p.user?.email} · {p.headline || t("adm.noHeadline")} ·{" "}
+                    {t("adm.requested", { date: numericDate(p.verificationRequestedAt, locale) })}
                   </p>
                   <p className="mt-2.5 whitespace-pre-wrap rounded-lg border border-white/8 bg-white/[0.03] p-3 text-[12.5px] text-white/65">
                     {p.verificationEvidence}
@@ -566,20 +604,20 @@ export default function AdminPanel() {
                   disabled={verifyBusy}
                   className="flex items-center gap-1.5 rounded-lg border border-mint/40 bg-mint/10 px-3.5 py-2 text-[11.5px] font-bold text-mint transition-all hover:bg-mint hover:text-ink disabled:opacity-50"
                 >
-                  <Check className="h-3.5 w-3.5" /> Баталгаажуулах
+                  <Check className="h-3.5 w-3.5" /> {t("adm.approve")}
                 </button>
                 <button
                   onClick={() => handleVerify(p.id, false)}
                   disabled={verifyBusy}
                   className="flex items-center gap-1.5 rounded-lg border border-red-400/40 bg-red-400/10 px-3.5 py-2 text-[11.5px] font-bold text-red-300 transition-all hover:bg-red-400 hover:text-ink disabled:opacity-50"
                 >
-                  <X className="h-3.5 w-3.5" /> Татгалзах
+                  <X className="h-3.5 w-3.5" /> {t("adm.reject")}
                 </button>
               </div>
             </div>
           ))}
           {verifications.length === 0 && (
-            <div className="glass rounded-2xl p-10 text-center text-[13px] text-white/40">Хүлээгдэж буй хүсэлт алга.</div>
+            <div className="glass rounded-2xl p-10 text-center text-[13px] text-white/40">{t("adm.noVerifications")}</div>
           )}
         </div>
       )}
@@ -587,16 +625,14 @@ export default function AdminPanel() {
       {/* ================= MODERATION (FR-2.3) ================= */}
       {!loading && tab === "moderation" && (
         <div className="mt-7 space-y-3">
-          <p className="text-[12px] text-white/45">
-            Гарчиг/тайлбарт утас, имэйл, гадаад мессенжер илэрсэн зарууд энд ирдэг — нийтлэгдэхийн өмнө админ шалгана (FR-2.3).
-          </p>
+          <p className="text-[12px] text-white/45">{t("adm.modIntro")}</p>
           {moderationQueue.map((j) => (
             <div key={j.id} className="glass rounded-2xl p-6">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0">
                   <p className="text-[14.5px] font-semibold">{j.title}</p>
                   <p className="mt-1 text-[12px] text-white/40">
-                    {j.client?.user?.name || j.client?.orgName} · {new Date(j.createdAt).toLocaleDateString()}
+                    {j.client?.user?.name || j.client?.orgName} · {numericDate(j.createdAt, locale)}
                   </p>
                   <p className="mt-2 text-[12.5px] text-white/60">{j.description}</p>
                   {j.moderationReason && (
@@ -612,20 +648,20 @@ export default function AdminPanel() {
                   disabled={moderating}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-mint/40 bg-mint/10 px-3.5 py-2 text-[11.5px] font-bold text-mint transition-all hover:bg-mint hover:text-ink disabled:opacity-50"
                 >
-                  <Check className="h-3.5 w-3.5" /> Зөвшөөрөх
+                  <Check className="h-3.5 w-3.5" /> {t("adm.modApprove")}
                 </button>
                 <button
                   onClick={() => handleModerate(j.id, "REJECT")}
                   disabled={moderating}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/40 bg-red-500/10 px-3.5 py-2 text-[11.5px] font-bold text-red-400 transition-all hover:bg-red-500 hover:text-white disabled:opacity-50"
                 >
-                  <X className="h-3.5 w-3.5" /> Татгалзах
+                  <X className="h-3.5 w-3.5" /> {t("adm.reject")}
                 </button>
               </div>
             </div>
           ))}
           {moderationQueue.length === 0 && (
-            <div className="glass rounded-2xl p-10 text-center text-[13px] text-white/40">Хяналт хүлээж буй зар алга.</div>
+            <div className="glass rounded-2xl p-10 text-center text-[13px] text-white/40">{t("adm.noModeration")}</div>
           )}
         </div>
       )}
@@ -633,14 +669,12 @@ export default function AdminPanel() {
       {/* ================= PAYOUTS (FR-6.4) ================= */}
       {!loading && tab === "payouts" && (
         <div className="mt-7 space-y-3">
-          <p className="text-[12px] text-white/45">
-            Хэрэглэгчийн гаргалтын хүсэлтүүд — баталгаажуулсны дараа л шилжинэ гэж тооцогдоно.
-          </p>
+          <p className="text-[12px] text-white/45">{t("adm.payoutIntro")}</p>
           {payoutQueue.map((p) => (
             <div key={p.id} className="glass flex flex-wrap items-center justify-between gap-4 rounded-2xl p-6">
               <div>
                 <p className="text-[13.5px] font-semibold">{p.user?.name || p.user?.email}</p>
-                <p className="mt-1 text-[12px] text-white/40">{new Date(p.createdAt).toLocaleString()}</p>
+                <p className="mt-1 text-[12px] text-white/40">{dateTime(p.createdAt, locale)}</p>
               </div>
               <p className="font-display text-[18px] font-bold text-mint">${p.amount.toLocaleString("en-US")}</p>
               <div className="flex gap-2">
@@ -649,20 +683,20 @@ export default function AdminPanel() {
                   disabled={payoutBusy}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-mint/40 bg-mint/10 px-3.5 py-2 text-[11.5px] font-bold text-mint transition-all hover:bg-mint hover:text-ink disabled:opacity-50"
                 >
-                  <Check className="h-3.5 w-3.5" /> Баталгаажуулах
+                  <Check className="h-3.5 w-3.5" /> {t("adm.approve")}
                 </button>
                 <button
                   onClick={() => handlePayout(p.id, "reject")}
                   disabled={payoutBusy}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/40 bg-red-500/10 px-3.5 py-2 text-[11.5px] font-bold text-red-400 transition-all hover:bg-red-500 hover:text-white disabled:opacity-50"
                 >
-                  <X className="h-3.5 w-3.5" /> Татгалзах
+                  <X className="h-3.5 w-3.5" /> {t("adm.reject")}
                 </button>
               </div>
             </div>
           ))}
           {payoutQueue.length === 0 && (
-            <div className="glass rounded-2xl p-10 text-center text-[13px] text-white/40">Хүлээгдэж буй гаргалт алга.</div>
+            <div className="glass rounded-2xl p-10 text-center text-[13px] text-white/40">{t("adm.noPayouts")}</div>
           )}
         </div>
       )}
@@ -673,10 +707,16 @@ export default function AdminPanel() {
           <div className={`glass rounded-2xl p-6 ${reconciliation.ok ? "border-mint/30" : "border-red-500/30"}`}>
             <p className={`inline-flex items-center gap-2 text-[14px] font-bold ${reconciliation.ok ? "text-mint" : "text-red-400"}`}>
               <ClipboardCheck className="h-4.5 w-4.5" />
-              {reconciliation.ok ? "Ledger цэвэр — зөрүү илрээгүй" : `${reconciliation.issuesFound} зөрүү илэрлээ`}
+              {reconciliation.ok
+                ? t("adm.ledgerOk")
+                : t("adm.ledgerIssues", { count: reconciliation.issuesFound })}
             </p>
             <p className="mt-2 text-[12px] text-white/45">
-              {reconciliation.milestonesChecked} milestone, {reconciliation.usersChecked} хэрэглэгч шалгагдсан · {new Date(reconciliation.ranAt).toLocaleString()}
+              {t("adm.ledgerMeta", {
+                milestones: reconciliation.milestonesChecked,
+                users: reconciliation.usersChecked,
+                at: dateTime(reconciliation.ranAt, locale),
+              })}
             </p>
           </div>
           {reconciliation.issues.length > 0 && (
@@ -699,37 +739,49 @@ export default function AdminPanel() {
       {!loading && tab === "integrations" && integrations && (
         <div className="mt-7 space-y-3">
           <IntegrationRow
-            label="Имэйл (SMTP)"
+            label={t("adm.intEmail")}
             ok={integrations.email.configured}
             detail={
               integrations.email.configured
                 ? `SMTP: ${integrations.email.host}`
-                : "Тохируулаагүй — имэйл Ethereal тест inbox руу очно, хэрэглэгчийн жинхэнэ хайрцагт ХҮРЭХГҮЙ"
+                : t("adm.intEmailOff")
             }
+            t={t}
           />
           <IntegrationRow
-            label="AI"
+            label={t("adm.intAi")}
             ok={integrations.ai.anyConfigured}
-            detail={`Anthropic: ${integrations.ai.anthropic ? "тийм" : "үгүй"} · Gemini: ${integrations.ai.gemini ? "тийм" : "үгүй"}`}
+            detail={t("adm.intAiDetail", {
+              anthropic: t(integrations.ai.anthropic ? "adm.yes" : "adm.no"),
+              gemini: t(integrations.ai.gemini ? "adm.yes" : "adm.no"),
+            })}
+            t={t}
           />
           <IntegrationRow
-            label="Stripe төлбөр"
+            label={t("adm.intStripe")}
             ok={integrations.payments.stripe}
             detail={
               integrations.payments.stripe
-                ? `${integrations.payments.stripeTestMode ? "TEST горим" : "LIVE горим"} · webhook: ${integrations.payments.stripeWebhook ? "тийм" : "ҮГҮЙ"} · provider: ${integrations.payments.provider}`
-                : "Тохируулаагүй"
+                ? t("adm.intStripeDetail", {
+                    mode: t(integrations.payments.stripeTestMode ? "adm.intModeTest" : "adm.intModeLive"),
+                    webhook: t(integrations.payments.stripeWebhook ? "adm.yes" : "adm.no"),
+                    provider: integrations.payments.provider,
+                  })
+                : t("adm.notConfigured")
             }
+            t={t}
           />
           <IntegrationRow
-            label="Google нэвтрэлт"
+            label={t("adm.intGoogle")}
             ok={integrations.googleOauth.configured}
-            detail={integrations.googleOauth.redirectUri || "Тохируулаагүй"}
+            detail={integrations.googleOauth.redirectUri || t("adm.notConfigured")}
+            t={t}
           />
           <IntegrationRow
-            label="Файл хадгалалт (S3)"
+            label={t("adm.intStorage")}
             ok={integrations.storage.s3}
-            detail={integrations.storage.s3 ? "S3 bucket холбогдсон" : "Локал диск ашиглаж байна"}
+            detail={t(integrations.storage.s3 ? "adm.intStorageOn" : "adm.intStorageOff")}
+            t={t}
           />
         </div>
       )}
@@ -737,7 +789,7 @@ export default function AdminPanel() {
   );
 }
 
-function IntegrationRow({ label, ok, detail }) {
+function IntegrationRow({ label, ok, detail, t }) {
   return (
     <div className="glass flex flex-wrap items-center justify-between gap-3 rounded-2xl p-5">
       <div className="min-w-0">
@@ -749,7 +801,7 @@ function IntegrationRow({ label, ok, detail }) {
           ok ? "border-mint/30 bg-mint/10 text-mint" : "border-amber-400/30 bg-amber-400/10 text-amber-300"
         }`}
       >
-        {ok ? "Тохируулсан" : "Тохируулаагүй"}
+        {ok ? t("adm.configured") : t("adm.notConfigured")}
       </span>
     </div>
   );

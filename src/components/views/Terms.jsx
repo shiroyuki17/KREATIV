@@ -1,75 +1,37 @@
 import { AlertTriangle } from "lucide-react";
 import { useNav } from "../../nav.jsx";
+import { useT } from "../../i18n.jsx";
 
 const SECTIONS = [
-  {
-    title: "1. Платформын үүрэг — зуучлагч",
-    body: [
-      "KREATIV нь захиалагч (Client) болон фрилансер хоорондын гэрээнд оролцогч тал биш, харин хоёр талыг холбож, төлбөрийг escrow-оор түр хадгалж дамжуулах зуучлагч платформ юм.",
-      "Ажлын гүйцэтгэл, чанар, хугацааны талаарх бодит гэрээ нь захиалагч ба фрилансер хооронд шууд байгуулагдана. KREATIV нь тухайн ажлын үр дүнд хариуцлага хүлээхгүй — платформын үүрэг бол (а) хоёр талыг холбох, (б) escrow-оор мөнгийг хамгаалах, (в) маргаан гарвал шийдвэрлэхэд туслах.",
-    ],
-  },
-  {
-    title: "2. Escrow ба төлбөр",
-    body: [
-      "Захиалагч milestone бүрийг эхлэхээс өмнө тухайн дүнг escrow-д байршуулна. Фрилансер хүлээлгэн өгч, захиалагч баталсны дараа комисс (одоогоор 10%) хассан дүн фрилансерийн балансад орно.",
-      "Батлагдсан дүн 5 хоногийн дараа л татах боломжтой болно (маргааны цонх). Гаргалт хүсэлт админы баталгаажуулалттай, доод хэмжээтэй (одоогоор $50-тай тэнцэх дүн).",
-      "Одоогийн MVP шатанд жинхэнэ QPay мерчант данс холбогдоогүй тул төлбөрийн урсгал демо горимоор ажиллаж байна. Жинхэнэ мөнгөн гүйлгээ хийгдэхгүй.",
-    ],
-  },
-  {
-    title: "3. Хэрэглэгчийн үүрэг хариуцлага",
-    body: [
-      "Фрилансер өөрийн орлогын албан татварыг өөрөө тайлагнаж, төлөх үүрэгтэй. KREATIV нь ажил олгогч биш тул татварын суутгал хийхгүй.",
-      "Хэрэглэгч бүр профайлдаа үнэн зөв мэдээлэл оруулах, өөр хэрэглэгчийг хуурамчаар дуурайхгүй байх үүрэгтэй.",
-      "Гэрээ байгуулагдахаас өмнө (санал/чат шатанд) холбоо барих мэдээлэл (утас, имэйл, гадаад мессенжер) солилцохыг зөвлөдөггүй — платформын хамгаалалт зөвхөн escrow-д орсон ажилд хамаарна.",
-    ],
-  },
-  {
-    title: "4. Хориглосон үйлдэл",
-    body: [
-      "Платформыг тойрч төлбөр хийх/авах зорилгоор гэрээнээс өмнө холбоо барих мэдээлэл идэвхтэй солилцох, спам зар нийтлэх, хуурамч portfolio ашиглах, өөр хэрэглэгчийн эрхийг зөрчих.",
-      "Дээрх зөрчил илэрвэл акаунтыг түдгэлзүүлэх (Admin panel-ийн Suspend) эрхийг платформ хадгална.",
-    ],
-  },
-  {
-    title: "5. Хариуцлагын хязгаарлалт",
-    body: [
-      "KREATIV нь хэрэглэгчдийн хооронд байгуулагдсан гэрээний биелэлт, ажлын чанарт хариуцлага хүлээхгүй. Платформын үүрэг зөвхөн энэ баримт бичигт заасан zuuchlagch-ийн үүргээр хязгаарлагдана.",
-    ],
-  },
-  {
-    title: "6. Өөрчлөлт",
-    body: [
-      "Энэ нөхцөлийг цаг үргэлж шинэчлэх боломжтой. Мэдэгдэхүйц өөрчлөлтийг платформ дээр (мэдэгдлээр) урьдчилан зарлана.",
-    ],
-  },
+  { titleKey: "tos.s1", bodyKeys: ["tos.s1a", "tos.s1b"] },
+  { titleKey: "tos.s2", bodyKeys: ["tos.s2a", "tos.s2b", "tos.s2c"] },
+  { titleKey: "tos.s3", bodyKeys: ["tos.s3a", "tos.s3b", "tos.s3c"] },
+  { titleKey: "tos.s4", bodyKeys: ["tos.s4a", "tos.s4b"] },
+  { titleKey: "tos.s5", bodyKeys: ["tos.s5a"] },
+  { titleKey: "tos.s6", bodyKeys: ["tos.s6a"] },
 ];
 
 export default function Terms() {
   const { nav } = useNav();
+  const t = useT();
   return (
     <div className="mx-auto max-w-3xl px-6 pb-24 pt-36">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-soft">— Legal</p>
-      <h1 className="mt-3 font-display text-[clamp(1.8rem,3.5vw,2.6rem)] font-bold tracking-tight">Үйлчилгээний нөхцөл</h1>
-      <p className="mt-2 text-[12.5px] text-white/40">Хувилбар v0.1 · сүүлд шинэчлэгдсэн 2026-07-31</p>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-soft">{t("tos.eyebrow")}</p>
+      <h1 className="mt-3 font-display text-[clamp(1.8rem,3.5vw,2.6rem)] font-bold tracking-tight">{t("tos.title")}</h1>
+      <p className="mt-2 text-[12.5px] text-white/40">{t("tos.version")}</p>
 
       <div className="mt-6 flex items-start gap-3 rounded-2xl border border-amber-400/25 bg-amber-400/[0.06] p-5">
         <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" />
-        <p className="text-[12.5px] leading-relaxed text-amber-200/90">
-          Энэ бол MVP шатны ноорог баримт бичиг бөгөөд хараахан хуулийн зөвлөх (jurist)-ээр батлагдаагүй болно.
-          Ялангуяа escrow-ийн хуулийн статус (гуравдагч этгээдийн мөнгийг түр хадгалах үйл ажиллагаа Монголд ямар
-          зохицуулалтад орохыг) тодорхойлохын өмнө платформыг арилжааны бодит хэрэглээнд ашиглах ёсгүй.
-        </p>
+        <p className="text-[12.5px] leading-relaxed text-amber-200/90">{t("tos.warning")}</p>
       </div>
 
       <div className="mt-10 space-y-8">
         {SECTIONS.map((s) => (
-          <div key={s.title}>
-            <h2 className="font-display text-[17px] font-bold tracking-tight">{s.title}</h2>
+          <div key={s.titleKey}>
+            <h2 className="font-display text-[17px] font-bold tracking-tight">{t(s.titleKey)}</h2>
             <div className="mt-3 space-y-3">
-              {s.body.map((p, i) => (
-                <p key={i} className="text-[13.5px] leading-relaxed text-white/60">{p}</p>
+              {s.bodyKeys.map((k) => (
+                <p key={k} className="text-[13.5px] leading-relaxed text-white/60">{t(k)}</p>
               ))}
             </div>
           </div>
@@ -78,10 +40,10 @@ export default function Terms() {
 
       <div className="mt-12 flex flex-wrap gap-3 border-t border-white/8 pt-6">
         <button onClick={() => nav("dispute-policy")} className="text-[13px] font-semibold text-brand-soft hover:text-white">
-          Маргаан шийдвэрлэх журам →
+          {t("tos.toDispute")}
         </button>
         <button onClick={() => nav("help")} className="text-[13px] font-semibold text-white/50 hover:text-white">
-          Тусламжийн төв →
+          {t("tos.toHelp")}
         </button>
       </div>
     </div>

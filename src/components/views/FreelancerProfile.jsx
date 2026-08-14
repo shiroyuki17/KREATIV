@@ -552,9 +552,9 @@ export default function FreelancerProfile() {
                     rel="noopener noreferrer"
                     className="text-[11.5px] font-semibold text-brand-soft hover:text-white"
                   >
-                    Шинэ цонхонд →
+                    {t("fp.openInNewTab")}
                   </a>
-                  <button onClick={() => setEmbedItem(null)} aria-label="Хаах" className="rounded-lg p-1.5 text-white/45 hover:text-white">
+                  <button onClick={() => setEmbedItem(null)} aria-label={t("common.close")} className="rounded-lg p-1.5 text-white/45 hover:text-white">
                     <X className="h-4 w-4" />
                   </button>
                 </div>

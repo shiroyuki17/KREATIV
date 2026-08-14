@@ -371,6 +371,7 @@ const GIG_CATEGORIES = ["Design", "Dev", "AI", "Motion", "Writing", "Marketing"]
 
 // Gig удирдлага — Fiverr-маягийн fixed-price үйлчилгээ жагсаах/устгах.
 function GigManager() {
+  const t = useT();
   const [gigs, setGigs] = useState(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -406,12 +407,12 @@ function GigManager() {
 
   const submit = async () => {
     setError("");
-    if (title.trim().length < 5) { setError("Гарчиг дор хаяж 5 тэмдэгт"); return; }
-    if (description.trim().length < 20) { setError("Тайлбар дор хаяж 20 тэмдэгт"); return; }
+    if (title.trim().length < 5) { setError(t("st.gigErrTitle")); return; }
+    if (description.trim().length < 20) { setError(t("st.gigErrDesc")); return; }
     const priceNum = Number(price);
     const daysNum = Number(deliveryDays);
-    if (!priceNum || priceNum <= 0) { setError("Үнэ зөв тоо байх ёстой"); return; }
-    if (!daysNum || daysNum <= 0) { setError("Хугацаа зөв тоо байх ёстой"); return; }
+    if (!priceNum || priceNum <= 0) { setError(t("st.gigErrPrice")); return; }
+    if (!daysNum || daysNum <= 0) { setError(t("st.gigErrDays")); return; }
 
     setSaving(true);
     try {
@@ -489,14 +490,14 @@ function GigManager() {
                       g.active ? "border border-white/12 text-white/60 hover:border-white/25" : "bg-brand text-fg-1"
                     }`}
                   >
-                    {g.active ? "Идэвхгүй болгох" : "Идэвхжүүлэх"}
+                    {g.active ? t("st.gigDeactivate") : t("st.gigActivate")}
                   </button>
                   <button
                     onClick={() => remove(g.id)}
                     disabled={busyId === g.id}
                     className="rounded-lg border border-red-400/30 px-3 py-1.5 text-[11.5px] font-semibold text-red-300 transition-colors hover:bg-red-400/10 disabled:opacity-50"
                   >
-                    Устгах
+                    {t("common.delete")}
                   </button>
                 </div>
               </div>
@@ -506,7 +507,7 @@ function GigManager() {
       )}
 
       <div className="rounded-xl border border-white/8 bg-white/[0.03] p-5">
-        <p className="text-[12.5px] font-semibold text-white/70">Шинэ үйлчилгээ нэмэх</p>
+        <p className="text-[12.5px] font-semibold text-white/70">{t("st.gigAddTitle")}</p>
 
         <div className="mt-3 flex flex-wrap gap-2">
           {imageUrls.map((url, i) => (
@@ -533,14 +534,14 @@ function GigManager() {
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder='Гарчиг — e.g. "I will design a modern minimalist logo"'
+          placeholder={t("st.gigTitlePh")}
           className="mt-3 w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] outline-none focus:border-brand/50"
         />
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
-          placeholder="Юу багтдаг, хэдэн засвар орно, гэх мэт дэлгэрэнгүй"
+          placeholder={t("st.gigDescPh")}
           className="mt-2 w-full resize-none rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] outline-none focus:border-brand/50"
         />
         <div className="mt-2 grid grid-cols-3 gap-2">
@@ -554,13 +555,13 @@ function GigManager() {
           <input
             value={price}
             onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, ""))}
-            placeholder="Үнэ ($)"
+            placeholder={t("st.gigPricePh")}
             className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] outline-none focus:border-brand/50"
           />
           <input
             value={deliveryDays}
             onChange={(e) => setDeliveryDays(e.target.value.replace(/[^0-9]/g, ""))}
-            placeholder="Хугацаа (өдөр)"
+            placeholder={t("st.gigDaysPh")}
             className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] outline-none focus:border-brand/50"
           />
         </div>
@@ -570,7 +571,7 @@ function GigManager() {
           disabled={saving || uploading}
           className="mt-3 rounded-lg bg-brand px-4 py-2 text-[12.5px] font-bold text-fg-1 glow-brand disabled:opacity-50"
         >
-          {saving ? "Хадгалж байна…" : "Үйлчилгээ нэмэх"}
+          {saving ? t("common.saving") : t("st.gigAdd")}
         </button>
         {error && <p className="mt-2 text-[11.5px] font-medium text-red-400">{error}</p>}
       </div>

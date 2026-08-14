@@ -348,8 +348,8 @@ export default function FindWork() {
             <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setShowFilters(false)} />
             <div className="fixed inset-y-0 left-0 z-50 w-[300px] max-w-[85vw] animate-feed-in overflow-y-auto border-r border-white/10 bg-[#1b1730] lg:hidden">
               <div className="flex items-center justify-between border-b border-white/8 p-4">
-                <p className="text-[13px] font-bold">Filters</p>
-                <button onClick={() => setShowFilters(false)} aria-label="Close filters" className="rounded-lg p-1.5 text-white/50 hover:text-white">
+                <p className="text-[13px] font-bold">{t("fw.filters")}</p>
+                <button onClick={() => setShowFilters(false)} aria-label={t("common.close")} className="rounded-lg p-1.5 text-white/50 hover:text-white">
                   <X className="h-4 w-4" />
                 </button>
               </div>

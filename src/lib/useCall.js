@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getSocket } from "./socket.js";
+import { translate } from "../locales/translate.js";
 
 // FR-2.2: чат доторх WebRTC дуудлага.
 //
@@ -115,7 +116,7 @@ export function useCall(myId) {
       }
 
       if (state === "failed" || state === "closed") {
-        setError("Холболт тасарлаа");
+        setError(translate("err.callDropped"));
         cleanup();
         return;
       }
@@ -126,7 +127,7 @@ export function useCall(myId) {
           dropTimerRef.current = null;
           if (pcRef.current !== pc) return;
           if (pc.connectionState === "connected") return;
-          setError("Холболт тасарлаа");
+          setError(translate("err.callDropped"));
           cleanup();
         }, RECONNECT_GRACE_MS);
       }

@@ -5,17 +5,19 @@ import { useNav } from "../../nav.jsx";
 import { useT } from "../../i18n.jsx";
 import { googleLoginUrl, registerUser, loginUser, saveTokens, resolveHomeRoute, consumeStashedRedirect, forgotPassword } from "../../lib/authApi.js";
 
-const OAUTH_ERROR_MESSAGES = {
-  invalid_state: "Google холболт хугацаа дууссан байна. Дахин оролдоно уу.",
-  token_exchange_failed: "Google-тэй холбогдоход алдаа гарлаа.",
-  invalid_profile: "Google-ээс профайлын мэдээлэл ирсэнгүй.",
-  email_unverified:
-    "Энэ имэйлтэй акаунт аль хэдийн байна. Google дээрх имэйлээ баталгаажуулаад дахин оролдоно уу.",
-  account_disabled: "Энэ акаунт идэвхгүй болгогдсон байна.",
+// Backend-ийн алдааны код → орчуулгын түлхүүр. Текстээ шууд энд бичихгүй:
+// энэ хүснэгт нь модулийн түвшинд байдаг тул t()-д хүрэхгүй, өмнө нь хэл
+// сонголтоос үл хамааран монголоор л гардаг байв.
+const OAUTH_ERROR_KEYS = {
+  invalid_state: "auth.oauthInvalidState",
+  token_exchange_failed: "auth.oauthExchangeFailed",
+  invalid_profile: "auth.oauthInvalidProfile",
+  email_unverified: "auth.oauthEmailUnverified",
+  account_disabled: "auth.oauthAccountDisabled",
   // Backend талд хүлээгдээгүй алдаа гарсан (жишээ нь өгөгдлийн сан
   // боломжгүй). Өмнө нь ийм үед хэрэглэгч backend-ийн хаяг дээр түүхий
   // JSON хараад гацдаг байсан.
-  server_error: "Сервер түр боломжгүй байна. Хэсэг хүлээгээд дахин оролдоно уу.",
+  server_error: "auth.oauthServerError",
 };
 
 const ROLES = [
@@ -28,7 +30,7 @@ const PHONE_RE = /^\d{8}$/;
 export default function Auth() {
   const { nav, params, setUser } = useNav();
   const t = useT();
-  const oauthError = params?.oauthError && (OAUTH_ERROR_MESSAGES[params.oauthError] || "Google-ээр нэвтрэхэд алдаа гарлаа.");
+  const oauthError = params?.oauthError && t(OAUTH_ERROR_KEYS[params.oauthError] || "auth.oauthGeneric");
   const [mode, setMode] = useState(params?.mode === "login" ? "login" : "signup");
   const [role, setRole] = useState("client");
   const [firstName, setFirstName] = useState("");

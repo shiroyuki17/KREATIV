@@ -348,7 +348,7 @@ export default function MyProjects() {
         ))}
       </div>
 
-      {loading && <p className="mt-8 text-center text-[13px] text-white/40">Ачааллаж байна…</p>}
+      {loading && <p className="mt-8 text-center text-[13px] text-white/40">{t("common.loading")}</p>}
 
       {!loading && tab === "contracts" && (
         <div className="mt-6 space-y-4">

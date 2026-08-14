@@ -11,6 +11,12 @@
 //     backend үүнийг "token хулгайлагдсан" гэж үзээд тухайн хэрэглэгчийн БҮХ
 //     session-ийг устгадаг (auth.routes.js). Тиймээс refresh нь заавал
 //     single-flight байх ёстой — доорх `refreshPromise` яг үүнийг хангана.
+// Алдааны мессежийг хэрэглэгчийн сонгосон хэлээр. Энэ файл React-ийн гадна
+// ажилладаг тул hook биш, хадгалсан сонголтыг шууд уншдаг translate()-ыг
+// ашиглана (тиймээс i18n.jsx биш, цэвэр JS модулиас импортолж байгаа —
+// Node дээрх тест энэ файлыг шууд ачаалдаг).
+import { translate } from "../locales/translate.js";
+
 // `?.` нь Vite-аас гадуур (жишээ нь Node дээр энэ модулийг шууд тестлэхэд)
 // import.meta.env тодорхойгүй байхад унахаас сэргийлнэ — Vite build дээр
 // import.meta.env-ийг статикаар орлуулдаг тул нөлөөгүй.
@@ -64,7 +70,7 @@ export function hasSession() {
 // ── Алдаа ──
 export function errorMessage(data) {
   if (Array.isArray(data?.error)) return data.error.join(", ");
-  return data?.error || "Алдаа гарлаа. Дахин оролдоно уу.";
+  return data?.error || translate("err.generic");
 }
 
 /** HTTP статустай алдаа — дуудагч тал 401-ийг сүлжээний алдаанаас ялгах
@@ -188,7 +194,7 @@ async function buildRequest(path, opts) {
       lastErr = err;
     }
   }
-  throw new Error("Сервертэй холбогдож чадсангүй. Дахин оролдоно уу.", { cause: lastErr });
+  throw new Error(translate("err.unreachable"), { cause: lastErr });
 }
 
 /**

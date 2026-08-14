@@ -47,11 +47,11 @@ export default function AuthCallback() {
             onClick={() => nav("auth")}
             className="text-[13px] font-semibold text-brand-soft hover:text-white"
           >
-            Буцах
+            {t("common.back")}
           </button>
         </div>
       ) : (
-        <p className="text-[13px] text-white/50">Нэвтэрч байна…</p>
+        <p className="text-[13px] text-white/50">{t("ac.signingIn")}</p>
       )}
     </div>
   );

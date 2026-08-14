@@ -39,9 +39,9 @@ export default function GigDetail() {
     return (
       <div className="mx-auto max-w-xl px-6 pb-24 pt-20 text-center">
         <AlertCircle className="mx-auto h-8 w-8 text-red-400" />
-        <p className="mt-4 text-[14px] text-white/60">{error || "Үйлчилгээ олдсонгүй."}</p>
+        <p className="mt-4 text-[14px] text-white/60">{error || t("gd.notFound")}</p>
         <button onClick={() => nav("find-services")} className="mt-5 text-[13px] font-semibold text-brand-soft hover:text-white">
-          ← Back to services
+          ← {t("gd.backToServices")}
         </button>
       </div>
     );
@@ -171,12 +171,10 @@ export default function GigDetail() {
               className="glass mt-2 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[13.5px] font-semibold text-white/85 transition-colors hover:border-white/25"
             >
               <MessageSquare className="h-4 w-4" />
-              Асуулт асуух
+              {t("gd.askQuestion")}
             </button>
 
-            <p className="mt-4 text-center text-[11px] text-white/35">
-              Захиалахад мөнгө шууд шимтэгддэггүй — эхлээд гэрээ үүсэж, escrow-д мөнгө байршуулснаар л ажил эхэлнэ.
-            </p>
+            <p className="mt-4 text-center text-[11px] text-white/35">{t("gd.noChargeYet")}</p>
           </div>
         </div>
       </div>

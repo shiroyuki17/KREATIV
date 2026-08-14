@@ -8,35 +8,19 @@
 // орчуулга нь одоо байгаа хольцыг өөр хэлбэрээр давтахаас өөр зүйл болохгүй.
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { mn } from "./locales/mn.js";
-import { en } from "./locales/en.js";
+import {
+  DEFAULT_LOCALE,
+  DICTS,
+  STORAGE_KEY,
+  isLocale,
+  storedLocale,
+  translate,
+} from "./locales/translate.js";
 
-const DICTS = { mn, en };
-const STORAGE_KEY = "kreativ:locale";
-
-// Өгөгдмөл нь монгол — сайт Монголын фрилансеруудад зориулагдсан. Монгол
-// хэрэглэгчийн browser нь ихэвчлэн en-US гэж мэдээлдэг тул navigator.language
-// -аас таамаглах нь энд эсрэг үр дүн өгнө.
-const DEFAULT_LOCALE = "mn";
-
-function isLocale(v) {
-  return v === "mn" || v === "en";
-}
-
-function storedLocale() {
-  try {
-    // ?lang=en нь хадгалсан сонголтыг дардаг: профайлын холбоосыг англи
-    // ярьдаг захиалагч руу илгээхэд тэр хүн эхний хормоос эхлэн ойлгомжтой
-    // хуудас нээнэ. Hash routing тул query нь # -ээс ӨМНӨ байна
-    // (?lang=en#/u/bat-erdene).
-    const fromUrl = new URLSearchParams(window.location.search).get("lang");
-    if (isLocale(fromUrl)) return fromUrl;
-
-    const v = localStorage.getItem(STORAGE_KEY);
-    return isLocale(v) ? v : DEFAULT_LOCALE;
-  } catch {
-    return DEFAULT_LOCALE;
-  }
-}
+// React-ийн гадна орчуулах хэрэгтэй файлууд (ErrorBoundary, lib/*) энэ
+// модулийг импортолж чадахгүй тул translate() нь цэвэр JS дотор амьдардаг.
+// Дуудагч талын зам өөрчлөгдөхгүйн тулд эндээс дамжуулан гаргана.
+export { translate };
 
 const I18nCtx = createContext(null);
 
@@ -82,16 +66,4 @@ export function useI18n() {
 /** Зөвхөн t() хэрэгтэй байнга — тусад нь болгосон нь дуудлагыг богиносгоно. */
 export function useT() {
   return useI18n().t;
-}
-
-/**
- * React-ийн гадна орчуулах.
- *
- * ErrorBoundary нь I18nProvider-ийн ГАДНА байрладаг (provider өөрөө унасан ч
- * алдааны дэлгэц гарах ёстой) тул context уншиж чадахгүй. Хадгалсан
- * сонголтыг шууд уншина.
- */
-export function translate(key) {
-  const locale = storedLocale();
-  return DICTS[locale]?.[key] ?? mn[key] ?? key;
 }

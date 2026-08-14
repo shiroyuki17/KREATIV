@@ -152,7 +152,7 @@ function CreateGigModal({ onClose, onCreated }) {
       >
         <div className="flex items-center justify-between">
           <p id="create-gig-title" className="text-[15px] font-bold">{t("sv.newService")}</p>
-          <button onClick={onClose} aria-label="Close" className="rounded-lg p-1.5 text-white/45 hover:text-white">
+          <button onClick={onClose} aria-label={t("common.close")} className="rounded-lg p-1.5 text-white/45 hover:text-white">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -203,7 +203,7 @@ function CreateGigModal({ onClose, onCreated }) {
           </label>
 
           <label className="block">
-            <span className={LABEL}>Тайлбар</span>
+            <span className={LABEL}>{t("sv.gigDesc")}</span>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}

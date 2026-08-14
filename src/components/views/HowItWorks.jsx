@@ -2,22 +2,27 @@ import { FileText, Sparkles, MessageSquare, ShieldCheck, Rocket, Wallet, Check, 
 import BlurText from "../fx/BlurText.jsx";
 import SpotlightCard from "../fx/SpotlightCard.jsx";
 import { useNav } from "../../nav.jsx";
+import { useT } from "../../i18n.jsx";
 
+// Модулийн түвшний жагсаалт тул t()-г энд дуудаж болохгүй — түлхүүрээ
+// авч яваад рендэрлэх үедээ орчуулна.
 const CLIENT = [
-  { Icon: FileText, title: "Post your brief", desc: "Describe the work, budget, and timeline in a couple of minutes." },
-  { Icon: Sparkles, title: "Get AI-matched", desc: "Our engine shortlists vetted specialists in hours, not weeks." },
-  { Icon: MessageSquare, title: "Interview & hire", desc: "Chat, review proposals, and pick the freelancer who fits best." },
-  { Icon: ShieldCheck, title: "Pay via escrow", desc: "Fund milestones securely and release only when you approve." },
+  { Icon: FileText, titleKey: "hiw.c1", descKey: "hiw.c1d" },
+  { Icon: Sparkles, titleKey: "hiw.c2", descKey: "hiw.c2d" },
+  { Icon: MessageSquare, titleKey: "hiw.c3", descKey: "hiw.c3d" },
+  { Icon: ShieldCheck, titleKey: "hiw.c4", descKey: "hiw.c4d" },
 ];
 
 const FREELANCER = [
-  { Icon: Rocket, title: "Build your profile", desc: "Showcase skills, portfolio, and rates to stand out." },
-  { Icon: Sparkles, title: "Get matched to briefs", desc: "Receive AI-matched work that fits your skills and availability." },
-  { Icon: MessageSquare, title: "Deliver milestones", desc: "Collaborate, submit deliverables, and track progress live." },
-  { Icon: Wallet, title: "Get paid securely", desc: "Escrow-funded payments release the moment work is approved." },
+  { Icon: Rocket, titleKey: "hiw.f1", descKey: "hiw.f1d" },
+  { Icon: Sparkles, titleKey: "hiw.f2", descKey: "hiw.f2d" },
+  { Icon: MessageSquare, titleKey: "hiw.f3", descKey: "hiw.f3d" },
+  { Icon: Wallet, titleKey: "hiw.f4", descKey: "hiw.f4d" },
 ];
 
-function Journey({ label, steps, accent }) {
+const ESCROW_STEPS = ["hiw.s1", "hiw.s2", "hiw.s3"];
+
+function Journey({ label, steps, accent, t }) {
   return (
     <SpotlightCard spotColor={accent === "mint" ? "rgba(127, 168, 138, 0.14)" : "rgba(123, 57, 252, 0.16)"}>
       <div className="p-7">
@@ -25,8 +30,8 @@ function Journey({ label, steps, accent }) {
           {label}
         </span>
         <div className="mt-6 space-y-5">
-          {steps.map(({ Icon, title, desc }, i) => (
-            <div key={title} className="flex gap-4">
+          {steps.map(({ Icon, titleKey, descKey }, i) => (
+            <div key={titleKey} className="flex gap-4">
               <div className="flex flex-col items-center">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-brand/30 bg-brand/10 text-brand-soft">
                   <Icon className="h-4.5 w-4.5" />
@@ -35,9 +40,9 @@ function Journey({ label, steps, accent }) {
               </div>
               <div className="pb-1">
                 <p className="text-[14.5px] font-semibold">
-                  <span className="mr-2 font-display text-brand-soft">{i + 1}.</span>{title}
+                  <span className="mr-2 font-display text-brand-soft">{i + 1}.</span>{t(titleKey)}
                 </p>
-                <p className="mt-1 text-[13px] leading-relaxed text-white/50">{desc}</p>
+                <p className="mt-1 text-[13px] leading-relaxed text-white/50">{t(descKey)}</p>
               </div>
             </div>
           ))}
@@ -49,22 +54,22 @@ function Journey({ label, steps, accent }) {
 
 export default function HowItWorks() {
   const { nav } = useNav();
+  const t = useT();
   return (
     <div className="mx-auto max-w-6xl px-6 pb-24 pt-36">
       <div className="text-center">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-soft">— How it works</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-soft">{t("hiw.eyebrow")}</p>
         <h1 className="mx-auto mt-4 max-w-2xl font-display text-[clamp(2.2rem,4.5vw,3.4rem)] font-bold text-brand text-glow leading-[1.05] tracking-tight">
-          <BlurText text="From brief to delivery — safely." />
+          <BlurText text={t("hiw.title")} />
         </h1>
         <p className="mx-auto mt-5 max-w-xl text-[15px] leading-relaxed text-white/55">
-          KREATIV connects clients and elite freelancers with AI matching and
-          escrow-protected payments, so great work ships without the risk.
+          {t("hiw.intro")}
         </p>
       </div>
 
       <div className="mt-14 grid gap-5 lg:grid-cols-2">
-        <Journey label="For clients" steps={CLIENT} />
-        <Journey label="For freelancers" steps={FREELANCER} accent="mint" />
+        <Journey label={t("hiw.forClients")} steps={CLIENT} t={t} />
+        <Journey label={t("hiw.forFreelancers")} steps={FREELANCER} accent="mint" t={t} />
       </div>
 
       {/* Escrow band */}
@@ -72,30 +77,31 @@ export default function HowItWorks() {
         <div className="grid items-center gap-8 md:grid-cols-[1.2fr_1fr]">
           <div>
             <p className="inline-flex items-center gap-2 text-[12.5px] font-semibold text-mint">
-              <ShieldCheck className="h-4 w-4" /> Escrow-protected, always
+              <ShieldCheck className="h-4 w-4" /> {t("hiw.escrowBadge")}
             </p>
             <h2 className="mt-3 font-display text-2xl font-bold tracking-tight">
-              No one gets scammed. That's the point.
+              {t("hiw.escrowTitle")}
             </h2>
+            {/* Хугацааны амлалтыг санаатайгаар хассан: Маргаан шийдвэрлэх
+                журам нь тогтмол SLA баталгаагүй гэж бичсэн байхад энэ
+                хуудас "48 цагийн дотор" гэж амлаж байсан. */}
             <p className="mt-3 max-w-md text-[13.5px] leading-relaxed text-white/55">
-              Money is locked before work starts and released only on approval.
-              Disputes are settled by a human within 48 hours — freelancers never
-              chase payment, clients never lose funds.
+              {t("hiw.escrowDesc")}
             </p>
             <button
               onClick={() => nav("trust")}
               className="mt-5 inline-flex items-center gap-2 rounded-xl border border-mint/40 bg-mint/10 px-5 py-2.5 text-[13px] font-bold text-mint transition-all hover:bg-mint hover:text-ink"
             >
-              Learn about Trust & Safety <ArrowRight className="h-4 w-4" />
+              {t("hiw.learnTrust")} <ArrowRight className="h-4 w-4" />
             </button>
           </div>
           <div className="grid gap-3">
-            {["Fund milestone into escrow", "Freelancer delivers the work", "You approve — funds release instantly"].map((s, i) => (
-              <div key={s} className="flex items-center gap-3 rounded-xl border border-white/8 bg-white/[0.03] p-4">
+            {ESCROW_STEPS.map((key, i) => (
+              <div key={key} className="flex items-center gap-3 rounded-xl border border-white/8 bg-white/[0.03] p-4">
                 <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[12px] font-bold ${i === 0 ? "bg-brand text-ink" : "border border-white/15 text-white/60"}`}>
                   {i + 1}
                 </span>
-                <span className="text-[13px] text-white/75">{s}</span>
+                <span className="text-[13px] text-white/75">{t(key)}</span>
                 {i === 2 && <Check className="ml-auto h-4 w-4 text-mint" />}
               </div>
             ))}
@@ -105,13 +111,13 @@ export default function HowItWorks() {
 
       {/* CTA */}
       <div className="mt-14 flex flex-col items-center gap-4 text-center">
-        <h2 className="font-display text-2xl font-bold tracking-tight">Ready to start?</h2>
+        <h2 className="font-display text-2xl font-bold tracking-tight">{t("hiw.ready")}</h2>
         <div className="flex flex-wrap justify-center gap-3">
           <button onClick={() => nav("post-job")} className="rounded-2xl bg-brand px-7 py-3.5 text-[14px] font-semibold text-fg-1 glow-brand transition-shadow">
-            Post a Job
+            {t("hiw.postJob")}
           </button>
           <button onClick={() => nav("find-work")} className="glass rounded-2xl px-7 py-3.5 text-[14px] font-semibold text-white/85 transition-colors hover:border-white/25">
-            Find Work
+            {t("hiw.findWork")}
           </button>
         </div>
       </div>

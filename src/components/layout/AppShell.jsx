@@ -608,9 +608,10 @@ function NotifBell({ collapsed, badge, onViewAll, onNavigate, align, buttonClass
 }
 
 function Brand({ go, collapsed, homePage }) {
+  const t = useT();
   if (collapsed) {
     return (
-      <button onClick={() => go(homePage)} className="flex justify-center py-5 font-display text-lg font-bold tracking-tight" aria-label="KREATIV home">
+      <button onClick={() => go(homePage)} className="flex justify-center py-5 font-display text-lg font-bold tracking-tight" aria-label={t("nav.home")}>
         <span className="bg-gradient-to-r from-brand-soft to-neon bg-clip-text text-transparent">K</span>
       </button>
     );
@@ -732,6 +733,7 @@ const SIDEBAR_COLLAPSED_KEY = "kreativ:sidebarCollapsed";
 export default function AppShell({ children }) {
   const { page, nav, role, user, setUser, authReady, mode, switchMode } = useNav();
   const { unread } = useLive();
+  const t = useT();
   const [open, setOpen] = useState(false); // mobile drawer
   // Desktop rail collapse — бүх дэд component (Brand, ModeSwitcher, NavRow)
   // аль хэдийн collapsed prop-оо дэмждэг байсан ч хэзээ ч чиг зохицуулагч
@@ -767,7 +769,7 @@ export default function AppShell({ children }) {
         <NavList page={page} go={go} collapsed={collapsed} role={role} mode={mode} />
         <button
           onClick={toggleCollapsed}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={collapsed ? t("nav.expandSidebar") : t("nav.collapseSidebar")}
           className={`m-2 flex items-center gap-2 rounded-xl border border-white/8 bg-white/[0.02] px-3 py-2.5 text-[12.5px] font-medium text-white/50 transition-colors hover:bg-white/[0.06] hover:text-white ${collapsed ? "justify-center" : ""}`}
         >
           {collapsed ? <PanelLeftOpen className="h-4 w-4 shrink-0" /> : <><PanelLeftClose className="h-4 w-4 shrink-0" /><span>Collapse</span></>}
@@ -778,7 +780,7 @@ export default function AppShell({ children }) {
       <div className="sticky top-0 z-40 flex items-center justify-between border-b border-white/8 bg-[#141517]/90 px-4 py-3 lg:hidden">
         <button
           onClick={() => setOpen(true)}
-          aria-label="Open menu"
+          aria-label={t("nav.openMenu")}
           className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-white/80"
         >
           <Menu className="h-5 w-5" />
@@ -804,7 +806,7 @@ export default function AppShell({ children }) {
           <aside className="fixed inset-y-0 left-0 z-50 flex w-[280px] max-w-[85vw] animate-feed-in flex-col border-r border-white/10 bg-[#141517] lg:hidden">
             <div className="flex items-center justify-between pr-3">
               <Brand go={go} collapsed={false} homePage={homePage} />
-              <button onClick={() => setOpen(false)} aria-label="Close menu" className="rounded-lg p-2 text-white/50 hover:text-white">
+              <button onClick={() => setOpen(false)} aria-label={t("nav.closeMenu")} className="rounded-lg p-2 text-white/50 hover:text-white">
                 <X className="h-5 w-5" />
               </button>
             </div>
