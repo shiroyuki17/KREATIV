@@ -34,3 +34,11 @@ export const resetPasswordSchema = z.object({
   token: z.string().min(1, 'token шаардлагатай'),
   password: z.string().min(8, 'Нууц үг дор хаяж 8 тэмдэгт'),
 });
+
+// Нэвтэрсэн хэрэглэгч нууц үгээ солих. Одоогийн нууц үгийг заавал шаардана —
+// хэн нэгэн онгорхой үлдсэн компьютер дээр суугаад хаягийг булаан авахаас
+// сэргийлэх цорын ганц зүйл нь энэ.
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Одоогийн нууц үгээ оруулна уу'),
+  newPassword: z.string().min(8, 'Шинэ нууц үг дор хаяж 8 тэмдэгт'),
+});

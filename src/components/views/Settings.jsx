@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { User, Bell, Lock, Check, AlertCircle, Loader2, ShieldCheck, Smartphone, Image as ImageIcon, Plus, X, Link as LinkIcon, Tag, Clock } from "lucide-react";
 import Magnet from "../fx/Magnet.jsx";
 import { useNav } from "../../nav.jsx";
+import { useT, useI18n } from "../../i18n.jsx";
+import { changePassword } from "../../lib/authApi.js";
 import {
   fetchMe,
   uploadAvatar,
@@ -31,6 +33,7 @@ import { fetchNotificationPrefs, saveNotificationPrefs } from "../../lib/notific
 // demoCode-ыг шууд буцаадаг тул автоматаар талбарт бөглөж, ажиллаж байгааг
 // шууд харуулна (real gateway ирэхэд энэ мөрийг устгахаас өөр өөрчлөлт хэрэггүй).
 function PhoneVerify({ me, onVerified }) {
+  const t = useT();
   const [phone, setPhone] = useState(me?.phone || "");
   const [code, setCode] = useState("");
   const [stage, setStage] = useState("idle"); // idle | sent
@@ -41,19 +44,19 @@ function PhoneVerify({ me, onVerified }) {
   if (me?.phoneVerifiedAt) {
     return (
       <p className="mt-2 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-mint">
-        <ShieldCheck className="h-4 w-4" /> Утас баталгаажсан ({me.phone})
+        <ShieldCheck className="h-4 w-4" /> {t("st.phoneVerified", { phone: me.phone })}
       </p>
     );
   }
 
   const sendOtp = async () => {
-    if (!/^\d{8}$/.test(phone)) { setError("Утасны дугаар 8 орон байх ёстой"); return; }
+    if (!/^\d{8}$/.test(phone)) { setError(t("st.phoneInvalid")); return; }
     setBusy(true);
     setError("");
     try {
       const res = await requestPhoneOtp(phone, getAccessToken());
       setStage("sent");
-      setDemoHint(res.demoCode ? `Демо горим — код: ${res.demoCode}` : "");
+      setDemoHint(res.demoCode ? t("st.demoCode", { code: res.demoCode }) : "");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -77,7 +80,7 @@ function PhoneVerify({ me, onVerified }) {
   return (
     <div className="mt-2 rounded-xl border border-white/8 bg-white/[0.03] p-4">
       <p className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-white/70">
-        <Smartphone className="h-4 w-4" /> Утас баталгаажаагүй
+        <Smartphone className="h-4 w-4" /> {t("st.phoneUnverified")}
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
         <input
@@ -89,18 +92,18 @@ function PhoneVerify({ me, onVerified }) {
         />
         {stage === "idle" ? (
           <button onClick={sendOtp} disabled={busy} className="rounded-lg bg-brand px-3.5 py-2 text-[11.5px] font-bold text-fg-1 glow-brand disabled:opacity-50">
-            {busy ? "Илгээж байна…" : "Код авах"}
+            {busy ? t("st.sending") : t("st.getCode")}
           </button>
         ) : (
           <>
             <input
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, ""))}
-              placeholder="6 оронтой код"
+              placeholder={t("st.codePlaceholder")}
               className="w-32 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] outline-none focus:border-brand/50"
             />
             <button onClick={verify} disabled={busy || code.length !== 6} className="rounded-lg bg-mint px-3.5 py-2 text-[11.5px] font-bold text-ink disabled:opacity-50">
-              {busy ? "Шалгаж байна…" : "Баталгаажуулах"}
+              {busy ? t("st.verifying") : t("st.verify")}
             </button>
           </>
         )}
@@ -114,6 +117,7 @@ function PhoneVerify({ me, onVerified }) {
 // FR-5.1: Verified badge — freelancer portfolio/ажлын жишээгээ илгээж, админ
 // гараар хянаж баталгаажуулна (шууд/автомат баталгаажуулалт биш).
 function VerificationBadge({ profile, onUpdated }) {
+  const t = useT();
   const [evidence, setEvidence] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -123,20 +127,20 @@ function VerificationBadge({ profile, onUpdated }) {
   if (status === "VERIFIED") {
     return (
       <p className="mt-2 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-mint">
-        <ShieldCheck className="h-4 w-4" /> Verified badge идэвхтэй — профайл дээр харагдана
+        <ShieldCheck className="h-4 w-4" /> {t("st.badgeActive")}
       </p>
     );
   }
   if (status === "PENDING") {
     return (
       <p className="mt-2 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-amber-300">
-        <Loader2 className="h-4 w-4" /> Хүсэлт хянагдаж байна — админ шалгаад мэдэгдэнэ
+        <Loader2 className="h-4 w-4" /> {t("st.badgePending")}
       </p>
     );
   }
 
   const submit = async () => {
-    if (evidence.trim().length < 20) { setError("Дор хаяж 20 тэмдэгт бичнэ үү (portfolio холбоос + богино тайлбар)"); return; }
+    if (evidence.trim().length < 20) { setError(t("st.badgeTooShort")); return; }
     setBusy(true);
     setError("");
     try {
@@ -153,19 +157,19 @@ function VerificationBadge({ profile, onUpdated }) {
     <div className="mt-2 rounded-xl border border-white/8 bg-white/[0.03] p-4">
       {status === "REJECTED" && (
         <p className="mb-3 text-[12px] text-red-400">
-          Өмнөх хүсэлт татгалзагдсан{profile?.verificationNote ? `: ${profile.verificationNote}` : ""} — дахин илгээж болно.
+          {t("st.badgeRejected")}{profile?.verificationNote ? `: ${profile.verificationNote}` : ""}{t("st.badgeRejectedRetry")}
         </p>
       )}
-      <p className="text-[12.5px] font-semibold text-white/70">Portfolio холбоос болон товч тайлбараа бичнэ үү</p>
+      <p className="text-[12.5px] font-semibold text-white/70">{t("st.badgeAsk")}</p>
       <textarea
         value={evidence}
         onChange={(e) => setEvidence(e.target.value)}
         rows={3}
-        placeholder="жишээ нь: behance.net/miniy-huudas — сүүлийн 2 жил UI/UX хийж байна, X, Y, Z төслүүд..."
+        placeholder={t("st.badgePlaceholder")}
         className="mt-2 w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] outline-none focus:border-brand/50"
       />
       <button onClick={submit} disabled={busy} className="mt-2 rounded-lg bg-brand px-3.5 py-2 text-[11.5px] font-bold text-fg-1 glow-brand disabled:opacity-50">
-        {busy ? "Илгээж байна…" : "Баталгаажуулахыг хүсэх"}
+        {busy ? t("st.sending") : t("st.requestVerification")}
       </button>
       {error && <p className="mt-2 text-[11.5px] font-medium text-red-400">{error}</p>}
     </div>
@@ -175,6 +179,7 @@ function VerificationBadge({ profile, onUpdated }) {
 // Portfolio удирдлага — жагсаалт + шинэ ажлын жишээ нэмэх (зураг эхлээд
 // тусад нь upload хийгээд URL авна, дараа нь item үүсгэхэд дамжуулна).
 function PortfolioManager({ items, onAdd, onRemove }) {
+  const t = useT();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [link, setLink] = useState("");
@@ -206,7 +211,7 @@ function PortfolioManager({ items, onAdd, onRemove }) {
   };
 
   const submit = async () => {
-    if (!title.trim()) { setError("Гарчиг оруулна уу"); return; }
+    if (!title.trim()) { setError(t("st.titleRequired")); return; }
     setSaving(true);
     setError("");
     try {
@@ -253,7 +258,7 @@ function PortfolioManager({ items, onAdd, onRemove }) {
               <button
                 onClick={() => remove(p.id)}
                 disabled={removingId === p.id}
-                aria-label="Устгах"
+                aria-label={t("common.delete")}
                 className="absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white opacity-0 backdrop-blur transition-opacity hover:bg-red-500 disabled:opacity-100 group-hover:opacity-100"
               >
                 {removingId === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
@@ -275,7 +280,7 @@ function PortfolioManager({ items, onAdd, onRemove }) {
       )}
 
       <div className="rounded-xl border border-white/8 bg-white/[0.03] p-5">
-        <p className="text-[12.5px] font-semibold text-white/70">Шинэ ажлын жишээ нэмэх</p>
+        <p className="text-[12.5px] font-semibold text-white/70">{t("st.addWorkSample")}</p>
 
         <div className="mt-3 flex flex-wrap gap-2">
           {imageUrls.map((url, i) => (
@@ -302,14 +307,14 @@ function PortfolioManager({ items, onAdd, onRemove }) {
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Гарчиг — e.g. Checkout flow revamp"
+          placeholder={t("st.portTitlePlaceholder")}
           className="mt-3 w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] outline-none focus:border-brand/50"
         />
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={2}
-          placeholder="Товч тайлбар (заавал биш)"
+          placeholder={t("st.portDescPlaceholder")}
           className="mt-2 w-full resize-none rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] outline-none focus:border-brand/50"
         />
         {/* Үр дүн — "юу хийсэн"-ээс илүү хүчтэй дохио. Profile дээр
@@ -317,7 +322,7 @@ function PortfolioManager({ items, onAdd, onRemove }) {
         <input
           value={outcome}
           onChange={(e) => setOutcome(e.target.value)}
-          placeholder="Үр дүн (заавал биш) — e.g. Хөрвөлт 34% өссөн"
+          placeholder={t("st.portOutcomePlaceholder")}
           className="mt-2 w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] outline-none focus:border-brand/50"
         />
         <div className="mt-2 flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2">
@@ -325,7 +330,7 @@ function PortfolioManager({ items, onAdd, onRemove }) {
           <input
             value={link}
             onChange={(e) => setLink(e.target.value)}
-            placeholder="Холбоос (заавал биш) — https://…"
+            placeholder={t("st.portLinkPlaceholder")}
             className="w-full bg-transparent text-[13px] outline-none"
           />
         </div>
@@ -334,7 +339,7 @@ function PortfolioManager({ items, onAdd, onRemove }) {
           <input
             value={embedUrl}
             onChange={(e) => setEmbedUrl(e.target.value)}
-            placeholder="Figma / YouTube embed (заавал биш)"
+            placeholder={t("st.portEmbedPlaceholder")}
             className="w-full bg-transparent text-[13px] outline-none"
           />
         </div>
@@ -344,7 +349,7 @@ function PortfolioManager({ items, onAdd, onRemove }) {
           disabled={saving || uploading}
           className="mt-3 rounded-lg bg-brand px-4 py-2 text-[12.5px] font-bold text-fg-1 glow-brand disabled:opacity-50"
         >
-          {saving ? "Хадгалж байна…" : "Portfolio-д нэмэх"}
+          {saving ? t("st.saving") : t("st.addToPortfolio")}
         </button>
         {error && <p className="mt-2 text-[11.5px] font-medium text-red-400">{error}</p>}
       </div>
@@ -353,13 +358,13 @@ function PortfolioManager({ items, onAdd, onRemove }) {
 }
 
 const TABS = [
-  { id: "profile", label: "Profile", Icon: User },
-  { id: "portfolio", label: "Portfolio", Icon: ImageIcon, freelancerOnly: true },
+  { id: "profile", labelKey: "st.tabProfile", Icon: User },
+  { id: "portfolio", labelKey: "st.tabPortfolio", Icon: ImageIcon, freelancerOnly: true },
   // "My Services" таб энд байсныг хассан — үйлчилгээ нэмэх/удирдах нь одоо
   // Services хуудсан дээрээ байна (жагсаалтаа хараад тэндээсээ нэмэх нь
   // Settings руу орохоос зөв). Хоёр газар давхардуулах шаардлагагүй.
-  { id: "notifications", label: "Notifications", Icon: Bell },
-  { id: "security", label: "Security", Icon: Lock },
+  { id: "notifications", labelKey: "st.tabNotifications", Icon: Bell },
+  { id: "security", labelKey: "st.tabSecurity", Icon: Lock },
 ];
 
 const GIG_CATEGORIES = ["Design", "Dev", "AI", "Motion", "Writing", "Marketing"];
@@ -576,6 +581,7 @@ function GigManager() {
 // Хуваалцах боломжтой профайлын хаяг. Бүртгүүлэхэд нэрнээс автоматаар
 // үүсдэг тул энд зөвхөн засварлана.
 function UsernameField({ me, onSaved }) {
+  const t = useT();
   const [value, setValue] = useState(me?.username || "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -613,7 +619,7 @@ function UsernameField({ me, onSaved }) {
   return (
     <div className="mb-5 rounded-xl border border-white/8 bg-white/[0.03] p-4">
       <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
-        Профайлын хаяг
+        {t("st.profileUrl")}
       </span>
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <span className="text-[13px] text-white/35">/u/</span>
@@ -628,9 +634,9 @@ function UsernameField({ me, onSaved }) {
           disabled={busy || !value.trim() || value.trim().toLowerCase() === me?.username}
           className="rounded-lg bg-brand px-3.5 py-2 text-[12px] font-bold text-fg-1 glow-brand disabled:opacity-40"
         >
-          {busy ? "Хадгалж байна…" : "Хадгалах"}
+          {busy ? t("st.saving") : t("common.save")}
         </button>
-        {saved && <span className="text-[12px] font-semibold text-mint">Хадгаллаа</span>}
+        {saved && <span className="text-[12px] font-semibold text-mint">{t("st.saved")}</span>}
       </div>
       {error && <p className="mt-2 text-[11.5px] font-medium text-red-400">{error}</p>}
       {shareUrl && (
@@ -642,7 +648,7 @@ function UsernameField({ me, onSaved }) {
             onClick={copy}
             className="rounded-lg border border-white/12 px-3 py-1.5 text-[11.5px] font-semibold text-white/70 transition-colors hover:border-white/25 hover:text-white"
           >
-            {copied ? "Хуулагдлаа" : "Хуулах"}
+            {copied ? t("common.copied") : t("common.copy")}
           </button>
         </div>
       )}
@@ -672,6 +678,7 @@ function Field({ label, disabled, ...props }) {
 // сэргэдэг, ямар ч мэдэгдлийг хаадаггүй байв. "AI match digest" гэсэн
 // дөрөв дэх toggle-ыг хассан: тийм digest илгээдэг код системд байхгүй.
 function NotificationPrefs() {
+  const t = useT();
   const [prefs, setPrefs] = useState(null);
   const [error, setError] = useState("");
 
@@ -698,33 +705,107 @@ function NotificationPrefs() {
     return <p className="text-[13px] text-red-400">{error}</p>;
   }
   if (!prefs) {
-    return <p className="text-[13px] text-white/40">Ачааллаж байна…</p>;
+    return <p className="text-[13px] text-white/40">{t("common.loading")}</p>;
   }
 
   return (
     <div className="space-y-3">
       {error && <p className="text-[12.5px] text-red-400">{error}</p>}
       <Toggle
-        label="New project invites"
-        desc="Get notified the moment a client invites you"
+        label={t("st.notifInvites")}
+        desc={t("st.notifInvitesDesc")}
         on={prefs.notifyInvites}
         onToggle={() => toggle("notifyInvites")}
       />
       <Toggle
-        label="Milestone updates"
-        desc="Escrow funding, approvals, and releases"
+        label={t("st.notifMilestones")}
+        desc={t("st.notifMilestonesDesc")}
         on={prefs.notifyMilestones}
         onToggle={() => toggle("notifyMilestones")}
       />
       <Toggle
-        label="Messages"
-        desc="Real-time alerts for new messages"
+        label={t("st.notifMessages")}
+        desc={t("st.notifMessagesDesc")}
         on={prefs.notifyMessages}
         onToggle={() => toggle("notifyMessages")}
       />
       <p className="pt-1 text-[11.5px] text-white/35">
-        Төлбөр, үнэлгээ, маргааны мэдэгдлийг хаах боломжгүй.
+        {t("st.notifAlwaysOn")}
       </p>
+    </div>
+  );
+}
+
+// Нууц үг солих.
+//
+// Өмнө нь энд "Current password"/"New password" гэсэн хоёр талбар байсан ч
+// value/onChange огт байхгүй, "Хадгалах" товч тэдгээрийг уншдаггүй байв —
+// хэрэглэгч шинэ нууц үг бичээд хадгалахад ямар ч алдаа гарахгүй, гэхдээ
+// нууц үг нь хуучраараа үлддэг. Аюулгүй байдлын үйлдэл ЧИМЭЭГҮЙ
+// бүтэлгүйтэх нь хамгийн аюултай төрлийн алдаа тул бодитоор холбов.
+function ChangePassword() {
+  const t = useT();
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [done, setDone] = useState(false);
+
+  const canSubmit = current.length > 0 && next.length >= 8 && !busy;
+
+  async function submit() {
+    setBusy(true);
+    setError("");
+    setDone(false);
+    try {
+      await changePassword(current, next);
+      setCurrent("");
+      setNext("");
+      setDone(true);
+    } catch (err) {
+      setError(Array.isArray(err.message) ? err.message.join(", ") : err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div>
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field
+          label={t("st.currentPassword")}
+          type="password"
+          placeholder="••••••••"
+          value={current}
+          onChange={(e) => { setCurrent(e.target.value); setDone(false); }}
+        />
+        <Field
+          label={t("st.newPassword")}
+          type="password"
+          placeholder={t("st.newPasswordHint")}
+          value={next}
+          onChange={(e) => { setNext(e.target.value); setDone(false); }}
+        />
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <button
+          onClick={submit}
+          disabled={!canSubmit}
+          className="rounded-lg border border-white/12 bg-white/[0.04] px-4 py-2 text-[12.5px] font-semibold text-white/80 transition-colors hover:border-white/25 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {busy ? t("st.saving") : t("st.changePassword")}
+        </button>
+        {done && (
+          <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-mint">
+            <Check className="h-3.5 w-3.5" /> {t("st.passwordChanged")}
+          </span>
+        )}
+        {error && (
+          <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-red-400">
+            <AlertCircle className="h-3.5 w-3.5" /> {error}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -732,6 +813,7 @@ function NotificationPrefs() {
 // Бодит session-ууд (RefreshToken мөр тутам нэг). User-Agent/IP хадгалдаггүй
 // тул төхөөрөмжийн нэр/хот зохиохгүй — зөвхөн бодитоор мэдэх зүйлээ харуулна.
 function ActiveSessions() {
+  const { t, locale } = useI18n();
   const [sessions, setSessions] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -754,19 +836,19 @@ function ActiveSessions() {
 
   return (
     <div className="rounded-xl border border-white/8 bg-white/[0.03] p-4">
-      <p className="text-[13px] font-semibold">Active sessions</p>
+      <p className="text-[13px] font-semibold">{t("st.activeSessions")}</p>
       {error && <p className="mt-1.5 text-[12px] text-red-400">{error}</p>}
       {sessions == null ? (
-        <p className="mt-1.5 text-[12px] text-white/40">Ачааллаж байна…</p>
+        <p className="mt-1.5 text-[12px] text-white/40">{t("common.loading")}</p>
       ) : (
         <>
           <p className="mt-1.5 text-[12px] text-white/45">
-            {sessions.length} нэвтэрсэн төхөөрөмж
+            {t("st.deviceCount", { count: sessions.length })}
           </p>
           <div className="mt-2.5 space-y-1">
             {sessions.map((s) => (
               <p key={s.id} className="text-[11.5px] text-white/35">
-                Нэвтэрсэн: {new Date(s.createdAt).toLocaleString("mn-MN")}
+                {t("st.signedInAt", { when: new Date(s.createdAt).toLocaleString(locale === "mn" ? "mn-MN" : "en-US") })}
               </p>
             ))}
           </div>
@@ -776,7 +858,7 @@ function ActiveSessions() {
               disabled={busy}
               className="mt-3 rounded-lg border border-white/12 bg-white/[0.04] px-3.5 py-2 text-[12px] font-semibold text-white/75 transition-colors hover:border-white/25 hover:text-white disabled:opacity-50"
             >
-              {busy ? "Гаргаж байна…" : "Бусад төхөөрөмжөөс гарах"}
+              {busy ? t("st.revoking") : t("st.revokeOthers")}
             </button>
           )}
         </>
@@ -813,6 +895,7 @@ function Toggle({ label, desc, on, onToggle }) {
 }
 
 export default function Settings() {
+  const t = useT();
   // Нэр солиход sidebar/topbar дээрх нэр шууд шинэчлэгдэхийн тулд.
   const { setUser } = useNav();
   const [tab, setTab] = useState("profile");
@@ -910,16 +993,16 @@ export default function Settings() {
     if (!file) return;
 
     if (!["image/png", "image/jpeg"].includes(file.type)) {
-      setAvatarError("Зөвхөн PNG эсвэл JPG зураг сонгоно уу");
+      setAvatarError(t("st.avatarWrongType"));
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      setAvatarError("Файлын хэмжээ 2MB-с ихгүй байх ёстой");
+      setAvatarError(t("st.avatarTooBig"));
       return;
     }
     const token = getAccessToken();
     if (!token) {
-      setAvatarError("Зураг солихын тулд эхлээд нэвтэрнэ үү");
+      setAvatarError(t("st.avatarNeedLogin"));
       return;
     }
 
@@ -946,10 +1029,10 @@ export default function Settings() {
 
   return (
     <div className="mx-auto max-w-4xl px-6 pb-24 pt-8">
-      <h1 className="font-display text-3xl font-bold tracking-tight">Settings</h1>
+      <h1 className="font-display text-3xl font-bold tracking-tight">{t("st.title")}</h1>
 
       <div className="mt-7 flex flex-wrap gap-2">
-        {TABS.filter((t) => !t.freelancerOnly || isFreelancer).map(({ id, label, Icon }) => (
+        {TABS.filter((tab_) => !tab_.freelancerOnly || isFreelancer).map(({ id, labelKey, Icon }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
@@ -960,7 +1043,7 @@ export default function Settings() {
             }
           >
             <Icon className="h-4 w-4" />
-            {label}
+            {t(labelKey)}
           </button>
         ))}
       </div>
@@ -994,9 +1077,9 @@ export default function Settings() {
                   disabled={avatarBusy}
                   className="glass rounded-lg px-4 py-2 text-[12px] font-semibold text-white/80 transition-colors hover:border-white/25 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {avatarBusy ? "Uploading…" : "Change avatar"}
+                  {avatarBusy ? t("st.uploading") : t("st.changeAvatar")}
                 </button>
-                <p className="mt-1.5 text-[11px] text-white/35">PNG or JPG, max 2MB</p>
+                <p className="mt-1.5 text-[11px] text-white/35">{t("st.avatarHint")}</p>
                 {avatarError && (
                   <p className="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-red-400">
                     <AlertCircle className="h-3.5 w-3.5" /> {avatarError}
@@ -1008,27 +1091,27 @@ export default function Settings() {
 
             <div className="grid gap-5 sm:grid-cols-2">
               <Field
-                label="Full name"
+                label={t("st.fullName")}
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                placeholder="Таны нэр"
+                placeholder={t("st.namePlaceholder")}
               />
               <Field
-                label="Email"
+                label={t("st.email")}
                 value={me?.email || ""}
                 disabled
               />
               {isFreelancer ? (
                 <>
                   <Field
-                    label="Professional title"
-                    placeholder="e.g. Senior Product Designer"
+                    label={t("st.professionalTitle")}
+                    placeholder={t("st.titlePlaceholder")}
                     value={headline}
                     onChange={(e) => setHeadline(e.target.value)}
                   />
                   <Field
-                    label="Hourly rate (USD)"
-                    placeholder="e.g. 85 or 70-90"
+                    label={t("st.hourlyRate")}
+                    placeholder={t("st.ratePlaceholder")}
                     value={rate}
                     onChange={(e) => setRate(e.target.value)}
                   />
@@ -1037,13 +1120,13 @@ export default function Settings() {
                       бичихээ ч болиод өөр хүн рүү шилждэг. */}
                   <div className="sm:col-span-2">
                     <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
-                      Ажлын боломж
+                      {t("st.availability")}
                     </span>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {[
-                        ["OPEN", "Ажил авч байна"],
-                        ["BUSY", "Ачаалалтай"],
-                        ["CLOSED", "Ажил авахгүй"],
+                        ["OPEN", t("st.availOpen")],
+                        ["BUSY", t("st.availBusy")],
+                        ["CLOSED", t("st.availClosed")],
                       ].map(([key, label]) => (
                         <button
                           key={key}
@@ -1063,8 +1146,8 @@ export default function Settings() {
                 </>
               ) : (
                 <Field
-                  label="Organization name"
-                  placeholder="e.g. Nova Studio"
+                  label={t("st.orgName")}
+                  placeholder={t("st.orgPlaceholder")}
                   value={orgName}
                   onChange={(e) => setOrgName(e.target.value)}
                 />
@@ -1073,11 +1156,11 @@ export default function Settings() {
             {isFreelancer && (
               <label className="block">
                 <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
-                  Bio
+                  {t("st.bio")}
                 </span>
                 <textarea
                   rows={4}
-                  placeholder="Tell clients what you do best…"
+                  placeholder={t("st.bioPlaceholder")}
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
                   className="mt-2 w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[14px] outline-none transition-colors placeholder:text-white/25 focus:border-brand/50"
@@ -1095,7 +1178,7 @@ export default function Settings() {
               onRemove={(id) => setFreelancerProfile((p) => ({ ...p, portfolio: (p.portfolio || []).filter((i) => i.id !== id) }))}
             />
           ) : (
-            <p className="text-[13px] text-white/45">Эхлээд "Profile" tab дээрээ мэдээллээ хадгална уу.</p>
+            <p className="text-[13px] text-white/45">{t("st.saveProfileFirst")}</p>
           )
         )}
 
@@ -1105,22 +1188,19 @@ export default function Settings() {
           <div className="space-y-5">
             <div>
               <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
-                Утасны баталгаажуулалт
+                {t("st.phoneVerification")}
               </span>
               <PhoneVerify me={me} onVerified={(user) => setMe(user)} />
             </div>
             {isFreelancer && freelancerProfile && (
               <div>
                 <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
-                  Verified badge
+                  {t("st.verifiedBadge")}
                 </span>
                 <VerificationBadge profile={freelancerProfile} onUpdated={setFreelancerProfile} />
               </div>
             )}
-            <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="Current password" type="password" placeholder="••••••••" />
-              <Field label="New password" type="password" placeholder="Min. 12 characters" />
-            </div>
+            <ChangePassword />
             {/* "Two-factor authentication" toggle-ыг ХАССАН: ямар ч TOTP/SMS
                 хэрэгжилт байхгүй байсан тул хэрэглэгч уншаад "хамгаалалт
                 асаалаа" гэж бодох боловч бодитоор юу ч болдоггүй байв.
@@ -1141,13 +1221,13 @@ export default function Settings() {
               disabled={saving}
               className="rounded-xl bg-brand px-6 py-3 text-[13.5px] font-semibold glow-brand transition-shadow disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {saving ? "Saving…" : "Save changes"}
+              {saving ? t("st.saving") : t("common.saveChanges")}
             </button>
           </Magnet>
           {saved && (
             <span className="inline-flex animate-feed-in items-center gap-1.5 text-[13px] font-semibold text-mint">
               <Check className="h-4 w-4" />
-              Saved
+              {t("st.saved")}
             </span>
           )}
           {saveError && (

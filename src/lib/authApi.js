@@ -228,6 +228,22 @@ export const revokeOtherSessions = () =>
     body: { refreshToken: getRefreshToken() },
   });
 
+/**
+ * Нууц үгээ солих — Settings → Security.
+ *
+ * Сервер бүх session-ийг хүчингүй болгоод ЭНЭ төхөөрөмжид шинэ refresh
+ * token буцаадаг тул түүнийг тэр дор нь хадгална; үгүй бол хэрэглэгч
+ * дараагийн refresh дээр гэнэт гарчихна.
+ */
+export async function changePassword(currentPassword, newPassword) {
+  const res = await apiJson("/auth/password", {
+    method: "PATCH",
+    body: { currentPassword, newPassword },
+  });
+  if (res.refreshToken) saveTokens(getAccessToken(), res.refreshToken);
+  return res;
+}
+
 /** Нэрээ солих — Settings → Profile. */
 export const updateAccountName = (name) =>
   apiJson("/profile/account", { method: "PATCH", body: { name } });

@@ -21,6 +21,7 @@ import {
   phoneOtpVerifySchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  changePasswordSchema,
 } from '../validators/auth.schema.js';
 
 const router = Router();
@@ -308,6 +309,56 @@ router.post('/reset-password', authLimiter, async (req, res, next) => {
     ]);
 
     res.json({ message: 'Нууц үг амжилттай солигдлоо. Одоо шинэ нууц үгээрээ нэвтэрнэ үү.' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── PATCH /password ── (нэвтэрсэн хэрэглэгч нууц үгээ солих)
+//
+// Өмнө нь Settings → Security дээр "Current password"/"New password" гэсэн
+// хоёр талбар байсан ч ямар ч утга уншдаггүй, хаашаа ч илгээдэггүй байв —
+// хэрэглэгч бичээд "Хадгалах" дарахад юу ч болохгүйгээр амжилттай мэт
+// харагддаг. Аюулгүй байдлын үйлдэл чимээгүй бүтэлгүйтэх нь хамгийн муу
+// төрлийн алдаа тул бодит endpoint болгов.
+router.patch('/password', requireAuth, authLimiter, async (req, res, next) => {
+  try {
+    const { data, error } = validate(changePasswordSchema, req.body);
+    if (error) return res.status(400).json({ error });
+
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+    // Google-ээр бүртгүүлсэн хаягт нууц үг байхгүй — "буруу нууц үг" гэж
+    // хэлэх нь төөрөгдүүлнэ, юу хийхийг нь шууд хэлье.
+    if (!user?.passwordHash) {
+      return res.status(400).json({
+        error: 'Энэ хаяг Google-ээр нэвтэрдэг тул нууц үг байхгүй. Нууц үг үүсгэхийн тулд "Нууц үгээ мартсан" урсгалыг ашиглана уу.',
+      });
+    }
+
+    const ok = await verifyPassword(data.currentPassword, user.passwordHash);
+    if (!ok) return res.status(400).json({ error: 'Одоогийн нууц үг буруу байна' });
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: user.id },
+        data: { passwordHash: await hashPassword(data.newPassword) },
+      }),
+      // Нууц үг сольсны дараа БҮХ session-ийг хүчингүй болгоно — нууц үг
+      // алдагдсан байж болзошгүй гэж үзвэл халдагчийг гаргах цорын ганц зам.
+      prisma.refreshToken.updateMany({
+        where: { userId: user.id, revoked: false },
+        data: { revoked: true },
+      }),
+    ]);
+
+    // Гэхдээ ЭНЭ төхөөрөмжид шинэ refresh token өгнө: өөрийнхөө нууц үгийг
+    // сольсон хүнийг шууд гаргах нь ямар ч аюулгүй байдал нэмэхгүй, зөвхөн
+    // "ямар нэг юм эвдэрлээ" гэсэн сэтгэгдэл төрүүлнэ.
+    const refreshToken = await issueRefreshToken(user.id);
+    res.json({
+      message: 'Нууц үг солигдлоо. Бусад төхөөрөмжөөс гарсан.',
+      refreshToken,
+    });
   } catch (err) {
     next(err);
   }
