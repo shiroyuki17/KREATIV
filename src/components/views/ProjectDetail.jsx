@@ -3,24 +3,27 @@ import { ArrowLeft, Star, BadgeCheck, ShieldCheck, Clock, Users, Check, AlertCir
 import SpotlightCard from "../fx/SpotlightCard.jsx";
 import Magnet from "../fx/Magnet.jsx";
 import { useNav } from "../../nav.jsx";
+import { useT } from "../../i18n.jsx";
+import { TIMELINE_LABEL } from "../../lib/timelines.js";
 import { fetchJobs, fetchJob } from "../../lib/jobsApi.js";
 import { submitProposal } from "../../lib/contractApi.js";
 import { getAccessToken } from "../../lib/authApi.js";
 
-function timeAgo(iso) {
+function timeAgo(iso, t) {
   const hours = Math.floor((Date.now() - new Date(iso).getTime()) / 3_600_000);
-  if (hours < 1) return "just now";
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
+  if (hours < 1) return t("fw.justNow");
+  if (hours < 24) return t("fw.hoursAgo", { h: hours });
+  return t("fw.daysAgo", { d: Math.floor(hours / 24) });
 }
 
 // Зар нь Jobs API-аас ирнэ. Өмнө нь нүүр хуудасны mock үзүүлбэрүүдээс ч
 // ирдэг байсан тул хоёр өөр хэлбэрийг зэрэг зохицуулдаг байв — тэдгээр
 // хэсгүүд бодит өгөгдөлд шилжсэн тул ганц хэлбэр үлдлээ.
-function normalize(job) {
+function normalize(job, t) {
   return {
     id: job.id, cat: job.category, type: job.budgetType === "FIXED" ? "Fixed" : "Hourly",
-    posted: timeAgo(job.createdAt), clientName: job.client?.name || job.client?.orgName || "Client",
+    timeline: job.timeline || null,
+    posted: timeAgo(job.createdAt, t), clientName: job.client?.name || job.client?.orgName || t("fw.client"),
     verified: !!job.client?.verifiedPayer, rating: job.client?.ratingAvg > 0 ? job.client.ratingAvg : null,
     tags: job.skills || [], proposals: job.proposalCount ?? null, description: job.description,
     budget: job.budgetMin ? `$${job.budgetMin.toLocaleString("en-US")}${job.budgetType === "HOURLY" ? "/hr" : ""}` : "—",
@@ -28,13 +31,14 @@ function normalize(job) {
 }
 
 export default function ProjectDetail() {
+  const t = useT();
   const { params, nav } = useNav();
   // Хуваалцсан линк/дахин ачаалалтаар орж ирэхэд URL-д зөвхөн `id` байна —
   // тэр үед зарыг сервэрээс татна. Жагсаалтаас дарж ирсэн бол бүтэн обьект
   // аль хэдийн params-д байгаа тул нэмэлт хүсэлт явуулахгүй.
   const [fetched, setFetched] = useState(null);
   const raw = params?.title ? params : fetched;
-  const job = raw ? normalize(raw) : null;
+  const job = raw ? normalize(raw, t) : null;
 
   useEffect(() => {
     if (params?.title || !params?.id) return;
@@ -86,15 +90,15 @@ export default function ProjectDetail() {
     return (
       <div className="mx-auto flex max-w-lg flex-col items-center px-6 py-24 text-center">
         <AlertCircle className="h-8 w-8 text-white/30" />
-        <h1 className="mt-4 font-display text-xl font-bold">Brief not found</h1>
+        <h1 className="mt-4 font-display text-xl font-bold">{t("pd.notFound")}</h1>
         <p className="mt-2 text-[13.5px] leading-relaxed text-white/50">
-          This link doesn't point to an open brief. It may have been closed or filled.
+          {t("pd.notFoundDesc")}
         </p>
         <button
           onClick={() => nav("find-work")}
           className="mt-6 rounded-xl bg-brand px-6 py-3 text-[13.5px] font-semibold text-ink glow-brand"
         >
-          Browse open briefs
+          {t("pd.browseOpen")}
         </button>
       </div>
     );
@@ -107,7 +111,7 @@ export default function ProjectDetail() {
         className="inline-flex items-center gap-2 text-[13px] font-medium text-white/50 transition-colors hover:text-white"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to briefs
+        {t("pd.backToBriefs")}
       </button>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1.6fr_1fr]">
@@ -115,7 +119,7 @@ export default function ProjectDetail() {
           <div className="glass rounded-2xl p-7">
             <div className="flex flex-wrap items-center gap-2.5">
               <span className="rounded-full border border-brand/30 bg-brand/10 px-3 py-1 text-[10.5px] font-bold uppercase tracking-widest text-brand-soft">
-                {job.cat}
+                {t(`cat.${job.cat}`)}
               </span>
               <span
                 className={
@@ -124,9 +128,9 @@ export default function ProjectDetail() {
                     : "rounded-full border border-neon/30 bg-neon/10 px-3 py-1 text-[10.5px] font-bold uppercase tracking-widest text-neon"
                 }
               >
-                {job.type}
+                {job.type === "Fixed" ? t("fw.fixed") : t("fw.hourly")}
               </span>
-              <span className="text-[11.5px] text-white/35">Posted {job.posted}</span>
+              <span className="text-[11.5px] text-white/35">{t("pd.posted", { when: job.posted })}</span>
             </div>
 
             <h1 className="mt-5 font-display text-[clamp(1.6rem,3vw,2.3rem)] font-bold leading-tight tracking-tight">
@@ -139,28 +143,31 @@ export default function ProjectDetail() {
               {job.rating && (
                 <span className="inline-flex items-center gap-1">
                   <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                  {job.rating} client rating
+                  {job.rating} {t("pd.clientRating")}
                 </span>
               )}
             </div>
 
             <p className="mt-6 text-[14px] leading-relaxed text-white/60">
-              {job.description || "We're rebuilding our flagship experience and need a specialist who can own this brief end-to-end. You'll work directly with our product team, ship in weekly milestones, and every payment is escrow-protected from day one. We value taste, velocity, and clear async communication."}
+              {job.description}
             </p>
 
-            <div className="mt-7">
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
-                What you'll deliver
-              </p>
-              <ul className="mt-3 space-y-2.5">
-                {["Production-ready implementation with source files", "Weekly milestone demos with staging links", "Documentation and handoff session"].map((d) => (
-                  <li key={d} className="flex items-start gap-2.5 text-[13.5px] text-white/70">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-mint" />
-                    {d}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            {/* Өмнө нь энд "What you'll deliver" гэсэн ГУРВАН ХАТУУ БИЧСЭН мөр
+                байв ("Production-ready implementation…" г.м) — зар болгон дээр
+                яг ижил, захиалагчийн бичээгүй зүйлийг түүний шаардлага мэт
+                харуулдаг байлаа. Оронд нь захиалагчийн ҮНЭХЭЭР сонгосон
+                хугацааг харуулна. */}
+            {job.timeline && (
+              <div className="mt-7">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
+                  {t("pd.expectedTimeline")}
+                </p>
+                <p className="mt-2 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-[13.5px] text-white/75">
+                  <Clock className="h-4 w-4 text-brand-soft" />
+                  {t(TIMELINE_LABEL[job.timeline] || "pd.expectedTimeline")}
+                </p>
+              </div>
+            )}
 
             <div className="mt-7 flex flex-wrap gap-2">
               {job.tags.map((t) => (
@@ -174,7 +181,7 @@ export default function ProjectDetail() {
           {similar.length > 0 && (
             <div>
               <p className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-white/40">
-                Similar briefs
+                {t("pd.similarBriefs")}
               </p>
               <div className="grid gap-4 sm:grid-cols-2">
                 {similar.map((s) => {
@@ -185,7 +192,7 @@ export default function ProjectDetail() {
                   return (
                     <SpotlightCard key={s.id} onClick={() => nav("project", s)} className="cursor-pointer">
                       <div className="p-5">
-                        <p className="text-[10.5px] font-bold uppercase tracking-widest text-brand-soft">{sCat}</p>
+                        <p className="text-[10.5px] font-bold uppercase tracking-widest text-brand-soft">{t(`cat.${sCat}`)}</p>
                         <p className="mt-2 font-display text-[15px] font-semibold leading-snug">{s.title}</p>
                         <p className="mt-3 text-[13px] font-bold text-mint">{sBudget}</p>
                       </div>
@@ -200,48 +207,47 @@ export default function ProjectDetail() {
         <div className="space-y-5 lg:sticky lg:top-28 lg:self-start">
           <div className="glass rounded-2xl p-6">
             <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
-              {job.type} budget
+              {t("pd.budgetOf", { type: job.type === "Fixed" ? t("fw.fixed") : t("fw.hourly") })}
             </p>
             <p className="mt-2 font-display text-4xl font-bold text-mint">{job.budget}</p>
             <div className="mt-5 space-y-3 border-t border-white/8 pt-5 text-[12.5px] text-white/55">
               {job.proposals != null && (
                 <p className="flex items-center gap-2.5">
                   <Users className="h-4 w-4 text-brand-soft" />
-                  {job.proposals} proposals so far
+                  {t("pd.proposalsSoFar", { count: job.proposals })}
                 </p>
               )}
-              <p className="flex items-center gap-2.5">
-                <Clock className="h-4 w-4 text-brand-soft" />
-                Avg. response in 3.2 hours
-              </p>
+              {/* "Avg. response in 3.2 hours" гэсэн мөр энд байсныг хассан:
+                  хариу өгөх хугацааг хэмждэг ямар ч өгөгдөл системд байхгүй
+                  атлаа зар болгон дээр ижил тоо гардаг байв. */}
               <p className="flex items-center gap-2.5">
                 <ShieldCheck className="h-4 w-4 text-mint" />
-                Escrow-protected payment
+                {t("pd.escrowProtected")}
               </p>
             </div>
           </div>
 
           {raw.status === "OPEN" && (
             <div className="glass rounded-2xl p-6">
-              <p className="font-display text-[15px] font-semibold">Submit a proposal</p>
+              <p className="font-display text-[15px] font-semibold">{t("pd.submitProposal")}</p>
               {sent ? (
                 <div className="mt-4 space-y-2.5">
                   <div className="rounded-xl border border-mint/30 bg-mint/10 p-4 text-[13px] font-medium text-mint">
                     <span className="inline-flex items-center gap-2">
                       <Check className="h-4 w-4" />
-                      Proposal sent — {job.clientName} typically replies within a day.
+                      {t("pd.proposalSent", { name: job.clientName })}
                     </span>
                   </div>
                   {proposalWarning && (
                     <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-[12px] font-medium text-amber-400">
-                      Таны cover note-д {proposalWarning.join(", ")} агуулагдаж байж болзошгүй — гэрээ байгуулагдахаас өмнө холбоо барих мэдээлэл солилцохгүй байхыг зөвлөж байна.
+                      {t("pd.proposalWarning", { items: proposalWarning.join(", ") })}
                     </p>
                   )}
                 </div>
               ) : (
                 <>
                   <label className="mt-4 block text-[11px] font-semibold uppercase tracking-widest text-white/40">
-                    Your bid
+                    {t("pd.yourBid")}
                   </label>
                   <input
                     value={bid}
@@ -250,13 +256,13 @@ export default function ProjectDetail() {
                     className="mt-2 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[14px] outline-none transition-colors placeholder:text-white/25 focus:border-brand/50"
                   />
                   <label className="mt-4 block text-[11px] font-semibold uppercase tracking-widest text-white/40">
-                    Cover note
+                    {t("pd.coverNote")}
                   </label>
                   <textarea
                     rows={4}
                     value={coverLetter}
                     onChange={(e) => setCoverLetter(e.target.value)}
-                    placeholder="Why you're the right fit…"
+                    placeholder={t("pd.coverPlaceholder")}
                     className="mt-2 w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[13.5px] outline-none transition-colors placeholder:text-white/25 focus:border-brand/50"
                   />
                   {proposalError && (
@@ -270,7 +276,7 @@ export default function ProjectDetail() {
                       disabled={submitting}
                       className="w-full rounded-xl bg-brand py-3 text-[13.5px] font-semibold glow-brand transition-shadow disabled:opacity-50"
                     >
-                      {submitting ? "Илгээж байна…" : "Send Proposal"}
+                      {submitting ? t("pd.sending") : t("pd.sendProposal")}
                     </button>
                   </Magnet>
                 </>

@@ -8,9 +8,13 @@ import { sendMail } from '../lib/mailer.js';
 import { createNotification } from './notification.routes.js';
 import { detectLeakage } from '../lib/leakage.js';
 import { logEvent } from '../lib/logger.js';
+// Зарын нийтэд харагдах хэлбэрийн ГАНЦ эх сурвалж. Өмнө нь энэ файлд бараг
+// ижил хуулбар байсан бөгөөд шинэ талбар (timeline) нэмэхэд зөвхөн нэгд нь
+// нэмэгдсэн тул жагсаалтад гардаггүй байв.
+
 // Хайлтын query нь AI хайлттай хуваалцдаг ганц эх сурвалж (lib/jobSearch.js) —
 // хоёр зам зөрж, аль нэгэнд нь модерацийн шүүлт мартагдахаас сэргийлнэ.
-import { searchJobs } from '../lib/jobSearch.js';
+import { searchJobs, publicJob } from '../lib/jobSearch.js';
 
 // FR-3.3: сард 5 үнэгүй санал (спам бууруулах + Ph.2 монетизацийн суурь)
 const FREE_PROPOSALS_PER_MONTH = 5;
@@ -23,7 +27,13 @@ function validate(schema, data) {
   return { data: result.data };
 }
 
-const clientInclude = { client: { include: { user: { select: { name: true } } } } };
+// jobSearch.js-ийн publicJob-той ижил хэлбэр: тэр нь `_count.proposals`-ыг
+// уншдаг тул энд ч оруулах ёстой, үгүй бол зарын дэлгэрэнгүй хуудсан дээр
+// саналын тоо үргэлж 0 харагдана.
+const clientInclude = {
+  client: { include: { user: { select: { name: true } } } },
+  _count: { select: { proposals: true } },
+};
 
 function publicProposal(p) {
   return {
@@ -42,33 +52,6 @@ function publicProposal(p) {
       headline: p.freelancer.headline,
       ratingAvg: p.freelancer.ratingAvg,
       jobsCompleted: p.freelancer.jobsCompleted,
-    },
-  };
-}
-
-function publicJob(job) {
-  return {
-    id: job.id,
-    title: job.title,
-    description: job.description,
-    category: job.category,
-    skills: job.skills,
-    languages: job.languages,
-    budgetType: job.budgetType,
-    budgetMin: job.budgetMin,
-    budgetMax: job.budgetMax,
-    status: job.status,
-    deadline: job.deadline,
-    moderationStatus: job.moderationStatus,
-    moderationReason: job.moderationReason,
-    createdAt: job.createdAt,
-    updatedAt: job.updatedAt,
-    client: job.client && {
-      id: job.client.id,
-      name: job.client.user?.name,
-      orgName: job.client.orgName,
-      verifiedPayer: job.client.verifiedPayer,
-      ratingAvg: job.client.ratingAvg,
     },
   };
 }

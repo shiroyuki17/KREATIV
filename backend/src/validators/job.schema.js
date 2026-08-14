@@ -3,6 +3,10 @@ import { z } from 'zod';
 // Frontend-ийн FindWork.jsx-ийн CATS массивтай тааруулсан
 export const CATEGORIES = ['Design', 'Dev', 'AI', 'Motion', 'Writing', 'Marketing'];
 
+// PostJob.jsx-ийн TIMELINE_OPTIONS-той тааруулсан. Хадгалахдаа хэлнээс
+// хамааралгүй канон утгыг л хадгална — харагдах текстийг frontend орчуулна.
+export const TIMELINES = ['lt1w', '1-2w', '2-4w', '1-3m', '3m+'];
+
 const jobFields = {
   title: z.string().min(5, 'Гарчиг дор хаяж 5 тэмдэгт').max(160),
   description: z.string().min(20, 'Тайлбар дор хаяж 20 тэмдэгт').max(5000),
@@ -13,6 +17,9 @@ const jobFields = {
   budgetMin: z.coerce.number().int().nonnegative().optional(),
   budgetMax: z.coerce.number().int().nonnegative().optional(),
   deadline: z.string().datetime().optional(),
+  // Хугацааны сонголт — frontend-ийн TIMELINE_OPTIONS-той нэг мөр. Чөлөөт
+  // текст биш enum байлгасан нь дараа нь үүгээр шүүх боломж үлдээнэ.
+  timeline: z.enum(TIMELINES).optional(),
 };
 
 const budgetRefine = (d) => d.budgetMin == null || d.budgetMax == null || d.budgetMin <= d.budgetMax;

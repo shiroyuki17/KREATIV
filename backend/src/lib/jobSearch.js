@@ -29,6 +29,7 @@ export function publicJob(job) {
     budgetMax: job.budgetMax,
     status: job.status,
     deadline: job.deadline,
+    timeline: job.timeline,
     moderationStatus: job.moderationStatus,
     moderationReason: job.moderationReason,
     createdAt: job.createdAt,

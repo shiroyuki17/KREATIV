@@ -18,11 +18,13 @@ import {
 import { CL_CATEGORIES } from "../../data/appMock.js";
 import { FL_SKILLS } from "../../data/appMock.js";
 import { useNav } from "../../nav.jsx";
+import { useT } from "../../i18n.jsx";
+import { TIMELINES, TIMELINE_LABEL } from "../../lib/timelines.js";
 import { getAccessToken } from "../../lib/authApi.js";
 import { createJob, generateJobDraft } from "../../lib/jobsApi.js";
 import { fetchFreelancers } from "../../lib/talentApi.js";
 
-const STEPS = ["Basics", "Details", "Review"];
+const STEP_KEYS = ["pj.stepBasics", "pj.stepDetails", "pj.stepReview"];
 
 // PostJob's own category labels predate the backend's Jobs schema enum
 // (Design/Dev/AI/Motion/Writing/Marketing) — map one onto the other rather
@@ -48,10 +50,11 @@ const API_TO_CATEGORY = {
 };
 
 function Steps({ step }) {
+  const t = useT();
   return (
     <div className="flex items-center gap-2">
-      {STEPS.map((label, i) => (
-        <div key={label} className="flex flex-1 items-center gap-2 last:flex-none">
+      {STEP_KEYS.map((key, i) => (
+        <div key={key} className="flex flex-1 items-center gap-2 last:flex-none">
           <span
             className={
               i < step
@@ -63,7 +66,7 @@ function Steps({ step }) {
           >
             {i < step ? <Check className="h-4 w-4" /> : i + 1}
           </span>
-          {i < STEPS.length - 1 && (
+          {i < STEP_KEYS.length - 1 && (
             <div className="h-0.5 flex-1 overflow-hidden rounded-full bg-white/8">
               <div
                 className="h-full bg-brand transition-all duration-500"
@@ -106,14 +109,15 @@ function FieldLabel({ Icon, children, hint }) {
 }
 
 const BUDGET_TYPES = [
-  { id: "Fixed", Icon: Wallet, desc: "One agreed price for the whole project" },
-  { id: "Hourly", Icon: Clock3, desc: "Pay for actual time worked, billed weekly" },
+  { id: "Fixed", Icon: Wallet, labelKey: "pj.typeFixed", descKey: "pj.typeFixedDesc" },
+  { id: "Hourly", Icon: Clock3, labelKey: "pj.typeHourly", descKey: "pj.typeHourlyDesc" },
 ];
 
-const TIMELINE_OPTIONS = ["Less than 1 week", "1–2 weeks", "2–4 weeks", "1–3 months", "3 months+"];
+
 
 export default function PostJob() {
   const { nav } = useNav();
+  const t = useT();
   const [step, setStep] = useState(0);
   const [published, setPublished] = useState(false);
 
@@ -123,7 +127,7 @@ export default function PostJob() {
   const [skills, setSkills] = useState([]);
   const [type, setType] = useState("Fixed");
   const [budget, setBudget] = useState("");
-  const [timeline, setTimeline] = useState("2–4 weeks");
+  const [timeline, setTimeline] = useState("2-4w");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [moderationStatus, setModerationStatus] = useState(null);
@@ -138,7 +142,7 @@ export default function PostJob() {
 
   async function draftWithAi() {
     const idea = aiIdea.trim();
-    if (idea.length < 8) { setAiError("Санаагаа арай дэлгэрэнгүй бичнэ үү"); return; }
+    if (idea.length < 8) { setAiError(t("pj.ideaTooShort")); return; }
     const token = getAccessToken();
     if (!token) { nav("auth", { mode: "login" }); return; }
 
@@ -166,9 +170,9 @@ export default function PostJob() {
   // хэрэглэгч категори сонгоогүйгээ анзаарахгүй тээнэгэлзэнэ.
   const missing =
     step === 0
-      ? [!title.trim() && "гарчиг", !cat && "категори"].filter(Boolean)
+      ? [!title.trim() && t("pj.mTitle"), !cat && t("pj.mCategory")].filter(Boolean)
       : step === 1
-      ? [!desc.trim() && "тайлбар", !budget.trim() && "төсөв"].filter(Boolean)
+      ? [!desc.trim() && t("pj.mDesc"), !budget.trim() && t("pj.mBudget")].filter(Boolean)
       : [];
 
   const goNext = () => {
@@ -205,6 +209,7 @@ export default function PostJob() {
           budgetType: type === "Fixed" ? "FIXED" : "HOURLY",
           budgetMin: amount,
           budgetMax: amount,
+          timeline,
         },
         token
       );
@@ -226,30 +231,30 @@ export default function PostJob() {
             <Check className="h-9 w-9" />
           </span>
           <h1 className="mt-6 font-display text-2xl font-bold tracking-tight">
-            {pendingReview ? "Submitted for review" : "Your brief is live!"}
+            {pendingReview ? t("pj.submittedForReview") : t("pj.isLive")}
           </h1>
           <p className="mx-auto mt-2 max-w-sm text-[13.5px] leading-relaxed text-white/50">
             {pendingReview
-              ? `“${title}” contains what looks like contact info, so it needs a quick admin check before it goes live (FR-2.3 — spam/leakage protection).`
-              : `“${title}” is now visible to vetted specialists. Our AI is already matching it to the best fits.`}
+              ? t("pj.pendingDesc", { title })
+              : t("pj.liveDesc", { title })}
           </p>
           <div className="mt-6 flex items-center justify-center gap-3">
             {pendingReview ? (
               <span className="inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-4 py-2 text-[12px] font-semibold text-amber-300">
                 <ShieldCheck className="h-3.5 w-3.5" />
-                Awaiting admin approval
+                {t("pj.awaitingApproval")}
               </span>
             ) : (
               <>
                 {matchCount != null && (
                   <span className="inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand/10 px-4 py-2 text-[12px] font-semibold text-brand-soft">
                     <Sparkles className="h-3.5 w-3.5" />
-                    {matchCount > 0 ? `${matchCount} matching specialist${matchCount === 1 ? "" : "s"} found` : "No matches yet — check back soon"}
+                    {matchCount > 0 ? t("pj.matchesFound", { count: matchCount }) : t("pj.noMatchesYet")}
                   </span>
                 )}
                 <span className="inline-flex items-center gap-2 rounded-full border border-mint/30 bg-mint/10 px-4 py-2 text-[12px] font-semibold text-mint">
                   <ShieldCheck className="h-3.5 w-3.5" />
-                  Escrow ready
+                  {t("pj.escrowReady")}
                 </span>
               </>
             )}
@@ -259,13 +264,13 @@ export default function PostJob() {
               onClick={() => nav("find-talent")}
               className="flex-1 rounded-xl bg-brand py-3 text-[13.5px] font-semibold glow-brand transition-shadow"
             >
-              Review matches
+              {t("pj.reviewMatches")}
             </button>
             <button
               onClick={() => nav("client-dashboard")}
               className="flex-1 rounded-xl border border-white/15 bg-white/[0.04] py-3 text-[13.5px] font-semibold text-white/85 transition-colors hover:border-white/25"
             >
-              Go to dashboard
+              {t("pj.goToDashboard")}
             </button>
           </div>
         </div>
@@ -281,14 +286,14 @@ export default function PostJob() {
         className="inline-flex items-center gap-2 text-[13px] font-medium text-white/50 transition-colors hover:text-white"
       >
         <ArrowLeft className="h-4 w-4" />
-        {step === 0 ? "Cancel" : "Back"}
+        {step === 0 ? t("common.cancel") : t("common.back")}
       </button>
 
       <p className="mt-6 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-soft">
-        — Post a job · Step {step + 1} of 3
+        {t("pj.eyebrow", { n: step + 1 })}
       </p>
       <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">
-        {step === 0 ? "What do you need done?" : step === 1 ? "Add the details" : "Review your brief"}
+        {step === 0 ? t("pj.title0") : step === 1 ? t("pj.title1") : t("pj.title2")}
       </h1>
 
       <div className="my-7 max-w-md">
@@ -301,17 +306,17 @@ export default function PostJob() {
             <div className="rounded-xl border border-brand/25 bg-brand/[0.05] p-4">
               <p className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-brand-soft">
                 <Sparkles className="h-3.5 w-3.5" />
-                Draft with AI
+                {t("pj.draftWithAi")}
               </p>
               <p className="mt-1 text-[11.5px] leading-relaxed text-white/50">
-                Describe your project in a sentence or two — AI fills in the title, category, description, skills, and a suggested budget below.
+                {t("pj.draftWithAiDesc")}
               </p>
               <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                 <input
                   value={aiIdea}
                   onChange={(e) => setAiIdea(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && draftWithAi()}
-                  placeholder="e.g. I need a logo and brand kit for a coffee shop"
+                  placeholder={t("pj.aiIdeaPlaceholder")}
                   className="flex-1 rounded-lg border border-white/10 bg-white/[0.04] px-3.5 py-2.5 text-[13px] outline-none transition-colors placeholder:text-white/30 focus:border-brand/50"
                 />
                 <button
@@ -320,7 +325,7 @@ export default function PostJob() {
                   className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-brand px-4 py-2.5 text-[12.5px] font-bold text-fg-1 transition-shadow disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {aiDrafting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                  {aiDrafting ? "Drafting…" : "Draft"}
+                  {aiDrafting ? t("pj.drafting") : t("pj.draft")}
                 </button>
               </div>
               {aiError && <p className="mt-2 text-[11.5px] text-red-400">{aiError}</p>}
@@ -339,7 +344,7 @@ export default function PostJob() {
 
             <label className="block">
               <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
-                Project title
+                {t("pj.projectTitle")}
               </span>
               <input
                 value={title}
@@ -348,18 +353,20 @@ export default function PostJob() {
                 // байсан тул хэрэглэгч заавал хулганаараа Continue дарах
                 // шаардлагатай байв.
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); goNext(); } }}
-                placeholder="e.g. Design a 3D landing page for an AI startup"
+                placeholder={t("pj.titlePlaceholder")}
                 className="mt-2 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[14px] outline-none transition-colors placeholder:text-white/25 focus:border-brand/50"
               />
             </label>
             <div>
               <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
-                Category
+                {t("pj.category")}
               </span>
               <div className="mt-3 flex flex-wrap gap-2.5">
                 {CL_CATEGORIES.map((c) => (
+                  // `c` нь CATEGORY_TO_API-ийн түлхүүр тул канон хэвээр
+                  // үлдэнэ — зөвхөн шошгыг орчуулна.
                   <Chip key={c} active={cat === c} onClick={() => setCat(c)}>
-                    {c}
+                    {t(`clcat.${c}`)}
                   </Chip>
                 ))}
               </div>
@@ -370,21 +377,21 @@ export default function PostJob() {
         {step === 1 && (
           <div className="space-y-7">
             <label className="block">
-              <FieldLabel Icon={FileText} hint={`${desc.length} characters`}>
-                Describe the work
+              <FieldLabel Icon={FileText} hint={t("pj.charCount", { n: desc.length })}>
+                {t("pj.describeWork")}
               </FieldLabel>
               <textarea
                 value={desc}
                 onChange={(e) => setDesc(e.target.value)}
                 rows={5}
-                placeholder="Scope, goals, deliverables, and anything a specialist should know…"
+                placeholder={t("pj.descPlaceholder")}
                 className="mt-2 w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[14px] leading-relaxed outline-none transition-colors placeholder:text-white/25 focus:border-brand/50"
               />
             </label>
 
             <div>
-              <FieldLabel Icon={Tag} hint={`${skills.length} selected`}>
-                Skills required
+              <FieldLabel Icon={Tag} hint={t("pj.selectedCount", { n: skills.length })}>
+                {t("pj.skillsRequired")}
               </FieldLabel>
               <div className="mt-3 flex flex-wrap gap-2.5">
                 {FL_SKILLS.map((s) => (
@@ -396,9 +403,9 @@ export default function PostJob() {
             </div>
 
             <div>
-              <FieldLabel Icon={Wallet}>Budget type</FieldLabel>
+              <FieldLabel Icon={Wallet}>{t("pj.budgetType")}</FieldLabel>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                {BUDGET_TYPES.map(({ id, Icon, desc: d }) => (
+                {BUDGET_TYPES.map(({ id, Icon, labelKey, descKey }) => (
                   <button
                     key={id}
                     type="button"
@@ -420,9 +427,9 @@ export default function PostJob() {
                     </span>
                     <span>
                       <span className={type === id ? "block text-[13.5px] font-semibold text-white" : "block text-[13.5px] font-semibold text-white/80"}>
-                        {id}
+                        {t(labelKey)}
                       </span>
-                      <span className="mt-0.5 block text-[11.5px] leading-snug text-white/45">{d}</span>
+                      <span className="mt-0.5 block text-[11.5px] leading-snug text-white/45">{t(descKey)}</span>
                     </span>
                   </button>
                 ))}
@@ -431,7 +438,7 @@ export default function PostJob() {
 
             <div className="grid gap-5 sm:grid-cols-2">
               <label className="block">
-                <FieldLabel Icon={Wallet}>{type === "Fixed" ? "Budget" : "Hourly rate"}</FieldLabel>
+                <FieldLabel Icon={Wallet}>{type === "Fixed" ? t("pj.budget") : t("pj.hourlyRate")}</FieldLabel>
                 <input
                   value={budget}
                   onChange={(e) => setBudget(e.target.value)}
@@ -441,11 +448,11 @@ export default function PostJob() {
                 />
               </label>
               <div className="block">
-                <FieldLabel Icon={CalendarClock}>Timeline</FieldLabel>
+                <FieldLabel Icon={CalendarClock}>{t("pj.timeline")}</FieldLabel>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {TIMELINE_OPTIONS.map((o) => (
-                    <Chip key={o} active={timeline === o} onClick={() => setTimeline(o)}>
-                      {o}
+                  {TIMELINES.map(({ value, labelKey }) => (
+                    <Chip key={value} active={timeline === value} onClick={() => setTimeline(value)}>
+                      {t(labelKey)}
                     </Chip>
                   ))}
                 </div>
@@ -458,18 +465,18 @@ export default function PostJob() {
           <div className="space-y-4">
             <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-white/35">
               <Eye className="h-3.5 w-3.5" />
-              Preview — this is what specialists will see
+              {t("pj.preview")}
             </p>
 
             <div className="rounded-xl border border-white/8 bg-white/[0.03] p-5">
               <p className="text-[10.5px] font-bold uppercase tracking-widest text-brand-soft">
-                {cat || "Category"}
+                {cat ? t(`clcat.${cat}`) : t("pj.categoryPlaceholder")}
               </p>
               <h3 className="mt-2 font-display text-xl font-bold leading-snug">
-                {title || "Untitled brief"}
+                {title || t("pj.untitled")}
               </h3>
               <p className="mt-3 text-[13.5px] leading-relaxed text-white/60">
-                {desc || "No description added."}
+                {desc || t("pj.noDescription")}
               </p>
               {skills.length > 0 && (
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -489,14 +496,14 @@ export default function PostJob() {
                 </div>
                 <div className="flex items-center gap-2.5 rounded-lg bg-white/[0.03] px-3 py-2.5">
                   <CalendarClock className="h-4 w-4 shrink-0 text-neon" />
-                  <span className="text-[12.5px] text-white/70">{timeline}</span>
+                  <span className="text-[12.5px] text-white/70">{t(TIMELINE_LABEL[timeline])}</span>
                 </div>
               </div>
             </div>
 
             <div className="rounded-xl border border-white/8 bg-white/[0.03] p-5">
               <p className="mb-3.5 text-[11px] font-semibold uppercase tracking-widest text-white/40">
-                What happens next
+                {t("pj.whatNext")}
               </p>
               <div className="space-y-3.5">
                 <div className="flex items-start gap-3">
@@ -504,8 +511,7 @@ export default function PostJob() {
                     <ShieldCheck className="h-3.5 w-3.5" />
                   </span>
                   <p className="pt-0.5 text-[12.5px] leading-relaxed text-white/60">
-                    You'll fund the first milestone into escrow after choosing a
-                    freelancer. Nothing is charged until you hire.
+                    {t("pj.nextEscrow")}
                   </p>
                 </div>
                 <div className="flex items-start gap-3">
@@ -515,11 +521,11 @@ export default function PostJob() {
                   <p className="pt-0.5 text-[12.5px] leading-relaxed text-white/60">
                     {matchCount != null ? (
                       <>
-                        <b className="text-white">{matchCount} specialist{matchCount === 1 ? "" : "s"}</b>{" "}
-                        match{matchCount === 1 ? "es" : ""} the skills you picked. Expect proposals within hours.
+                        <b className="text-white">{matchCount} {t("pj.nextMatchCount")}</b>{" "}
+                        {t("pj.nextMatchRest")}
                       </>
                     ) : (
-                      "Your brief will be matched to specialists with the skills you picked."
+                      t("pj.nextMatchNone")
                     )}
                   </p>
                 </div>
@@ -541,12 +547,12 @@ export default function PostJob() {
             className="inline-flex items-center gap-2 text-[13px] font-medium text-white/50 transition-colors hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
-            {step === 0 ? "Cancel" : "Back"}
+            {step === 0 ? t("common.cancel") : t("common.back")}
           </button>
           <div className="flex items-center gap-3">
             {missing.length > 0 && (
               <span className="text-[12px] text-white/40">
-                {missing.join(", ")} дутуу байна
+                {t("pj.missing", { items: missing.join(", ") })}
               </span>
             )}
             <button
@@ -555,7 +561,7 @@ export default function PostJob() {
               disabled={!canNext || submitting}
               className="inline-flex items-center gap-2 rounded-xl bg-brand px-6 py-3 text-[13.5px] font-semibold glow-brand transition-all disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
             >
-              {step < 2 ? "Continue" : submitting ? "Publishing…" : "Publish brief"}
+              {step < 2 ? t("common.continue") : submitting ? t("pj.publishing") : t("pj.publish")}
               <ArrowRight className="h-4 w-4" />
             </button>
           </div>
