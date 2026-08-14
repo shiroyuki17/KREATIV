@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Search, Send, Info, X, AlertCircle, ShieldAlert, Phone, Video, MoreHorizontal, Smile, Paperclip, Check, CheckCheck, FileText, FileArchive, Figma, Github, Download, Loader2, Ban, Image as ImageIcon } from "lucide-react";
 import { useNav } from "../../nav.jsx";
+import { useT } from "../../i18n.jsx";
 import { getAccessToken, avatarSrc, API_BASE } from "../../lib/authApi.js";
 import { fetchConversations, startConversation, fetchThread, sendMessage, sendFile, blockUser, unblockUser, searchPeople } from "../../lib/messagesApi.js";
 import { fetchFreelancerByUserId } from "../../lib/talentApi.js";
@@ -95,10 +96,12 @@ function initialsOf(name) {
   return (name || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 }
 
-function timeAgo(iso) {
+// t()-г ПАРАМЕТРЭЭР авна: энэ нь компонент биш ердийн функц тул дотор нь
+// hook дуудвал React-ийн дүрэм зөрчигдөнө (нөхцөлт/давталтад дуудагдана).
+function timeAgo(iso, t) {
   const diffMs = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diffMs / 60000);
-  if (mins < 1) return "now";
+  if (mins < 1) return t("msg.now");
   if (mins < 60) return `${mins}m`;
   const hours = Math.floor(mins / 60);
   if (hours < 24) return `${hours}h`;
@@ -127,6 +130,7 @@ function Avatar({ name, avatarUrl, size = "md", online = false }) {
 }
 
 function DetailsPanel({ contact, messages = [], onVoiceCall, onVideoCall, onViewProfile }) {
+  const t = useT();
   // Энэ ярианд солилцсон БОДИТ файлууд — Message мөрүүдээс шүүнэ, тусад нь
   // хүсэлт явуулах шаардлагагүй (thread аль хэдийн ачаалагдсан).
   const attachments = messages.filter((m) => m.fileUrl);
@@ -158,17 +162,17 @@ function DetailsPanel({ contact, messages = [], onVoiceCall, onVideoCall, onView
           <span className="mt-1 flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium"
             style={{ background: "rgba(123, 57, 252, 0.1)", color: "var(--color-brand)" }}>
             <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />
-            Online
+            {t("msg.online").replace("● ", "")}
           </span>
         ) : (
-          <span className="mt-1 text-[11px] text-white/35">Offline</span>
+          <span className="mt-1 text-[11px] text-white/35">{t("msg.offline")}</span>
         )}
         {profile?.headline && <p className="mt-2 text-[12px] text-white/45">{profile.headline}</p>}
         <button
           onClick={onViewProfile}
           className="mt-3 rounded-lg border border-white/12 bg-white/[0.04] px-3.5 py-1.5 text-[11.5px] font-semibold text-white/70 transition-colors hover:border-white/25 hover:text-white"
         >
-          View profile
+          {t("common.viewProfile")}
         </button>
       </div>
 
@@ -182,7 +186,7 @@ function DetailsPanel({ contact, messages = [], onVoiceCall, onVideoCall, onView
         <>
           {profile.skills?.length > 0 && (
             <div className="p-5">
-              <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-white/30">Skills</p>
+              <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-white/30">{t("msg.skills")}</p>
               <div className="flex flex-wrap gap-1.5">
                 {profile.skills.map((s) => (
                   <span key={s} className="rounded-lg px-2.5 py-1 text-[11px] font-medium"
@@ -203,11 +207,11 @@ function DetailsPanel({ contact, messages = [], onVoiceCall, onVideoCall, onView
               <p className="text-[15px] font-bold" style={{ color: "var(--color-brand)" }}>
                 {profile.ratingAvg > 0 ? `${profile.ratingAvg.toFixed(1)}★` : "—"}
               </p>
-              <p className="text-[10.5px] text-white/40">Rating</p>
+              <p className="text-[10.5px] text-white/40">{t("msg.rating")}</p>
             </div>
             <div className="rounded-xl p-3 text-center" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
               <p className="text-[15px] font-bold" style={{ color: "var(--color-brand)" }}>{profile.jobsCompleted}</p>
-              <p className="text-[10.5px] text-white/40">Jobs done</p>
+              <p className="text-[10.5px] text-white/40">{t("msg.jobsDone")}</p>
             </div>
           </div>
 
@@ -221,7 +225,7 @@ function DetailsPanel({ contact, messages = [], onVoiceCall, onVideoCall, onView
         <>
           <div className="p-5">
             <p className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-white/30">
-              Attachments
+              {t("msg.attachments")}
               <span className="rounded-full bg-white/8 px-1.5 py-0.5 text-[10px] text-white/50">{attachments.length}</span>
             </p>
             <div className="space-y-1.5">
@@ -259,13 +263,13 @@ function DetailsPanel({ contact, messages = [], onVoiceCall, onVideoCall, onView
           onClick={onVoiceCall}
           className="flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-[13px] font-semibold transition-all hover:brightness-110"
           style={{ background: "rgba(123, 57, 252, 0.15)", color: "var(--color-brand)", border: "1px solid rgba(123, 57, 252, 0.25)" }}>
-          <Phone className="h-4 w-4" /> Voice Call
+          <Phone className="h-4 w-4" /> {t("msg.voiceCall")}
         </button>
         <button
           onClick={onVideoCall}
           className="flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-[13px] font-medium transition-all hover:bg-white/10"
           style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.08)" }}>
-          <Video className="h-4 w-4" /> Video Call
+          <Video className="h-4 w-4" /> {t("msg.videoCall")}
         </button>
       </div>
     </div>
@@ -273,6 +277,7 @@ function DetailsPanel({ contact, messages = [], onVoiceCall, onVideoCall, onView
 }
 
 export default function Messages() {
+  const t = useT();
   const { params, user, nav } = useNav();
   const myId = user?.id;
   const [conversations, setConversations] = useState([]);
@@ -438,7 +443,7 @@ export default function Messages() {
   const callOtherUser = call.incomingCall
     ? (() => {
         const c = conversations.find((c) => c.with.id === call.incomingCall.fromUserId);
-        return c ? { name: c.with.name, avatarUrl: avatarSrc(c.with.avatarUrl) } : { name: "Someone", avatarUrl: null };
+        return c ? { name: c.with.name, avatarUrl: avatarSrc(c.with.avatarUrl) } : { name: t("msg.someone"), avatarUrl: null };
       })()
     : active
       ? { name: active.with.name, avatarUrl: avatarSrc(active.with.avatarUrl) }
@@ -583,7 +588,7 @@ export default function Messages() {
           style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
           <div className="flex flex-col items-center gap-3">
             <div className="h-8 w-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "rgba(123, 57, 252, 0.5)", borderTopColor: "transparent" }} />
-            <span>Loading conversations…</span>
+            <span>{t("msg.loadingConvos")}</span>
           </div>
         </div>
       </div>
@@ -632,7 +637,7 @@ export default function Messages() {
               <input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search conversations…"
+                placeholder={t("msg.searchConvos")}
                 className="w-full bg-transparent text-[13px] outline-none placeholder:text-white/30"
               />
             </div>
@@ -647,7 +652,7 @@ export default function Messages() {
                   <Search className="h-5 w-5" style={{ color: "rgba(123, 57, 252, 0.5)" }} />
                 </div>
                 <p className="text-[12.5px] text-white/40">
-                  No conversations yet — search a name above to start one.
+                  {t("msg.noConvos")}
                 </p>
               </div>
             )}
@@ -656,7 +661,7 @@ export default function Messages() {
             {searchQuery.trim().length >= 2 && (
               <div className="border-b border-white/6 pb-2">
                 <p className="px-4 pb-1.5 pt-3 text-[10px] font-bold uppercase tracking-widest text-white/30">
-                  {peopleLoading ? "Хайж байна…" : people.length ? "Шинэ чат эхлүүлэх" : "Хүн олдсонгүй"}
+                  {peopleLoading ? t("msg.searching") : people.length ? t("msg.startNewChat") : t("msg.noPeople")}
                 </p>
                 {people.map((p) => (
                   <button
@@ -689,7 +694,7 @@ export default function Messages() {
                     <span className="flex items-center justify-between gap-2">
                       <span className="truncate text-[13.5px] font-semibold">{c.with.name}</span>
                       {c.lastMessage && (
-                        <span className="shrink-0 text-[10.5px] text-white/30">{timeAgo(c.lastMessage.createdAt)}</span>
+                        <span className="shrink-0 text-[10.5px] text-white/30">{timeAgo(c.lastMessage.createdAt, t)}</span>
                       )}
                     </span>
                     <span className="mt-0.5 flex items-center justify-between gap-2">
@@ -699,7 +704,7 @@ export default function Messages() {
                       <span className="truncate text-[12px] text-white/40">
                         {c.lastMessage
                           ? `${c.lastMessage.senderId === myId ? "You: " : ""}${
-                              c.lastMessage.text || (c.lastMessage.fileName ? `📎 ${c.lastMessage.fileName}` : "📎 Файл")
+                              c.lastMessage.text || (c.lastMessage.fileName ? `📎 ${c.lastMessage.fileName}` : `📎 ${t("msg.file")}`)
                             }`
                           : "No messages yet"}
                       </span>
@@ -729,15 +734,15 @@ export default function Messages() {
                   <p className="text-[14px] font-bold truncate">{active.with.name}</p>
                   <p className="text-[11px]" style={{ color: active.with.blockedByMe ? "rgba(248,113,113,0.8)" : (peerTyping || active.with.online) ? "var(--color-brand)" : "rgba(255,255,255,0.35)" }}>
                     {active.with.blockedByMe
-                      ? "Блоклосон"
-                      : peerTyping ? "typing…" : active.with.online ? "● Online" : "Offline"}
+                      ? t("msg.blocked")
+                      : peerTyping ? t("msg.typing") : active.with.online ? t("msg.online") : t("msg.offline")}
                   </p>
                 </div>
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => call.startCall(active.with.id, activeId, false)}
                     disabled={active.with.blockedByMe || active.with.hasBlockedMe}
-                    aria-label="Voice call"
+                    aria-label={t("msg.voiceCall")}
                     className="rounded-xl p-2 text-white/40 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
                   >
                     <Phone className="h-4 w-4" />
@@ -745,7 +750,7 @@ export default function Messages() {
                   <button
                     onClick={() => call.startCall(active.with.id, activeId, true)}
                     disabled={active.with.blockedByMe || active.with.hasBlockedMe}
-                    aria-label="Video call"
+                    aria-label={t("msg.videoCall")}
                     className="rounded-xl p-2 text-white/40 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
                   >
                     <Video className="h-4 w-4" />
@@ -753,7 +758,7 @@ export default function Messages() {
                   <div ref={menuRef} className="relative">
                     <button
                       onClick={() => setMenuOpen((o) => !o)}
-                      aria-label="More options"
+                      aria-label={t("msg.moreOptions")}
                       className="rounded-xl p-2 text-white/40 transition-colors hover:bg-white/5 hover:text-white"
                     >
                       <MoreHorizontal className="h-4 w-4" />
@@ -767,17 +772,17 @@ export default function Messages() {
                         >
                           <Ban className="h-3.5 w-3.5 shrink-0" />
                           {blockBusy
-                            ? "Түр хүлээнэ үү…"
+                            ? t("msg.pleaseWait")
                             : active.with.blockedByMe
-                            ? "Блокоо цуцлах"
-                            : "Хэрэглэгчийг блоклох"}
+                            ? t("msg.unblock")
+                            : t("msg.blockUser")}
                         </button>
                       </div>
                     )}
                   </div>
                   <button
                     onClick={() => setShowDetails((v) => !v)}
-                    aria-label="Show details"
+                    aria-label={t("msg.showDetails")}
                     className="rounded-xl p-2 text-white/40 transition-colors hover:bg-white/5 hover:text-white xl:hidden"
                   >
                     <Info className="h-4 w-4" />
@@ -847,7 +852,7 @@ export default function Messages() {
                 <div className="mx-4 mb-2 flex items-start gap-2 rounded-xl px-3.5 py-2.5 text-[11.5px] font-medium"
                   style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)", color: "#fbbf24" }}>
                   <ShieldAlert className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                  <span>Таны зурвас {leakageWarning.join(", ")} агуулж байж болзошгүй. Гэрээ байгуулагдахаас өмнө холбоо барих мэдээлэл солилцохгүй байхыг зөвлөж байна.</span>
+                  <span>{t("msg.leakageWarning", { items: leakageWarning.join(", ") })}</span>
                 </div>
               )}
 
@@ -860,8 +865,8 @@ export default function Messages() {
                   <Ban className="h-5 w-5 text-white/25" />
                   <p className="text-[12.5px] text-white/45">
                     {active.with.blockedByMe
-                      ? `Та ${active.with.name}-г блоклосон байна.`
-                      : "Энэ хэрэглэгчтэй харилцах боломжгүй."}
+                      ? t("msg.youBlocked", { name: active.with.name })
+                      : t("msg.cannotMessage")}
                   </p>
                   {active.with.blockedByMe && (
                     <button
@@ -869,7 +874,7 @@ export default function Messages() {
                       disabled={blockBusy}
                       className="rounded-xl border border-white/12 bg-white/[0.04] px-4 py-2 text-[12.5px] font-semibold text-white/75 transition-colors hover:border-white/25 hover:text-white disabled:opacity-50"
                     >
-                      {blockBusy ? "Түр хүлээнэ үү…" : "Блокоо цуцлах"}
+                      {blockBusy ? t("msg.pleaseWait") : t("msg.unblock")}
                     </button>
                   )}
                 </div>
@@ -886,7 +891,7 @@ export default function Messages() {
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadingFile}
-                  aria-label="Attach file"
+                  aria-label={t("msg.attachFile")}
                   className="shrink-0 rounded-xl p-2 text-white/30 transition hover:text-white/60 disabled:opacity-50"
                 >
                   {uploadingFile ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : <Paperclip className="h-4.5 w-4.5" />}
@@ -901,7 +906,7 @@ export default function Messages() {
                     value={draft}
                     onChange={(e) => { setDraft(e.target.value); notifyTyping(); }}
                     onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()}
-                    placeholder="Write a message…"
+                    placeholder={t("msg.writePlaceholder")}
                     className="flex-1 bg-transparent text-[13.5px] outline-none placeholder:text-white/25"
                   />
                   {/* Өмнө нь onClick огт байхгүй, зүгээр л зурагтай товч
@@ -909,7 +914,7 @@ export default function Messages() {
                   <div ref={emojiRef} className="relative shrink-0">
                     <button
                       onClick={() => setEmojiOpen((o) => !o)}
-                      aria-label="Insert emoji"
+                      aria-label={t("msg.insertEmoji")}
                       className="text-white/30 transition hover:text-white/60"
                     >
                       <Smile className="h-4 w-4" />
@@ -936,7 +941,7 @@ export default function Messages() {
                 <button
                   onClick={send}
                   disabled={sending || !draft.trim()}
-                  aria-label="Send message"
+                  aria-label={t("msg.send")}
                   className="shrink-0 rounded-xl p-2.5 transition-all disabled:cursor-not-allowed disabled:opacity-40 hover:scale-105 active:scale-95"
                   style={{
                     background: draft.trim() ? "linear-gradient(135deg, var(--color-brand), #b06bfb)" : "rgba(255,255,255,0.06)",
@@ -957,9 +962,9 @@ export default function Messages() {
                 <Send className="h-7 w-7" style={{ color: "rgba(123, 57, 252, 0.5)" }} />
               </div>
               <div>
-                <p className="text-[15px] font-semibold text-white/70">No conversation selected</p>
+                <p className="text-[15px] font-semibold text-white/70">{t("msg.noneSelected")}</p>
                 <p className="mt-1 text-[13px] text-white/35">
-                  Pick a chat from the sidebar or message someone from Find Talent
+                  {t("msg.pickAChat")}
                 </p>
               </div>
             </div>
@@ -996,7 +1001,7 @@ export default function Messages() {
               <p className="text-[13px] font-bold">Contact Info</p>
               <button
                 onClick={() => setShowDetails(false)}
-                aria-label="Close details"
+                aria-label={t("msg.closeDetails")}
                 className="rounded-xl p-1.5 text-white/40 transition hover:bg-white/5 hover:text-white"
               >
                 <X className="h-4 w-4" />

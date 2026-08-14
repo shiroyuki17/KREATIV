@@ -59,6 +59,13 @@ for (const file of jsxFiles(SRC)) {
     if (!fn.takesT && !HAS_HOOK.test(fn.body)) {
       problems.push(`${rel}: ${fn.name}() calls t() but never calls useT()`);
     }
+    // Жижиг үсгээр эхэлсэн нэр = ердийн функц, компонент биш. Тэнд hook
+    // дуудах нь React-ийн дүрэм зөрчинө (нөхцөлт эсвэл давталтад дуудагдаж
+    // болно) — build ч, ажиллах үе ч үүнийг үргэлж илчилдэггүй. t()-г
+    // параметрээр дамжуулах ёстой.
+    if (/^[a-z]/.test(fn.name) && HAS_HOOK.test(fn.body)) {
+      problems.push(`${rel}: ${fn.name}() is a plain helper but calls useT() — pass t in as an argument`);
+    }
   }
 }
 

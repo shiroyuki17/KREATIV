@@ -15,6 +15,7 @@ import {
   Download,
 } from "lucide-react";
 import { useNav } from "../../nav.jsx";
+import { useT } from "../../i18n.jsx";
 import { getAccessToken } from "../../lib/authApi.js";
 import { fetchBalance, fetchTransactions, createDeposit, confirmDeposit, withdraw, downloadTransactionsCsv } from "../../lib/paymentsApi.js";
 import { fetchPaymentStatus } from "../../lib/billingApi.js";
@@ -28,6 +29,7 @@ const ACCENT = {
 };
 
 function DepositModal({ onClose, onDeposited, payStatus }) {
+  const t = useT();
   const [amount, setAmount] = useState("100");
   const [invoice, setInvoice] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -38,7 +40,7 @@ function DepositModal({ onClose, onDeposited, payStatus }) {
   const createInvoice = async () => {
     const token = getAccessToken();
     const n = parseInt(amount, 10);
-    if (!Number.isFinite(n) || n <= 0) { setError("Дүн буруу байна."); return; }
+    if (!Number.isFinite(n) || n <= 0) { setError(t("pay.amountInvalid")); return; }
     setBusy(true);
     setError("");
     try {
@@ -85,10 +87,10 @@ function DepositModal({ onClose, onDeposited, payStatus }) {
       <div role="dialog" aria-modal="true" aria-labelledby="deposit-modal-title" className="glass w-full max-w-sm rounded-2xl p-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <p id="deposit-modal-title" className="text-[15px] font-bold">
-            Add funds
+            {t("pay.addFundsTitle")}
             {payStatus?.provider === "stripe" ? " · Stripe" : payStatus?.provider === "qpay" ? " · QPay" : " · Demo"}
           </p>
-          <button onClick={onClose} aria-label="Close" className="rounded-lg p-1.5 text-white/50 hover:text-white">
+          <button onClick={onClose} aria-label={t("common.close")} className="rounded-lg p-1.5 text-white/50 hover:text-white">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -100,13 +102,13 @@ function DepositModal({ onClose, onDeposited, payStatus }) {
             <p className="mt-2 text-[12px] text-white/45">
               {payStatus?.provider === "stripe"
                 ? (payStatus.testMode
-                    ? "Stripe TEST MODE — жинхэнэ мөнгө хөдлөхгүй. Туршилтын карт: 4242 4242 4242 4242, дурын ирээдүйн хугацаа, дурын CVC."
-                    : "Та Stripe-ийн аюулгүй төлбөрийн хуудас руу шилжинэ.")
+                    ? t("pay.stripeTest")
+                    : t("pay.stripeLive"))
                 : payStatus?.provider === "qpay"
-                  ? "QPay-ийн нэхэмжлэх үүсгэнэ — банкны аппаараа QR-ыг уншуулна уу."
-                  : "⚠️ Демо горим: жинхэнэ төлбөр хийгдэхгүй, үлдэгдэл зөвхөн туршилтын зорилгоор нэмэгдэнэ."}
+                  ? t("pay.qpayInfo")
+                  : t("pay.demoInfo")}
             </p>
-            <label className="mt-5 block text-[11px] font-semibold uppercase tracking-wider text-white/40">Дүн (USD)</label>
+            <label className="mt-5 block text-[11px] font-semibold uppercase tracking-wider text-white/40">{t("pay.amountUsd")}</label>
             <input
               value={amount}
               onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))}
@@ -122,7 +124,7 @@ function DepositModal({ onClose, onDeposited, payStatus }) {
               disabled={busy}
               className="mt-5 w-full rounded-xl bg-brand py-3 text-[13.5px] font-bold text-fg-1 glow-brand transition-shadow disabled:opacity-50"
             >
-              {busy ? "Түр хүлээнэ үү…" : "Invoice үүсгэх"}
+              {busy ? t("pay.pleaseWait") : t("pay.createInvoice")}
             </button>
           </>
         ) : (
@@ -141,10 +143,10 @@ function DepositModal({ onClose, onDeposited, payStatus }) {
               <p className="font-display text-2xl font-bold">${Number(amount).toLocaleString("en-US")}</p>
               <p className={`text-[11px] ${settled ? "font-semibold text-mint" : "text-white/40"}`}>
                 {settled
-                  ? "Төлбөр амжилттай — балансад орлоо!"
+                  ? t("pay.paidOk")
                   : invoice.qrImage
-                    ? "QPay апп-аараа уг QR-ийг уншуулж төлнө үү"
-                    : "QPay апп-аар уг QR-ийг уншуулна (демо горим)"}
+                    ? t("pay.scanQr")
+                    : t("pay.scanQrDemo")}
               </p>
             </div>
             {error && (
@@ -155,7 +157,7 @@ function DepositModal({ onClose, onDeposited, payStatus }) {
             {!settled && (
               <p className="mt-5 flex items-center justify-center gap-2 text-[12.5px] font-medium text-white/50">
                 <Loader2 className="h-4 w-4 animate-spin text-brand-soft" />
-                Төлбөрийг хүлээж байна…
+                {t("pay.waitingPayment")}
               </p>
             )}
           </>
@@ -166,6 +168,7 @@ function DepositModal({ onClose, onDeposited, payStatus }) {
 }
 
 function WithdrawModal({ balance, minWithdrawal, onClose, onWithdrawn }) {
+  const t = useT();
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -173,8 +176,8 @@ function WithdrawModal({ balance, minWithdrawal, onClose, onWithdrawn }) {
 
   const submit = async () => {
     const n = parseInt(amount, 10);
-    if (!Number.isFinite(n) || n <= 0) { setError("Дүн буруу байна."); return; }
-    if (n < minWithdrawal) { setError(`Доод татах дүн $${minWithdrawal}`); return; }
+    if (!Number.isFinite(n) || n <= 0) { setError(t("pay.amountInvalid")); return; }
+    if (n < minWithdrawal) { setError(t("pay.minWithdrawal", { amount: minWithdrawal })); return; }
     setBusy(true);
     setError("");
     try {
@@ -191,14 +194,14 @@ function WithdrawModal({ balance, minWithdrawal, onClose, onWithdrawn }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
       <div role="dialog" aria-modal="true" aria-labelledby="withdraw-modal-title" className="glass w-full max-w-sm rounded-2xl p-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
-          <p id="withdraw-modal-title" className="text-[15px] font-bold">Withdraw</p>
-          <button onClick={onClose} aria-label="Close" className="rounded-lg p-1.5 text-white/50 hover:text-white">
+          <p id="withdraw-modal-title" className="text-[15px] font-bold">{t("pay.withdraw")}</p>
+          <button onClick={onClose} aria-label={t("common.close")} className="rounded-lg p-1.5 text-white/50 hover:text-white">
             <X className="h-4 w-4" />
           </button>
         </div>
-        <p className="mt-2 text-[12px] text-white/45">Available: ${balance.toLocaleString("en-US")} · Доод дүн: ${minWithdrawal}</p>
-        <p className="mt-1 text-[11px] text-white/35">Хүсэлт админд илгээгдэж, баталгаажсаны дараа шилжинэ (FR-6.4).</p>
-        <label className="mt-5 block text-[11px] font-semibold uppercase tracking-wider text-white/40">Дүн (USD)</label>
+        <p className="mt-2 text-[12px] text-white/45">{t("pay.available", { amount: balance.toLocaleString("en-US"), min: minWithdrawal })}</p>
+        <p className="mt-1 text-[11px] text-white/35">{t("pay.withdrawNote")}</p>
+        <label className="mt-5 block text-[11px] font-semibold uppercase tracking-wider text-white/40">{t("pay.amountUsd")}</label>
         <input
           value={amount}
           onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))}
@@ -214,14 +217,13 @@ function WithdrawModal({ balance, minWithdrawal, onClose, onWithdrawn }) {
           disabled={busy}
           className="mt-5 w-full rounded-xl bg-mint py-3 text-[13.5px] font-bold text-ink transition-shadow disabled:opacity-50"
         >
-          {busy ? "Боловсруулж байна…" : "Гаргалт хүсэх"}
+          {busy ? t("pay.processing") : t("pay.requestWithdrawal")}
         </button>
       </div>
     </div>
   );
 }
 
-const TX_LABEL = { DEPOSIT: "Deposit", WITHDRAWAL: "Withdrawal", ESCROW_HOLD: "Escrow hold", ESCROW_RELEASE: "Escrow release" };
 const STATUS_BADGE = {
   COMPLETED: ACCENT.mint,
   PENDING: ACCENT.amber,
@@ -229,6 +231,7 @@ const STATUS_BADGE = {
 };
 
 function TxRow({ tx }) {
+  const t = useT();
   const isCredit = tx.kind === "DEPOSIT" || tx.kind === "ESCROW_RELEASE";
   const isPendingHold = tx.kind === "ESCROW_RELEASE" && tx.availableAt && new Date(tx.availableAt) > new Date();
   return (
@@ -237,10 +240,10 @@ function TxRow({ tx }) {
         {isCredit ? <ArrowDownLeft className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[13.5px] font-semibold">{TX_LABEL[tx.kind] || tx.kind} · {tx.provider}</p>
+        <p className="truncate text-[13.5px] font-semibold">{t(`tx.${tx.kind}`)} · {tx.provider}</p>
         <p className="mt-0.5 text-[11.5px] text-white/40">
           {new Date(tx.createdAt).toLocaleString()}
-          {isPendingHold && ` · ${new Date(tx.availableAt).toLocaleDateString()}-с татах боломжтой`}
+          {isPendingHold && t("tx.availableFrom", { date: new Date(tx.availableAt).toLocaleDateString() })}
         </p>
       </div>
       <div className="text-right">
@@ -248,7 +251,7 @@ function TxRow({ tx }) {
           {isCredit ? "+" : "−"}${tx.amount.toLocaleString("en-US")}
         </p>
         <span className={`mt-1 inline-block rounded-full border px-2.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wider ${STATUS_BADGE[tx.status] || ACCENT.amber}`}>
-          {tx.status === "COMPLETED" ? (isPendingHold ? "Hold" : "Completed") : tx.status === "FAILED" ? "Rejected" : "Pending"}
+          {tx.status === "COMPLETED" ? (isPendingHold ? t("tx.hold") : t("tx.completed")) : tx.status === "FAILED" ? t("tx.rejected") : t("tx.pending")}
         </span>
       </div>
     </div>
@@ -256,12 +259,13 @@ function TxRow({ tx }) {
 }
 
 const TABS = [
-  { id: "overview", label: "Overview", Icon: Wallet },
-  { id: "deposits", label: "Deposits", Icon: ArrowDownLeft },
-  { id: "withdrawals", label: "Withdrawals", Icon: ArrowUpRight },
+  { id: "overview", labelKey: "pay.tabOverview", Icon: Wallet },
+  { id: "deposits", labelKey: "pay.tabDeposits", Icon: ArrowDownLeft },
+  { id: "withdrawals", labelKey: "pay.tabWithdrawals", Icon: ArrowUpRight },
 ];
 
 export default function Payments() {
+  const t = useT();
   const { params } = useNav();
   const [tab, setTab] = useState(params?.tab || "overview");
   const [balance, setBalance] = useState(0);
@@ -322,8 +326,8 @@ export default function Payments() {
     <div className="mx-auto max-w-6xl px-6 pb-24 pt-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="font-display text-3xl font-bold tracking-tight">Payments</h1>
-          <p className="mt-1.5 text-[13px] text-white/45">Your real wallet balance and transaction history.</p>
+          <h1 className="font-display text-3xl font-bold tracking-tight">{t("pay.title")}</h1>
+          <p className="mt-1.5 text-[13px] text-white/45">{t("pay.subtitle")}</p>
         </div>
         {/* Мөнгө нэмэх/татах нь хуудасны түвшний үйлдэл тул үлдэгдлийн картын
             булангаас гаргаж энд авчирсан — карт зөвхөн тоогоо харуулна. */}
@@ -334,32 +338,32 @@ export default function Payments() {
           <button
             onClick={exportCsv}
             disabled={exporting}
-            title="Бүх гүйлгээгээ CSV болгон татах"
+            title={t("pay.exportTitle")}
             className="inline-flex items-center gap-2 rounded-xl border border-line-2 px-4 py-2.5 text-[12.5px] font-semibold text-fg-2 transition-colors hover:border-brand hover:text-fg-1 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Download className="h-4 w-4" />
-            {exporting ? "Экспортлож байна…" : "Export CSV"}
+            {exporting ? t("pay.exporting") : t("pay.exportCsv")}
           </button>
           <button
             onClick={() => setShowWithdraw(true)}
             disabled={balance <= 0}
-            title={balance <= 0 ? "Татах боломжтой үлдэгдэл алга" : undefined}
+            title={balance <= 0 ? t("pay.noBalanceToWithdraw") : undefined}
             className="rounded-xl border border-line-2 px-4 py-2.5 text-[12.5px] font-semibold text-fg-2 transition-colors hover:border-brand hover:text-fg-1 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-line-2 disabled:hover:text-fg-2"
           >
-            Withdraw
+            {t("pay.withdraw")}
           </button>
           <button
             onClick={() => setShowDeposit(true)}
             className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-[12.5px] font-bold text-fg-1 transition-colors hover:bg-brand-soft"
           >
             <Wallet className="h-4 w-4" />
-            Add funds
+            {t("pay.addFunds")}
           </button>
         </div>
       </div>
 
       <div className="mt-7 flex gap-2">
-        {TABS.map(({ id, label, Icon }) => (
+        {TABS.map(({ id, labelKey, Icon }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
@@ -370,12 +374,12 @@ export default function Payments() {
             }
           >
             <Icon className="h-4 w-4" />
-            {label}
+            {t(labelKey)}
           </button>
         ))}
       </div>
 
-      {loading && <p className="mt-8 text-center text-[13px] text-white/40">Ачааллаж байна…</p>}
+      {loading && <p className="mt-8 text-center text-[13px] text-white/40">{t("common.loading")}</p>}
 
       {!loading && tab === "overview" && (
         <>
@@ -385,38 +389,38 @@ export default function Payments() {
                 <Wallet className="h-4.5 w-4.5" />
               </span>
               <p className="mt-5 font-display text-3xl font-bold">${balance.toLocaleString("en-US")}</p>
-              <p className="mt-1 text-[11px] font-medium uppercase tracking-wider text-white/40">Available balance</p>
+              <p className="mt-1 text-[11px] font-medium uppercase tracking-wider text-white/40">{t("pay.availableBalance")}</p>
             </div>
             <div className="glass rounded-2xl p-6">
               <span className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border ${ACCENT.amber}`}>
                 <TrendingUp className="h-4.5 w-4.5" />
               </span>
               <p className="mt-5 font-display text-3xl font-bold">${pending.toLocaleString("en-US")}</p>
-              <p className="mt-1 text-[11px] font-medium uppercase tracking-wider text-white/40">Pending (5-day hold)</p>
+              <p className="mt-1 text-[11px] font-medium uppercase tracking-wider text-white/40">{t("pay.pendingHold")}</p>
             </div>
             <div className="glass rounded-2xl p-6">
               <span className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border ${ACCENT.brand}`}>
                 <TrendingUp className="h-4.5 w-4.5" />
               </span>
               <p className="mt-5 font-display text-3xl font-bold">${totalDeposited.toLocaleString("en-US")}</p>
-              <p className="mt-1 text-[11px] font-medium uppercase tracking-wider text-white/40">Total deposited</p>
+              <p className="mt-1 text-[11px] font-medium uppercase tracking-wider text-white/40">{t("pay.totalDeposited")}</p>
             </div>
             <div className="glass rounded-2xl p-6">
               <span className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border ${ACCENT.neon}`}>
                 <TrendingDown className="h-4.5 w-4.5" />
               </span>
               <p className="mt-5 font-display text-3xl font-bold">${totalWithdrawn.toLocaleString("en-US")}</p>
-              <p className="mt-1 text-[11px] font-medium uppercase tracking-wider text-white/40">Total withdrawn</p>
+              <p className="mt-1 text-[11px] font-medium uppercase tracking-wider text-white/40">{t("pay.totalWithdrawn")}</p>
             </div>
           </div>
 
           <div className="mt-5 grid gap-5 lg:grid-cols-3">
             <div className="glass min-w-0 rounded-2xl p-6 lg:col-span-2">
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40">Recent transactions</p>
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40">{t("pay.recentTx")}</p>
               <div className="mt-3 divide-y divide-white/6">
                 {transactions.slice(0, 8).map((tx) => <TxRow key={tx.id} tx={tx} />)}
                 {transactions.length === 0 && (
-                  <p className="py-8 text-center text-[13px] text-white/35">No transactions yet — add funds to get started.</p>
+                  <p className="py-8 text-center text-[13px] text-white/35">{t("pay.noTx")}</p>
                 )}
               </div>
             </div>
@@ -428,12 +432,12 @@ export default function Payments() {
                   товч нь юу ч хийдэггүй, бичиг нь ч бодит биш байв. Оронд нь
                   бодит урсгалыг тайлбарлаж, ажилладаг товч тавьсан. */}
               <div className="glass rounded-2xl p-6">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40">Payouts</p>
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40">{t("pay.payouts")}</p>
                 <div className="mt-4 space-y-2.5">
                   {[
-                    "Withdraw дарж дүнгээ оруулна",
-                    "Хүсэлт админд шалгагдана",
-                    "Батлагдмагц банк руу шилжинэ",
+                    t("pay.step1"),
+                    t("pay.step2"),
+                    t("pay.step3"),
                   ].map((step, i) => (
                     <div key={step} className="flex items-start gap-2.5">
                       <span className="mt-px flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-brand/15 text-[9.5px] font-bold text-brand-soft">
@@ -448,7 +452,7 @@ export default function Payments() {
                   disabled={balance < minWithdrawal}
                   className="glass mt-4 w-full rounded-xl py-2.5 text-[12.5px] font-semibold text-white/75 transition-colors hover:border-white/25 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  {balance < minWithdrawal ? `Доод дүн $${minWithdrawal}` : "Withdraw"}
+                  {balance < minWithdrawal ? t("pay.minAmount", { amount: minWithdrawal }) : t("pay.withdraw")}
                 </button>
               </div>
 
@@ -456,19 +460,19 @@ export default function Payments() {
                 <p className="inline-flex items-center gap-2 text-[12.5px] font-semibold text-mint">
                   <ShieldCheck className="h-4 w-4" />
                   {payStatus?.provider === "stripe"
-                    ? `Stripe active${payStatus.testMode ? " (test mode)" : ""}`
+                    ? (payStatus.testMode ? t("pay.stripeActiveTest") : t("pay.stripeActive"))
                     : payStatus?.provider === "qpay"
-                      ? "QPay active"
-                      : "Demo mode active"}
+                      ? t("pay.qpayActive")
+                      : t("pay.demoActive")}
                 </p>
                 <p className="mt-2 text-[12px] leading-relaxed text-white/45">
                   {payStatus?.provider === "stripe"
                     ? (payStatus.testMode
-                        ? "Deposits go through Stripe Checkout in test mode — no real money moves. Use card 4242 4242 4242 4242 to try it."
-                        : "Deposits go through Stripe's secure checkout and update your real wallet balance.")
+                        ? t("pay.stripeTestDesc")
+                        : t("pay.stripeLiveDesc"))
                     : payStatus?.provider === "qpay"
-                      ? "Deposits/withdrawals here update your real wallet balance via QPay bank transfer."
-                      : "Deposits/withdrawals here update your real wallet balance in the database — this is a demo payment provider, not a real bank transfer, until a real payment provider is connected."}
+                      ? t("pay.qpayDesc")
+                      : t("pay.demoDesc")}
                 </p>
               </div>
             </div>
@@ -481,7 +485,7 @@ export default function Payments() {
           <div className="glass rounded-2xl px-6 divide-y divide-white/6">
             {deposits.map((tx) => <TxRow key={tx.id} tx={tx} />)}
             {deposits.length === 0 && (
-              <p className="py-8 text-center text-[13px] text-white/35">No deposits yet.</p>
+              <p className="py-8 text-center text-[13px] text-white/35">{t("pay.noDeposits")}</p>
             )}
           </div>
         </div>
@@ -492,7 +496,7 @@ export default function Payments() {
           <div className="glass rounded-2xl px-6 divide-y divide-white/6">
             {withdrawals.map((tx) => <TxRow key={tx.id} tx={tx} />)}
             {withdrawals.length === 0 && (
-              <p className="py-8 text-center text-[13px] text-white/35">No withdrawals yet.</p>
+              <p className="py-8 text-center text-[13px] text-white/35">{t("pay.noWithdrawals")}</p>
             )}
           </div>
         </div>
