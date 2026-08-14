@@ -89,8 +89,13 @@ export default function FreelancerProfile() {
       .finally(() => setLoading(false));
   }, [params?.userId, params?.username]);
 
+  // Нэвтрээгүй зочин профайл үзэж болно (нийтэд нээлттэй) ч дагах/бичих
+  // нь акаунт шаардана — 401 харуулахын оронд нэвтрэх рүү чиглүүлнэ.
+  const requireLogin = () => { nav("auth"); };
+
   // Optimistic — сервер унавал төлөвийг эргүүлж буцаана.
   async function toggleFollow() {
+    if (!user) return requireLogin();
     const was = isFollowing;
     setIsFollowing(!was);
     try {
@@ -230,7 +235,7 @@ export default function FreelancerProfile() {
                         товч дарахад юу ч болдоггүй байв. Хөлслөх урсгал нь
                         зар нийтлэхээс эхэлдэг тул тийш чиглүүлнэ. */}
                     <button
-                      onClick={() => nav("post-job")}
+                      onClick={() => (user ? nav("post-job") : requireLogin())}
                       className="w-full rounded-xl bg-brand py-3.5 text-[14px] font-semibold glow-brand transition-shadow"
                     >
                       Hire {f.name.split(" ")[0]}
@@ -238,7 +243,7 @@ export default function FreelancerProfile() {
                   </Magnet>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => nav("messages", { withUserId: f.userId })}
+                      onClick={() => (user ? nav("messages", { withUserId: f.userId }) : requireLogin())}
                       className="glass inline-flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-[13.5px] font-semibold text-white/85 transition-colors hover:border-white/25"
                     >
                       <MessageSquare className="h-4 w-4" />

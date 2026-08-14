@@ -79,11 +79,14 @@ const APP_PAGES = new Set([
   "gig",
 ]);
 
-// Every sidebar-shell page requires a real login — including Find Work/
-// Find Talent/Job/Profile, which used to stay publicly browsable
-// (Contra/Upwork-style). Reversed on explicit request: browsing talent/jobs
-// without an account isn't wanted here.
-const PROTECTED_PAGES = APP_PAGES;
+// Sidebar-ийн бүх хуудас нэвтрэлт шаардана — Find Work/Find Talent-ийг
+// нээлттэй байлгах нь энд хүсээгүй зүйл гэж шийдсэн.
+//
+// ГАНЦ ҮЛ ХАМААРАХ нь профайл: /#/u/bat-erdene гэсэн линкийг хуваалцахад
+// хүлээн авагч нь нэвтрэх шаардлагагүй байх ёстой — эс тэгвээс "mini site"
+// гэдэг санаа өөрөө утгагүй болно. Backend талд GET /profile/freelancer/*
+// аль хэдийн нээлттэй байсан тул зөвхөн frontend-ийн хаалт саад болж байв.
+const PROTECTED_PAGES = new Set([...APP_PAGES].filter((p) => p !== "profile"));
 
 function HomePage() {
   return (
@@ -185,6 +188,21 @@ function Shell() {
       <div className="min-h-screen overflow-x-clip bg-ink text-white">
         <Navbar />
         <main><NotFound /></main>
+        <Footer />
+      </div>
+    );
+  }
+
+  // Нэвтрээгүй зочин профайл үзэж байна — sidebar shell утгагүй (нэвтрэх
+  // хэрэглэгч байхгүй), тиймээс маркетингийн хүрээгээр харуулна. Тэндээс
+  // "Log in / Post a Job" рүү шууд орох зам ч нээлттэй үлдэнэ.
+  if (page === "profile" && !hasSession()) {
+    return (
+      <div className="min-h-screen overflow-x-clip bg-ink text-white">
+        <Navbar />
+        <main key={page} className="animate-page-in pt-24">
+          <View page={page} />
+        </main>
         <Footer />
       </div>
     );
