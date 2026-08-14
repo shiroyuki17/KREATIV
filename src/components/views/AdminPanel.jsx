@@ -20,7 +20,7 @@ import {
   BadgeCheck,
   Plug,
 } from "lucide-react";
-import { getAccessToken } from "../../lib/authApi.js";
+import { getAccessToken, avatarSrc } from "../../lib/authApi.js";
 import {
   fetchAdminStats,
   fetchAdminUsers,
@@ -360,11 +360,15 @@ export default function AdminPanel() {
             {shown.map((u) => (
               <div key={u.id} className="flex flex-wrap items-center gap-4 py-4">
                 <span
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-display text-[12px] font-bold ring-1 ring-white/15 ${
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full font-display text-[12px] font-bold ring-1 ring-white/15 ${
                     u.role === "ADMIN" ? "bg-gradient-to-br from-amber-400/60 to-amber-300/30" : "bg-gradient-to-br from-brand/50 to-neon/40"
                   }`}
                 >
-                  {(u.name || u.email || "?").split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()}
+                  {/* Оруулсан аватар байвал зургийг нь харуулна — өмнө нь
+                      эндээс зөвхөн эхний үсгүүд гардаг байв. */}
+                  {avatarSrc(u.avatarUrl)
+                    ? <img src={avatarSrc(u.avatarUrl)} alt="" className="h-full w-full object-cover" />
+                    : (u.name || u.email || "?").split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()}
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="flex items-center gap-2 text-[13.5px] font-semibold">

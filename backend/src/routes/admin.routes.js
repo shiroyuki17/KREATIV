@@ -127,6 +127,7 @@ router.get('/users', async (req, res, next) => {
       where,
       select: {
         id: true, name: true, email: true, role: true, isActive: true, createdAt: true,
+        avatarUrl: true,
         freelancerProfile: { select: { id: true } },
         clientProfile: { select: { id: true } },
       },
