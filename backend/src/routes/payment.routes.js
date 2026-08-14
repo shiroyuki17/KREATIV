@@ -255,29 +255,103 @@ router.post('/withdraw', requireAuth, async (req, res, next) => {
 });
 
 // ── GET /payments/export ── (FR-6.5: татварын тайланд зориулсан CSV)
+
+// Мөнгө ОРЖ байгаа эсэх. Гүйлгээний `amount` нь ямагт эерэг Int тул
+// чиглэлийг зөвхөн kind-аас л мэдэж болно — үүнгүйгээр орлого зарлага хоёр
+// тайлан дээр яг адилхан харагдана.
+const INFLOW = new Set(['DEPOSIT', 'ESCROW_RELEASE']);
+
+const KIND_LABEL = {
+  mn: {
+    DEPOSIT: 'Орлого',
+    WITHDRAWAL: 'Гаргалт',
+    ESCROW_HOLD: 'Escrow-д хадгалсан',
+    ESCROW_RELEASE: 'Escrow-оос гаргасан',
+  },
+  en: {
+    DEPOSIT: 'Deposit',
+    WITHDRAWAL: 'Withdrawal',
+    ESCROW_HOLD: 'Held in escrow',
+    ESCROW_RELEASE: 'Released from escrow',
+  },
+};
+
+const CSV_HEADERS = {
+  mn: ['Огноо', 'Цаг', 'Төрөл', 'Чиглэл', 'Дүн (USD)', 'Milestone ID', 'Гүйлгээний ID', 'Provider'],
+  en: ['Date', 'Time', 'Type', 'Direction', 'Amount (USD)', 'Milestone ID', 'Transaction ID', 'Provider'],
+};
+
+// "Орлого/Зарлага" биш "Орсон/Гарсан" — DEPOSIT-ийн төрлийн нэр нь өөрөө
+// "Орлого" тул хоёр багана дараалан ижил үг харуулж, ялгаа нь мэдэгдэхгүй
+// байв.
+const DIRECTION_LABEL = {
+  mn: { in: 'Орсон', out: 'Гарсан' },
+  en: { in: 'In', out: 'Out' },
+};
+
+/**
+ * RFC 4180-ийн дагуу нэг талбарыг бэлдэнэ.
+ *
+ * Өмнө нь талбарууд түүхийгээрээ таслалаар холбогдож байсан тул `provider`
+ * дотор таслал байхад (жишээ нь банкны нэр) тухайн мөр нэмэлт багана
+ * үүсгэж, түүнээс хойших өгөгдөл бүгд буруу багана руу шилждэг байв.
+ */
+function csvField(value) {
+  const s = value == null ? '' : String(value);
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+const csvRow = (cells) => cells.map(csvField).join(',');
+
+// "2026-08-14" ба "15:19" — ISO timestamp-ыг Excel огноо гэж танихгүй, текст
+// болгон үлдээдэг тул эрэмбэлэх, шүүх, PivotTable бүгд ажиллахгүй байв.
+// Огноо, цагийг тусад нь гаргах нь хоёуланг нь ашиглах боломж өгнө.
+function ymd(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function hm(d) {
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
 router.get('/export', requireAuth, async (req, res, next) => {
   try {
+    const lang = req.query.lang === 'en' ? 'en' : 'mn';
     const transactions = await prisma.transaction.findMany({
       where: { userId: req.user.id, status: 'COMPLETED' },
       orderBy: { createdAt: 'asc' },
     });
+
     const rows = [
-      ['Огноо', 'Төрөл', 'Дүн', 'Milestone ID', 'Provider'].join(','),
-      ...transactions.map((t) => [
-        t.completedAt?.toISOString() || t.createdAt.toISOString(),
-        t.kind,
-        t.amount,
-        t.milestoneId || '',
-        t.provider,
-      ].join(',')),
+      csvRow(CSV_HEADERS[lang]),
+      ...transactions.map((t) => {
+        const at = t.completedAt || t.createdAt;
+        const inflow = INFLOW.has(t.kind);
+        return csvRow([
+          ymd(at),
+          hm(at),
+          KIND_LABEL[lang][t.kind] || t.kind,
+          DIRECTION_LABEL[lang][inflow ? 'in' : 'out'],
+          // Тэмдэгтэй дүн — багануудыг нийлбэрлэхэд шууд цэвэр дүн гарна.
+          // Өмнө нь бүгд эерэг байсан тул SUM() нь утгагүй тоо өгдөг байв.
+          inflow ? t.amount : -t.amount,
+          t.milestoneId || '',
+          t.id,
+          t.provider,
+        ]);
+      }),
     ];
+
+    const filename = `kreativ-transactions-${ymd(new Date())}.csv`;
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename="kreativ-transactions.csv"');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    // Frontend нь fetch-ээр татдаг тул энэ толгойг уншиж чадах ёстой —
+    // CORS-д ил болгохгүй бол файлын нэр нь хатуу бичсэн утга руу л унана.
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
     // UTF-8 BOM. Excel/WPS нь charset толгойг үл тоомсорлож, файлыг
     // системийн legacy кодчлолоор уншдаг тул кирилл толгой мөр ("Огноо",
     // "Төрөл", "Дүн") эвдэрч, хятад ханз мэт харагддаг байв. BOM нь
     // тэдгээрт UTF-8 гэдгийг хоёрдмол утгагүй хэлнэ.
-    res.send('﻿' + rows.join('\r\n'));
+    res.send('﻿' + rows.join('\r\n') + '\r\n');
   } catch (err) {
     next(err);
   }

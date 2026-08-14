@@ -266,7 +266,9 @@ const TABS = [
 ];
 
 export default function Payments() {
-  const t = useT();
+  // CSV экспорт нь толгой мөрөө хэрэглэгчийн хэлээр гаргуулахын тулд
+  // locale-ыг сервер рүү дамжуулдаг тул t() ганцаараа хүрэлцэхгүй.
+  const { t, locale } = useI18n();
   const { params } = useNav();
   const [tab, setTab] = useState(params?.tab || "overview");
   const [balance, setBalance] = useState(0);
@@ -277,6 +279,7 @@ export default function Payments() {
   const [showDeposit, setShowDeposit] = useState(false);
   const [showWithdraw, setShowWithdraw] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
   // Ямар провайдер идэвхтэй байгаа (stripe/qpay/demo) — DepositModal үүнийг
   // хэрэглэгчид ил хэлэхэд ашиглана.
   const [payStatus, setPayStatus] = useState(null);
@@ -307,10 +310,16 @@ export default function Payments() {
       .finally(() => setLoading(false));
   };
 
+  // Өмнө нь энд `catch` байхгүй байсан тул экспорт бүтэлгүйтвэл товч
+  // дарагдаад л юу ч болохгүй — алдаа нь unhandled rejection болж консол
+  // руу л ордог байв. Хэрэглэгч татагдсан эсэхийг мэдэх аргагүй.
   const exportCsv = async () => {
     setExporting(true);
+    setExportError("");
     try {
-      await downloadTransactionsCsv(getAccessToken());
+      await downloadTransactionsCsv(locale);
+    } catch (err) {
+      setExportError(err.message);
     } finally {
       setExporting(false);
     }
@@ -362,6 +371,12 @@ export default function Payments() {
           </button>
         </div>
       </div>
+
+      {exportError && (
+        <p className="mt-4 flex items-center gap-1.5 rounded-xl border border-red-500/30 bg-red-500/10 px-3.5 py-2.5 text-[12.5px] font-medium text-red-400">
+          <AlertCircle className="h-3.5 w-3.5 shrink-0" /> {exportError}
+        </p>
+      )}
 
       <div className="mt-7 flex gap-2">
         {TABS.map(({ id, labelKey, Icon }) => (
