@@ -822,7 +822,12 @@ export default function Settings() {
     setAvatarError("");
     setAvatarBusy(true);
     try {
-      setMe(await uploadAvatar(file, token));
+      const updated = await uploadAvatar(file, token);
+      setMe(updated);
+      // Толгой хэсэг/sidebar нь nav-ийн `user`-ыг уншдаг тул түүнийг
+      // шинэчлэхгүй бол зураг зөвхөн энэ хуудсан дээр солигдож, дахин
+      // ачаалах хүртэл хуучин хэвээр харагдана.
+      setUser((prev) => (prev ? { ...prev, avatarUrl: updated.avatarUrl } : prev));
     } catch (err) {
       setAvatarError(err.message);
     } finally {

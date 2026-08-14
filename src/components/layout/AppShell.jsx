@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { DASHBOARD_FOR, useNav } from "../../nav.jsx";
 import { useLive } from "../../live.jsx";
-import { logoutUser, getAccessToken } from "../../lib/authApi.js";
+import { logoutUser, getAccessToken, avatarSrc } from "../../lib/authApi.js";
 import { fetchNotifications, markAllNotificationsRead, markNotificationRead } from "../../lib/notificationsApi.js";
 import { getSocket } from "../../lib/socket.js";
 
@@ -383,9 +383,14 @@ function UserCard({ go, collapsed, user, setUser, authReady }) {
           ref={avatarRef}
           onMouseEnter={() => setAvatarHovered(true)}
           onMouseLeave={() => setAvatarHovered(false)}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand/50 to-neon/40 font-display text-[12px] font-bold ring-1 ring-white/15"
+          className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-brand/50 to-neon/40 font-display text-[12px] font-bold ring-1 ring-white/15"
         >
-          {initials}
+          {/* Оруулсан аватар байвал түүнийг харуулна — өмнө нь эндээс
+              зөвхөн эхний үсгүүд гардаг тул зураг сольсон ч хэзээ ч
+              харагддаггүй байв. */}
+          {avatarSrc(user.avatarUrl)
+            ? <img src={avatarSrc(user.avatarUrl)} alt="" className="h-full w-full object-cover" />
+            : initials}
           {collapsed && (
             <RailTip anchorRef={avatarRef} active={avatarHovered}>
               {name} · Log out
@@ -637,8 +642,10 @@ function UserMenu({ go, user, setUser }) {
         aria-label="Account menu"
         className="flex items-center gap-2.5 rounded-xl py-1.5 pl-1.5 pr-3 text-left transition-colors hover:bg-white/5"
       >
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand/50 to-neon/40 font-display text-[11px] font-bold ring-1 ring-white/15">
-          {initials}
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-brand/50 to-neon/40 font-display text-[11px] font-bold ring-1 ring-white/15">
+          {avatarSrc(user.avatarUrl)
+            ? <img src={avatarSrc(user.avatarUrl)} alt="" className="h-full w-full object-cover" />
+            : initials}
         </span>
         <span className="hidden sm:block">
           <span className="block max-w-[140px] truncate text-[12.5px] font-semibold leading-tight">{user.name || user.email}</span>
