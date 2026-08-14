@@ -83,3 +83,15 @@ export function useI18n() {
 export function useT() {
   return useI18n().t;
 }
+
+/**
+ * React-ийн гадна орчуулах.
+ *
+ * ErrorBoundary нь I18nProvider-ийн ГАДНА байрладаг (provider өөрөө унасан ч
+ * алдааны дэлгэц гарах ёстой) тул context уншиж чадахгүй. Хадгалсан
+ * сонголтыг шууд уншина.
+ */
+export function translate(key) {
+  const locale = storedLocale();
+  return DICTS[locale]?.[key] ?? mn[key] ?? key;
+}

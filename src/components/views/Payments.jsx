@@ -15,7 +15,8 @@ import {
   Download,
 } from "lucide-react";
 import { useNav } from "../../nav.jsx";
-import { useT } from "../../i18n.jsx";
+import { useI18n, useT } from "../../i18n.jsx";
+import { dateTime, numericDate } from "../../lib/dates.js";
 import { getAccessToken } from "../../lib/authApi.js";
 import { fetchBalance, fetchTransactions, createDeposit, confirmDeposit, withdraw, downloadTransactionsCsv } from "../../lib/paymentsApi.js";
 import { fetchPaymentStatus } from "../../lib/billingApi.js";
@@ -231,7 +232,7 @@ const STATUS_BADGE = {
 };
 
 function TxRow({ tx }) {
-  const t = useT();
+  const { t, locale } = useI18n();
   const isCredit = tx.kind === "DEPOSIT" || tx.kind === "ESCROW_RELEASE";
   const isPendingHold = tx.kind === "ESCROW_RELEASE" && tx.availableAt && new Date(tx.availableAt) > new Date();
   return (
@@ -242,8 +243,8 @@ function TxRow({ tx }) {
       <div className="min-w-0 flex-1">
         <p className="truncate text-[13.5px] font-semibold">{t(`tx.${tx.kind}`)} · {tx.provider}</p>
         <p className="mt-0.5 text-[11.5px] text-white/40">
-          {new Date(tx.createdAt).toLocaleString()}
-          {isPendingHold && t("tx.availableFrom", { date: new Date(tx.availableAt).toLocaleDateString() })}
+          {dateTime(tx.createdAt, locale)}
+          {isPendingHold && t("tx.availableFrom", { date: numericDate(tx.availableAt, locale) })}
         </p>
       </div>
       <div className="text-right">

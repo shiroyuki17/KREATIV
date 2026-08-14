@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
-import { Phone, PhoneOff, Video, VideoOff, Mic, MicOff, MonitorUp, X } from "lucide-react";
+import { Phone, PhoneOff, Video, VideoOff, Mic, MicOff, MonitorUp } from "lucide-react";
+import { useT } from "../../i18n.jsx";
 
 function initialsOf(name) {
   return (name || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
@@ -17,6 +18,7 @@ function CallerCard({ name, avatarUrl }) {
 // FR-2.2: чат доторх дуудлагын UI — ringing/calling/active бүх төлвийг
 // нэг компонентоор дамжуулна. callState === "idle" үед юу ч render хийхгүй.
 export default function CallOverlay({ call, otherUser }) {
+  const t = useT();
   const { callState, incomingCall, localStream, remoteStream, muted, cameraOff, screenSharing, error, acceptCall, rejectCall, endCall, toggleMute, toggleCamera, toggleScreenShare } = call;
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
@@ -33,7 +35,7 @@ export default function CallOverlay({ call, otherUser }) {
   if (callState === "idle") return null;
 
   const isVideo = (incomingCall?.kind || (localStream?.getVideoTracks().length > 0 ? "video" : "voice")) === "video";
-  const name = otherUser?.name || "Someone";
+  const name = otherUser?.name || t("co.someone");
   const avatarUrl = otherUser?.avatarUrl;
 
   if (callState === "ringing") {
@@ -42,13 +44,13 @@ export default function CallOverlay({ call, otherUser }) {
         <CallerCard name={name} avatarUrl={avatarUrl} />
         <div className="text-center">
           <p className="font-display text-xl font-bold text-white">{name}</p>
-          <p className="mt-1 text-[13px] text-white/50">Incoming {isVideo ? "video" : "voice"} call…</p>
+          <p className="mt-1 text-[13px] text-white/50">{isVideo ? t("co.incomingVideo") : t("co.incomingVoice")}</p>
         </div>
         <div className="mt-4 flex items-center gap-6">
-          <button onClick={rejectCall} aria-label="Decline" className="flex h-14 w-14 items-center justify-center rounded-full bg-red-500 text-white shadow-[0_8px_24px_rgba(0,0,0,0.45)] transition-transform hover:scale-105">
+          <button onClick={rejectCall} aria-label={t("co.decline")} className="flex h-14 w-14 items-center justify-center rounded-full bg-red-500 text-white shadow-[0_8px_24px_rgba(0,0,0,0.45)] transition-transform hover:scale-105">
             <PhoneOff className="h-6 w-6" />
           </button>
-          <button onClick={acceptCall} aria-label="Accept" className="flex h-14 w-14 items-center justify-center rounded-full bg-mint text-ink shadow-[0_8px_24px_rgba(0,0,0,0.45)] transition-transform hover:scale-105">
+          <button onClick={acceptCall} aria-label={t("co.accept")} className="flex h-14 w-14 items-center justify-center rounded-full bg-mint text-ink shadow-[0_8px_24px_rgba(0,0,0,0.45)] transition-transform hover:scale-105">
             <Phone className="h-6 w-6" />
           </button>
         </div>
@@ -63,9 +65,9 @@ export default function CallOverlay({ call, otherUser }) {
         <CallerCard name={name} avatarUrl={avatarUrl} />
         <div className="text-center">
           <p className="font-display text-xl font-bold text-white">{name}</p>
-          <p className="mt-1 text-[13px] text-white/50">Calling…</p>
+          <p className="mt-1 text-[13px] text-white/50">{t("co.calling")}</p>
         </div>
-        <button onClick={endCall} aria-label="Cancel call" className="mt-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-500 text-white shadow-[0_8px_24px_rgba(0,0,0,0.45)] transition-transform hover:scale-105">
+        <button onClick={endCall} aria-label={t("co.cancelCall")} className="mt-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-500 text-white shadow-[0_8px_24px_rgba(0,0,0,0.45)] transition-transform hover:scale-105">
           <PhoneOff className="h-6 w-6" />
         </button>
         {error && <p className="text-[12px] text-red-400">{error}</p>}
@@ -104,7 +106,7 @@ export default function CallOverlay({ call, otherUser }) {
       <div className="flex items-center justify-center gap-4 bg-black/60 py-6 backdrop-blur">
         <button
           onClick={toggleMute}
-          aria-label={muted ? "Unmute" : "Mute"}
+          aria-label={muted ? t("co.unmute") : t("co.mute")}
           className={`flex h-12 w-12 items-center justify-center rounded-full transition-colors ${muted ? "bg-white text-ink" : "bg-white/10 text-white hover:bg-white/20"}`}
         >
           {muted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
@@ -112,7 +114,7 @@ export default function CallOverlay({ call, otherUser }) {
         {isVideo && (
           <button
             onClick={toggleCamera}
-            aria-label={cameraOff ? "Turn camera on" : "Turn camera off"}
+            aria-label={cameraOff ? t("co.cameraOn") : t("co.cameraOff")}
             className={`flex h-12 w-12 items-center justify-center rounded-full transition-colors ${cameraOff ? "bg-white text-ink" : "bg-white/10 text-white hover:bg-white/20"}`}
           >
             {cameraOff ? <VideoOff className="h-5 w-5" /> : <Video className="h-5 w-5" />}
@@ -121,13 +123,13 @@ export default function CallOverlay({ call, otherUser }) {
         {isVideo && (
           <button
             onClick={toggleScreenShare}
-            aria-label="Share screen"
+            aria-label={t("co.shareScreen")}
             className={`flex h-12 w-12 items-center justify-center rounded-full transition-colors ${screenSharing ? "bg-brand text-ink" : "bg-white/10 text-white hover:bg-white/20"}`}
           >
             <MonitorUp className="h-5 w-5" />
           </button>
         )}
-        <button onClick={endCall} aria-label="End call" className="flex h-12 w-12 items-center justify-center rounded-full bg-red-500 text-white transition-transform hover:scale-105">
+        <button onClick={endCall} aria-label={t("co.endCall")} className="flex h-12 w-12 items-center justify-center rounded-full bg-red-500 text-white transition-transform hover:scale-105">
           <PhoneOff className="h-5 w-5" />
         </button>
       </div>

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { CircleDollarSign, MessageSquare, Mail, Star, Info, Briefcase, CheckCheck, AlertCircle, Bell } from "lucide-react";
 import { useNav } from "../../nav.jsx";
-import { useT } from "../../i18n.jsx";
+import { useI18n } from "../../i18n.jsx";
+import { clockTime } from "../../lib/dates.js";
 import { getAccessToken } from "../../lib/authApi.js";
 import { fetchNotifications, markNotificationRead, markAllNotificationsRead } from "../../lib/notificationsApi.js";
 
@@ -22,7 +23,7 @@ function groupOf(iso) {
 }
 
 export default function Notifications() {
-  const t = useT();
+  const { t, locale } = useI18n();
   const { nav, user } = useNav();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -139,7 +140,7 @@ export default function Notifications() {
                           <p className={`text-[13px] leading-relaxed ${n.read ? "text-white/70" : "text-white"}`}>
                             {n.text}
                           </p>
-                          <span className="text-[11px] text-white/40 shrink-0">{n.createdAt ? new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : t("nt.justNow")}</span>
+                          <span className="text-[11px] text-white/40 shrink-0">{n.createdAt ? clockTime(n.createdAt, locale) : t("nt.justNow")}</span>
                         </div>
                       </div>
                       {!n.read && (

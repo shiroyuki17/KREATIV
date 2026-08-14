@@ -1,16 +1,18 @@
 import { useState } from "react";
 import { Sparkles, Send } from "lucide-react";
+import { useT } from "../../i18n.jsx";
 
 // Shared right-rail AI assistant panel (Find Talent / Find Work). Chips run a
 // real filter/sort action against the page's own state — this isn't a live
 // LLM, so the log only ever echoes back which filter it just applied.
 export default function AiPanel({ title, chips, onRefine }) {
+  const t = useT();
   const [draft, setDraft] = useState("");
   const [log, setLog] = useState([]);
 
   function runChip(chip) {
     chip.run();
-    setLog((l) => [...l, { role: "system", text: `Showing: ${chip.label.toLowerCase()}` }]);
+    setLog((l) => [...l, { role: "system", text: t("ap.showing", { what: chip.label.toLowerCase() }) }]);
   }
 
   function submitRefine(e) {
@@ -18,7 +20,7 @@ export default function AiPanel({ title, chips, onRefine }) {
     const text = draft.trim();
     if (!text) return;
     onRefine(text);
-    setLog((l) => [...l, { role: "user", text }, { role: "system", text: `Filtered results for "${text}"` }]);
+    setLog((l) => [...l, { role: "user", text }, { role: "system", text: t("ap.filteredFor", { q: text }) }]);
     setDraft("");
   }
 
@@ -33,7 +35,7 @@ export default function AiPanel({ title, chips, onRefine }) {
 
       <div className="flex-1 space-y-3 overflow-y-auto py-4">
         <div>
-          <p className="text-[12.5px] text-white/45">What should we look for?</p>
+          <p className="text-[12.5px] text-white/45">{t("ap.lookFor")}</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {chips.map((c) => (
               <button
@@ -69,12 +71,12 @@ export default function AiPanel({ title, chips, onRefine }) {
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder="Refine these results…"
+          placeholder={t("ap.refine")}
           className="min-w-0 flex-1 bg-transparent px-2 text-[13px] outline-none placeholder:text-white/30"
         />
         <button
           type="submit"
-          aria-label="Send"
+          aria-label={t("ap.send")}
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand text-fg-1 transition-shadow"
         >
           <Send className="h-3.5 w-3.5" />

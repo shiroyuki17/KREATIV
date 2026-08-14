@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Search, Send, Info, X, AlertCircle, ShieldAlert, Phone, Video, MoreHorizontal, Smile, Paperclip, Check, CheckCheck, FileText, FileArchive, Figma, Github, Download, Loader2, Ban, Image as ImageIcon } from "lucide-react";
 import { useNav } from "../../nav.jsx";
-import { useT } from "../../i18n.jsx";
+import { useI18n, useT } from "../../i18n.jsx";
+import { clockTime, shortDate } from "../../lib/dates.js";
 import { getAccessToken, avatarSrc, API_BASE } from "../../lib/authApi.js";
 import { fetchConversations, startConversation, fetchThread, sendMessage, sendFile, blockUser, unblockUser, searchPeople } from "../../lib/messagesApi.js";
 import { fetchFreelancerByUserId } from "../../lib/talentApi.js";
@@ -106,10 +107,6 @@ function timeAgo(iso, t) {
   const hours = Math.floor(mins / 60);
   if (hours < 24) return `${hours}h`;
   return `${Math.floor(hours / 24)}d`;
-}
-
-function formatClock(iso) {
-  return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 function Avatar({ name, avatarUrl, size = "md", online = false }) {
@@ -277,7 +274,7 @@ function DetailsPanel({ contact, messages = [], onVoiceCall, onVideoCall, onView
 }
 
 export default function Messages() {
-  const t = useT();
+  const { t, locale } = useI18n();
   const { params, user, nav } = useNav();
   const myId = user?.id;
   const [conversations, setConversations] = useState([]);
@@ -571,7 +568,7 @@ export default function Messages() {
     const groups = [];
     let lastDate = null;
     for (const m of msgs) {
-      const d = new Date(m.createdAt).toLocaleDateString([], { month: "short", day: "numeric" });
+      const d = shortDate(m.createdAt, locale);
       if (d !== lastDate) { groups.push({ type: "date", label: d }); lastDate = d; }
       groups.push({ type: "msg", data: m });
     }
@@ -837,7 +834,7 @@ export default function Messages() {
                           <MessageContent m={m} />
                         </div>
                         <span className={`flex items-center gap-1 text-[10px] text-white/25 ${isMe ? "justify-end" : "justify-start"}`}>
-                          {formatClock(m.createdAt)}
+                          {clockTime(m.createdAt, locale)}
                           {isMe && <CheckCheck className="h-3 w-3 text-white/30" />}
                         </span>
                       </div>

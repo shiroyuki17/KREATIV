@@ -51,7 +51,10 @@ router.post('/chat', aiLimiter, async (req, res, next) => {
       prisma.job.count({ where: { status: 'CLOSED' } }),
     ]);
 
-    const text = await ai.chat(trimmed, { freelancers, clients, jobs, openJobs, completedJobs });
+    // Хэлийг frontend дамжуулна (толь бичгийн сонголт). Танихгүй утга ирвэл
+    // монгол руу унана — үндсэн үзэгчид монгол хэлтэй.
+    const locale = req.body.locale === 'en' ? 'en' : 'mn';
+    const text = await ai.chat(trimmed, { freelancers, clients, jobs, openJobs, completedJobs }, locale);
     res.json({ text });
   } catch (err) {
     // Дээд урсгал унасан бол (кредит дууссан, rate limit, тасалдал) 503

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useT } from "../../i18n.jsx";
+import { useI18n } from "../../i18n.jsx";
+import { shortDate } from "../../lib/dates.js";
 import { Play, Square, Loader2, AlertCircle, Trash2 } from "lucide-react";
 import {
   fetchTimeEntries, startTimer, stopTimer, deleteTimeEntry,
@@ -25,12 +26,8 @@ function fmtHours(totalSec) {
   return `${(totalSec / 3600).toFixed(1)}h`;
 }
 
-function shortDate(iso) {
-  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
 export default function TimeTracker({ contractId }) {
-  const t = useT();
+  const { t, locale } = useI18n();
   const [data, setData] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -156,7 +153,7 @@ export default function TimeTracker({ contractId }) {
         <ul className="mt-4 space-y-1.5 border-t border-white/8 pt-3">
           {data.entries.slice(0, 5).map((e) => (
             <li key={e.id} className="group flex items-center justify-between gap-3 text-[12px]">
-              <span className="text-white/45">{shortDate(e.startedAt)}</span>
+              <span className="text-white/45">{shortDate(e.startedAt, locale)}</span>
               <span className="flex-1 truncate text-white/60">{e.note || ""}</span>
               <span className="tabular-nums font-medium text-white/80">
                 {e.running ? t("tt.running") : fmtHours(e.seconds)}

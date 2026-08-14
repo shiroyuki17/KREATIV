@@ -5,6 +5,7 @@ import BlurText from "../fx/BlurText.jsx";
 import SpotlightCard from "../fx/SpotlightCard.jsx";
 import CountUp from "../fx/CountUp.jsx";
 import { useNav } from "../../nav.jsx";
+import { useT } from "../../i18n.jsx";
 import { fetchPublicReviews } from "../../lib/contractApi.js";
 
 // Энэ хуудас өмнө нь appMock.js-ийн зохиомол сэтгэгдэл, мөн hardcode хийсэн
@@ -14,11 +15,12 @@ import { fetchPublicReviews } from "../../lib/contractApi.js";
 // статистик зарлаж байсан. Одоо бүгд /reviews/public-аас ирнэ; өгөгдөл
 // байхгүй бол тоог гоёчлохгүй, шууд "хараахан үнэлгээ алга" гэж хэлнэ.
 
-const FILTERS = ["All", "Clients", "Freelancers"];
-
-function initialsOf(name) {
-  return (name || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
-}
+// Утга нь тогтмол (шүүлт үүгээр ажиллана), шошго нь орчуулагдана.
+const FILTERS = [
+  { value: "all", labelKey: "rv.all" },
+  { value: "client", labelKey: "rv.clients" },
+  { value: "freelancer", labelKey: "rv.freelancers" },
+];
 
 function Stars({ value, className = "h-3.5 w-3.5" }) {
   return (
@@ -35,7 +37,8 @@ function Stars({ value, className = "h-3.5 w-3.5" }) {
 
 export default function Reviews() {
   const { nav } = useNav();
-  const [filter, setFilter] = useState("All");
+  const t = useT();
+  const [filter, setFilter] = useState("all");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -53,31 +56,29 @@ export default function Reviews() {
   const stats = data?.stats;
   const featured = reviews[0] || null;
 
-  const list = reviews.filter((r) =>
-    filter === "All" ? true : filter === "Clients" ? r.authorSide === "client" : r.authorSide === "freelancer"
-  );
+  const list = reviews.filter((r) => filter === "all" || r.authorSide === filter);
 
   // Бодит тоо байхад л статистикийн хайрцгийг харуулна. `averageRating` нь
   // үнэлгээ огт байхгүй үед null ирдэг тул 0.0 гэж будлиантай харуулахгүй.
   const STAT_TILES = stats
     ? [
         stats.averageRating != null && {
-          value: stats.averageRating, decimals: 1, label: "Average rating",
+          value: stats.averageRating, decimals: 1, label: t("rv.avgRating"),
         },
-        { value: stats.totalReviews, label: "Reviews written" },
-        { value: stats.completedContracts, label: "Contracts completed" },
+        { value: stats.totalReviews, label: t("rv.reviewsWritten") },
+        { value: stats.completedContracts, label: t("rv.contractsDone") },
       ].filter(Boolean)
     : [];
 
   return (
     <div className="mx-auto max-w-6xl px-6 pb-24 pt-36">
       <div className="text-center">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-soft">— Success stories</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-soft">{t("rv.eyebrow")}</p>
         <h1 className="mx-auto mt-4 max-w-2xl font-display text-[clamp(2.2rem,4.5vw,3.4rem)] font-bold text-brand text-glow leading-[1.05] tracking-tight">
-          <BlurText text="Great work, fairly paid." />
+          <BlurText text={t("rv.title")} />
         </h1>
         <p className="mx-auto mt-5 max-w-xl text-[15px] leading-relaxed text-white/55">
-          Every review below comes from a completed KREATIV contract — nothing is written by us.
+          {t("rv.intro")}
         </p>
       </div>
 
@@ -112,16 +113,15 @@ export default function Reviews() {
       {!loading && !error && reviews.length === 0 && (
         <div className="glass mt-12 rounded-3xl p-12 text-center">
           <Quote className="mx-auto h-10 w-10 text-brand/25" />
-          <h2 className="mt-4 font-display text-xl font-bold">No reviews yet</h2>
+          <h2 className="mt-4 font-display text-xl font-bold">{t("rv.emptyTitle")}</h2>
           <p className="mx-auto mt-2 max-w-md text-[13.5px] leading-relaxed text-white/50">
-            Reviews appear here once contracts are completed and both sides have rated
-            each other. Be the first to ship something.
+            {t("rv.emptyDesc")}
           </p>
           <button
             onClick={() => nav("auth")}
             className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-brand px-6 py-3 text-[13.5px] font-semibold text-fg-1 glow-brand"
           >
-            Get started free <ArrowRight className="h-4 w-4" />
+            {t("rv.getStarted")} <ArrowRight className="h-4 w-4" />
           </button>
         </div>
       )}
@@ -139,7 +139,7 @@ export default function Reviews() {
               <div>
                 <p className="text-[15px] font-semibold">{featured.reviewerName}</p>
                 <p className="text-[12.5px] text-white/45">
-                  {featured.authorSide === "client" ? "Client" : "Freelancer"}
+                  {featured.authorSide === "client" ? t("rv.client") : t("rv.freelancer")}
                   {featured.jobTitle ? ` · ${featured.jobTitle}` : ""}
                 </p>
               </div>
@@ -153,19 +153,19 @@ export default function Reviews() {
           <div className="mt-10 flex flex-wrap gap-2">
             {FILTERS.map((f) => (
               <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={filter === f
+                key={f.value}
+                onClick={() => setFilter(f.value)}
+                className={filter === f.value
                   ? "rounded-full bg-brand px-4 py-2 text-[12px] font-semibold text-ink glow-brand"
                   : "rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-medium text-white/55 transition-colors hover:border-brand/40 hover:text-white"}
               >
-                {f}
+                {t(f.labelKey)}
               </button>
             ))}
           </div>
 
           {list.length === 0 ? (
-            <p className="mt-6 text-[13.5px] text-white/45">No reviews in this category yet.</p>
+            <p className="mt-6 text-[13.5px] text-white/45">{t("rv.noneInCategory")}</p>
           ) : (
             <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {list.map((r) => (
@@ -185,7 +185,7 @@ export default function Reviews() {
                       <div className="min-w-0">
                         <p className="truncate text-[13px] font-semibold">{r.reviewerName}</p>
                         <p className="truncate text-[11px] text-white/40">
-                          {r.authorSide === "client" ? "Client" : "Freelancer"}
+                          {r.authorSide === "client" ? t("rv.client") : t("rv.freelancer")}
                         </p>
                       </div>
                     </div>
@@ -198,13 +198,13 @@ export default function Reviews() {
       )}
 
       <div className="mt-14 flex flex-col items-center gap-4 text-center">
-        <h2 className="font-display text-2xl font-bold tracking-tight">Join them</h2>
+        <h2 className="font-display text-2xl font-bold tracking-tight">{t("rv.joinThem")}</h2>
         <div className="flex flex-wrap justify-center gap-3">
           <button onClick={() => nav("auth")} className="inline-flex items-center gap-2 rounded-2xl bg-brand px-7 py-3.5 text-[14px] font-semibold text-fg-1 glow-brand transition-shadow">
-            Get started free <ArrowRight className="h-4 w-4" />
+            {t("rv.getStarted")} <ArrowRight className="h-4 w-4" />
           </button>
           <button onClick={() => nav("how")} className="glass rounded-2xl px-7 py-3.5 text-[14px] font-semibold text-white/85 transition-colors hover:border-white/25">
-            How it works
+            {t("rv.howItWorks")}
           </button>
         </div>
       </div>

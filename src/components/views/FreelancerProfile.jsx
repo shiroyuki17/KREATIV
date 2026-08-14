@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, BadgeCheck, Star, MessageSquare, Sparkles, Loader2, AlertCircle, Pencil, Image as ImageIcon, ShieldCheck, Play, X } from "lucide-react";
 import Magnet from "../fx/Magnet.jsx";
 import { useNav } from "../../nav.jsx";
-import { useT } from "../../i18n.jsx";
+import { useI18n, useT } from "../../i18n.jsx";
+import { numericDate } from "../../lib/dates.js";
 import { avatarSrc } from "../../lib/authApi.js";
 import { fetchFreelancerByUserId, fetchFreelancerByUsername, fetchFreelancerStats, recordProfileView, followUser, unfollowUser, fetchMyFollowing } from "../../lib/talentApi.js";
 import { fetchReviewsFor } from "../../lib/contractApi.js";
@@ -86,7 +87,7 @@ function normalizeReal(profile, userId, t) {
 }
 
 export default function FreelancerProfile() {
-  const t = useT();
+  const { t, locale } = useI18n();
   const { params, nav, user } = useNav();
   const [real, setReal] = useState(null);
   const [reviews, setReviews] = useState([]);
@@ -509,7 +510,7 @@ export default function FreelancerProfile() {
                         </span>
                       </div>
                       {r.comment && <p className="mt-3 text-[13.5px] leading-relaxed text-white/60">"{r.comment}"</p>}
-                      <p className="mt-3 text-[11px] text-white/30">{new Date(r.createdAt).toLocaleDateString()}</p>
+                      <p className="mt-3 text-[11px] text-white/30">{numericDate(r.createdAt, locale)}</p>
                     </div>
                   ))}
                 </div>
