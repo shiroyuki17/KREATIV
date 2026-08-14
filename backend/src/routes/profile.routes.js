@@ -13,6 +13,10 @@ import {
 
 const router = Router();
 
+// Portfolio-г хэрэглэгчийн өөрийн эрэмбээр, тэнцвэл шинэ нь эхэлнэ.
+const PORTFOLIO_ORDER = [{ order: 'asc' }, { createdAt: 'desc' }];
+
+
 function validate(schema, body) {
   const result = schema.safeParse(body);
   if (!result.success) {
@@ -49,6 +53,9 @@ function publicFreelancer(profile) {
       description: p.description,
       link: p.link,
       images: p.images || [],
+      coverIndex: p.coverIndex ?? 0,
+      outcome: p.outcome,
+      embedUrl: p.embedUrl,
     })),
   };
 }
@@ -175,7 +182,7 @@ router.post('/freelancer', requireAuth, async (req, res, next) => {
       where: { userId: req.user.id },
       update: data,
       create: { userId: req.user.id, ...data },
-      include: { portfolio: true },
+      include: { portfolio: { orderBy: PORTFOLIO_ORDER } },
     });
 
     res.json({ ...profile, completeness: freelancerCompleteness(profile) });
@@ -217,7 +224,7 @@ router.get('/freelancers', async (req, res, next) => {
     const [profiles, total] = await Promise.all([
       prisma.freelancerProfile.findMany({
         where,
-        include: { user: { select: { name: true, avatarUrl: true } }, portfolio: true },
+        include: { user: { select: { name: true, avatarUrl: true } }, portfolio: { orderBy: PORTFOLIO_ORDER } },
         orderBy,
         skip,
         take: data.pageSize,
@@ -242,7 +249,7 @@ router.get('/freelancer/me', requireAuth, async (req, res, next) => {
   try {
     const profile = await prisma.freelancerProfile.findUnique({
       where: { userId: req.user.id },
-      include: { portfolio: true },
+      include: { portfolio: { orderBy: PORTFOLIO_ORDER } },
     });
     if (!profile) return res.status(404).json({ error: 'Freelancer профайл байхгүй байна' });
     res.json({ ...profile, completeness: freelancerCompleteness(profile), disputeRate: await freelancerDisputeRate(profile.id) });
@@ -253,7 +260,8 @@ router.get('/freelancer/me', requireAuth, async (req, res, next) => {
 
 // ── GET /profile/freelancer/:userId ── (нийтэд харагдах)
 const PUBLIC_PROFILE_INCLUDE = {
-  portfolio: true,
+  // Хэрэглэгч өөрөө дараалуулсныг хүндэтгэнэ; тэнцвэл шинэ нь эхэлнэ.
+  portfolio: { orderBy: PORTFOLIO_ORDER },
   user: { select: { id: true, name: true, avatarUrl: true, username: true } },
 };
 

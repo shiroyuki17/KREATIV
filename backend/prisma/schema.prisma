@@ -194,6 +194,22 @@ model PortfolioItem {
   images       String[]          @default([])
   link         String?
 
+  // Case study-г гүнзгийрүүлэх талбарууд.
+  //
+  // order      — хэрэглэгч өөрөө дараалуулна. Өмнө нь зөвхөн createdAt-аар
+  //              эрэмбэлэгддэг тул хамгийн сайн ажлаа эхэнд гаргах арга
+  //              байгаагүй.
+  // coverIndex — images-ийн аль нь нүүр зураг болох (өмнө нь үргэлж эхнийх).
+  // embedUrl   — Figma/YouTube зэрэг оруулга; статик зурагнаас хамаагүй
+  //              илүү ойлгуулна.
+  // outcome    — "CAC 34% буурсан" гэх мэт бодит үр дүн. Ажлын ЗУРАГ нь
+  //              юу хийснийг харуулдаг ч ямар ач холбогдолтой болохыг
+  //              хэлдэггүй; худалдан авах шийдвэрт үр дүн нь хүчтэй.
+  order      Int     @default(0)
+  coverIndex Int     @default(0)
+  embedUrl   String?
+  outcome    String?
+
   createdAt DateTime @default(now())
 
   @@index([freelancerId])

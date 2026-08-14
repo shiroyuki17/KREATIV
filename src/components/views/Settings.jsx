@@ -177,6 +177,8 @@ function PortfolioManager({ items, onAdd, onRemove }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [link, setLink] = useState("");
+  const [outcome, setOutcome] = useState("");
+  const [embedUrl, setEmbedUrl] = useState("");
   const [imageUrls, setImageUrls] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -211,12 +213,16 @@ function PortfolioManager({ items, onAdd, onRemove }) {
         title: title.trim(),
         description: description.trim() || undefined,
         link: link.trim() || undefined,
+        outcome: outcome.trim() || undefined,
+        embedUrl: embedUrl.trim() || undefined,
         images: imageUrls,
       });
       onAdd(item);
       setTitle("");
       setDescription("");
       setLink("");
+      setOutcome("");
+      setEmbedUrl("");
       setImageUrls([]);
     } catch (err) {
       setError(Array.isArray(err.message) ? err.message.join(", ") : err.message);
@@ -305,12 +311,29 @@ function PortfolioManager({ items, onAdd, onRemove }) {
           placeholder="Товч тайлбар (заавал биш)"
           className="mt-2 w-full resize-none rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] outline-none focus:border-brand/50"
         />
+        {/* Үр дүн — "юу хийсэн"-ээс илүү хүчтэй дохио. Profile дээр
+            тодруулсан chip болж харагдана. */}
+        <input
+          value={outcome}
+          onChange={(e) => setOutcome(e.target.value)}
+          placeholder="Үр дүн (заавал биш) — e.g. Хөрвөлт 34% өссөн"
+          className="mt-2 w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] outline-none focus:border-brand/50"
+        />
         <div className="mt-2 flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2">
           <LinkIcon className="h-3.5 w-3.5 shrink-0 text-white/30" />
           <input
             value={link}
             onChange={(e) => setLink(e.target.value)}
             placeholder="Холбоос (заавал биш) — https://…"
+            className="w-full bg-transparent text-[13px] outline-none"
+          />
+        </div>
+        <div className="mt-2 flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2">
+          <LinkIcon className="h-3.5 w-3.5 shrink-0 text-white/30" />
+          <input
+            value={embedUrl}
+            onChange={(e) => setEmbedUrl(e.target.value)}
+            placeholder="Figma / YouTube embed (заавал биш)"
             className="w-full bg-transparent text-[13px] outline-none"
           />
         </div>

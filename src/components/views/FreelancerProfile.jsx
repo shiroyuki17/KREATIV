@@ -433,19 +433,39 @@ export default function FreelancerProfile() {
                       rel={p.link ? "noopener noreferrer" : undefined}
                       className={`group overflow-hidden rounded-2xl border border-white/8 bg-white/[0.03] transition-colors ${p.link ? "hover:border-brand/40" : ""}`}
                     >
-                      {p.images?.[0] ? (
-                        <img src={avatarSrc(p.images[0])} alt="" className="h-44 w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
-                      ) : (
-                        <div className="flex h-44 w-full items-center justify-center bg-white/[0.02] text-white/15">
-                          <ImageIcon className="h-9 w-9" />
-                        </div>
-                      )}
+                      {/* Нүүр зургийг эзэн нь сонгоно (coverIndex) — өмнө нь
+                          үргэлж эхний зураг байсан. */}
+                      {(() => {
+                        const cover = p.images?.[p.coverIndex ?? 0] || p.images?.[0];
+                        return cover ? (
+                          <img src={avatarSrc(cover)} alt="" className="h-44 w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
+                        ) : (
+                          <div className="flex h-44 w-full items-center justify-center bg-white/[0.02] text-white/15">
+                            <ImageIcon className="h-9 w-9" />
+                          </div>
+                        );
+                      })()}
                       <div className="p-4">
                         <p className="text-[14px] font-semibold">{p.title}</p>
-                        {p.description && <p className="mt-1 line-clamp-2 text-[12.5px] text-white/50">{p.description}</p>}
-                        {p.link && (
-                          <p className="mt-2 text-[12px] font-semibold text-brand-soft group-hover:text-white">View project →</p>
+                        {/* Үр дүн нь "юу хийсэн"-ээс илүү хүчтэй дохио тул
+                            тайлбараас өмнө, тодруулж харуулна. */}
+                        {p.outcome && (
+                          <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-lg border border-mint/25 bg-mint/10 px-2.5 py-1 text-[11.5px] font-semibold text-mint">
+                            {p.outcome}
+                          </p>
                         )}
+                        {p.description && <p className="mt-1.5 line-clamp-2 text-[12.5px] text-white/50">{p.description}</p>}
+                        <div className="mt-2 flex flex-wrap items-center gap-3">
+                          {p.link && (
+                            <span className="text-[12px] font-semibold text-brand-soft group-hover:text-white">View project →</span>
+                          )}
+                          {p.embedUrl && (
+                            <span className="text-[11.5px] text-white/35">Embed бий</span>
+                          )}
+                          {p.images?.length > 1 && (
+                            <span className="text-[11.5px] text-white/35">{p.images.length} зураг</span>
+                          )}
+                        </div>
                       </div>
                     </a>
                   ))}

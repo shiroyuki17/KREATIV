@@ -46,4 +46,9 @@ export const portfolioItemSchema = z.object({
   description: z.string().max(2000).optional(),
   images: z.array(imageUrl).max(10).optional(),
   link: z.url('link буруу байна').optional(),
+  // Case study-ийн нэмэлт талбарууд (бүгд заавал биш).
+  order: z.coerce.number().int().min(0).max(999).optional(),
+  coverIndex: z.coerce.number().int().min(0).max(9).optional(),
+  embedUrl: z.url('embed холбоос буруу байна').optional(),
+  outcome: z.string().max(300).optional(),
 });
