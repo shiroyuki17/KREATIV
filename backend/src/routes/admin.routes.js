@@ -407,6 +407,45 @@ router.post('/verifications/:id/decide', async (req, res, next) => {
   }
 });
 
+// ── Холбоо барих зурвасууд ──
+//
+// Contact хуудасны форм одоо бодитоор ирдэг болсон тул хэн нэгэн уншдаг
+// байх ёстой — эс бөгөөс "хадгалагдсан ч хэн ч хардаггүй" гэсэн ижилхэн
+// асуудал үлдэнэ.
+
+// ── GET /admin/support-messages ──
+router.get('/support-messages', async (req, res, next) => {
+  try {
+    // Өгөгдмөл нь шийдэгдээгүй зурвасууд — ажлын жагсаалт болгож ашиглана.
+    const handled = req.query.handled === 'true';
+    const messages = await prisma.supportMessage.findMany({
+      where: handled ? { handledAt: { not: null } } : { handledAt: null },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+    const pendingCount = await prisma.supportMessage.count({ where: { handledAt: null } });
+    res.json({ messages, pendingCount });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /admin/support-messages/:id/handled ──
+router.post('/support-messages/:id/handled', async (req, res, next) => {
+  try {
+    const handled = req.body?.handled !== false;
+    const existing = await prisma.supportMessage.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ error: 'Олдсонгүй' });
+    const updated = await prisma.supportMessage.update({
+      where: { id: existing.id },
+      data: { handledAt: handled ? new Date() : null },
+    });
+    res.json(updated);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── Job moderation queue (FR-2.3) ──
 
 // ── GET /admin/jobs/moderation ──

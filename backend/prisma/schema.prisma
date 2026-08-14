@@ -678,3 +678,23 @@ model Message {
 
   @@index([conversationId])
 }
+
+// Холбоо барих хуудсаар ирсэн зурвас.
+//
+// Өмнө нь тэр хуудасны форм ямар ч хүсэлт явуулдаггүй, ердөө setSent(true)
+// гэж төлөв солиод "Message sent" гэж харуулдаг байв — өөрөөр хэлбэл бичсэн
+// зурвас бүр чимээгүй алга болдог байсан. Имэйл нь fire-and-forget тул
+// зөвхөн имэйлээр явуулах нь ижил эрсдэлтэй: SMTP унавал зурвас дахин
+// алдагдана. Тиймээс эхлээд ЭНД хадгална, дараа нь имэйл явуулна.
+model SupportMessage {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  topic     String
+  message   String
+  // Админ уншсан/хариулсан эсэх — Admin Panel дээр шүүхэд.
+  handledAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
