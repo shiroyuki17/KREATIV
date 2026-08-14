@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Briefcase, Laptop, ArrowLeft, Check, AlertCircle } from "lucide-react";
 import Magnet from "../fx/Magnet.jsx";
 import { useNav } from "../../nav.jsx";
+import { useT } from "../../i18n.jsx";
 import { googleLoginUrl, registerUser, loginUser, saveTokens, resolveHomeRoute, consumeStashedRedirect, forgotPassword } from "../../lib/authApi.js";
 
 const OAUTH_ERROR_MESSAGES = {
@@ -18,14 +19,15 @@ const OAUTH_ERROR_MESSAGES = {
 };
 
 const ROLES = [
-  { id: "client", label: "I'm hiring", desc: "Post briefs & hire talent", Icon: Briefcase },
-  { id: "freelancer", label: "I'm freelancing", desc: "Find work & get paid", Icon: Laptop },
+  { id: "client", labelKey: "auth.roleClient", descKey: "auth.roleClientDesc", Icon: Briefcase },
+  { id: "freelancer", labelKey: "auth.roleFreelancer", descKey: "auth.roleFreelancerDesc", Icon: Laptop },
 ];
 
 const PHONE_RE = /^\d{8}$/;
 
 export default function Auth() {
   const { nav, params, setUser } = useNav();
+  const t = useT();
   const oauthError = params?.oauthError && (OAUTH_ERROR_MESSAGES[params.oauthError] || "Google-ээр нэвтрэхэд алдаа гарлаа.");
   const [mode, setMode] = useState(params?.mode === "login" ? "login" : "signup");
   const [role, setRole] = useState("client");
@@ -133,10 +135,10 @@ export default function Auth() {
 
         <div className="relative z-10 max-w-lg px-12 pb-12">
           <h2 className="font-display text-[clamp(2rem,3.4vw,3.1rem)] font-bold leading-[1.1] tracking-tight">
-            Elite work meets elite talent
+            {t("auth.heroTitle")}
           </h2>
           <p className="mt-4 text-[14px] leading-relaxed text-white/55">
-            Escrow-protected payments, milestone by milestone.
+            {t("auth.heroSub")}
           </p>
         </div>
       </aside>
@@ -154,12 +156,12 @@ export default function Auth() {
           className="mb-6 inline-flex items-center gap-2 text-[13px] font-medium text-white/50 transition-colors hover:text-white"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back
+          {t("common.back")}
         </button>
 
         <div className="glass rounded-3xl p-8">
           <p className="text-center font-display text-xl font-bold tracking-tight">
-            {mode === "signup" ? "Join " : mode === "forgot" ? "Reset password for " : "Welcome back to "}
+            {mode === "signup" ? t("auth.joinPrefix") : mode === "forgot" ? t("auth.resetPrefix") : t("auth.welcomePrefix")}
             KRE
             <span className="bg-gradient-to-r from-brand-soft to-neon bg-clip-text text-transparent">
               ATIV
@@ -167,10 +169,10 @@ export default function Auth() {
           </p>
           <p className="mt-1.5 text-center text-[12.5px] text-white/45">
             {mode === "signup"
-              ? "Where elite work meets elite talent."
+              ? t("auth.signupSub")
               : mode === "forgot"
-                ? "Enter your email and we'll send you a reset link."
-                : "Log in to your workspace."}
+                ? t("auth.forgotSub")
+                : t("auth.loginSub")}
           </p>
 
           {(oauthError || formError) && (
@@ -182,20 +184,20 @@ export default function Auth() {
           {mode === "forgot" && forgotSent ? (
             <>
               <p className="mt-6 flex items-center gap-2 rounded-xl border border-brand/30 bg-brand/10 px-3.5 py-3 text-[13px] font-medium text-brand-soft">
-                <Check className="h-4 w-4 shrink-0" /> If that email is registered, a reset link is on its way.
+                <Check className="h-4 w-4 shrink-0" /> {t("auth.resetSent")}
               </p>
               <button
                 onClick={() => { setMode("login"); setForgotSent(false); setFormError(""); }}
                 className="mt-6 w-full rounded-xl border border-white/15 bg-white/[0.05] py-3.5 text-[14px] font-semibold text-white/90 transition-colors hover:border-white/25"
               >
-                Back to log in
+                {t("auth.backToLogin")}
               </button>
             </>
           ) : (
           <>
           {mode === "signup" && (
             <div className="mt-7 grid grid-cols-2 gap-3">
-              {ROLES.map(({ id, label, desc, Icon }) => (
+              {ROLES.map(({ id, labelKey, descKey, Icon }) => (
                 <button
                   key={id}
                   onClick={() => setRole(id)}
@@ -206,8 +208,8 @@ export default function Auth() {
                   }
                 >
                   <Icon className={`h-5 w-5 ${role === id ? "text-brand-soft" : "text-white/50"}`} />
-                  <p className="mt-3 text-[13.5px] font-semibold">{label}</p>
-                  <p className="mt-0.5 text-[11px] text-white/40">{desc}</p>
+                  <p className="mt-3 text-[13.5px] font-semibold">{t(labelKey)}</p>
+                  <p className="mt-0.5 text-[11px] text-white/40">{t(descKey)}</p>
                 </button>
               ))}
             </div>
@@ -218,7 +220,7 @@ export default function Auth() {
               <div className="grid grid-cols-2 gap-3 animate-rise-in">
                 <label className="block">
                   <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
-                    First name
+                    {t("auth.firstName")}
                   </span>
                   <input
                     type="text"
@@ -230,7 +232,7 @@ export default function Auth() {
                 </label>
                 <label className="block">
                   <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
-                    Last name
+                    {t("auth.lastName")}
                   </span>
                   <input
                     type="text"
@@ -245,7 +247,7 @@ export default function Auth() {
 
             <label className="block">
               <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
-                Email
+                {t("auth.email")}
               </span>
               <input
                 type="email"
@@ -259,7 +261,7 @@ export default function Auth() {
             {mode === "signup" && (
               <label className="block animate-rise-in">
                 <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
-                  Phone number
+                  {t("auth.phone")}
                 </span>
                 <input
                   type="tel"
@@ -274,7 +276,7 @@ export default function Auth() {
                 />
                 {phoneInvalid && (
                   <span className="mt-1.5 flex items-center gap-1.5 text-[11.5px] font-medium text-red-400">
-                    <AlertCircle className="h-3.5 w-3.5" /> Enter a valid 8-digit phone number
+                    <AlertCircle className="h-3.5 w-3.5" /> {t("auth.phoneInvalid")}
                   </span>
                 )}
               </label>
@@ -283,13 +285,13 @@ export default function Auth() {
             {mode !== "forgot" && (
             <label className="block">
               <span className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-widest text-white/40">
-                Password
+                {t("auth.password")}
                 {mode === "login" && (
                   <button
                     onClick={() => { setMode("forgot"); setFormError(""); }}
                     className="text-brand-soft normal-case tracking-normal hover:text-white"
                   >
-                    Forgot?
+                    {t("auth.forgotShort")}
                   </button>
                 )}
               </span>
@@ -306,13 +308,13 @@ export default function Auth() {
             {mode === "signup" && (
               <label className="block animate-rise-in">
                 <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
-                  Verify password
+                  {t("auth.verifyPassword")}
                 </span>
                 <input
                   type="password"
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
-                  placeholder="Re-enter your password"
+                  placeholder={t("auth.confirmPlaceholder")}
                   aria-invalid={mismatch}
                   className={`mt-2 w-full rounded-xl border bg-white/[0.04] px-4 py-3 text-[14px] outline-none transition-colors placeholder:text-white/25 ${
                     mismatch
@@ -324,12 +326,12 @@ export default function Auth() {
                 />
                 {mismatch && (
                   <span className="mt-1.5 flex items-center gap-1.5 text-[11.5px] font-medium text-red-400">
-                    <AlertCircle className="h-3.5 w-3.5" /> Passwords don't match
+                    <AlertCircle className="h-3.5 w-3.5" /> {t("auth.passwordsDontMatch")}
                   </span>
                 )}
                 {matched && (
                   <span className="mt-1.5 flex items-center gap-1.5 text-[11.5px] font-medium text-brand-soft">
-                    <Check className="h-3.5 w-3.5" /> Passwords match
+                    <Check className="h-3.5 w-3.5" /> {t("auth.passwordsMatch")}
                   </span>
                 )}
               </label>
@@ -342,12 +344,12 @@ export default function Auth() {
             className="mt-6 w-full rounded-xl bg-brand py-3.5 text-[14px] font-semibold text-fg-1 glow-brand transition-all disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
           >
             {submitting
-              ? "Түр хүлээнэ үү…"
+              ? t("auth.pleaseWait")
               : mode === "signup"
-                ? "Create account"
+                ? t("auth.createAccount")
                 : mode === "forgot"
-                  ? "Send reset link"
-                  : "Log in"}
+                  ? t("auth.sendResetLink")
+                  : t("common.logIn")}
           </button>
 
           {mode !== "forgot" && (
@@ -355,7 +357,7 @@ export default function Auth() {
           <div className="my-5 flex items-center gap-3">
             <span className="h-px flex-1 bg-white/10" />
             <span className="text-[11px] font-medium uppercase tracking-widest text-white/30">
-              or
+              {t("auth.or")}
             </span>
             <span className="h-px flex-1 bg-white/10" />
           </div>
@@ -370,7 +372,7 @@ export default function Auth() {
               <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
               <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
             </svg>
-            Continue with Google
+            {t("auth.continueWithGoogle")}
           </button>
           </>
           )}
@@ -381,11 +383,11 @@ export default function Auth() {
                 onClick={() => { setMode("login"); setFormError(""); }}
                 className="font-semibold text-brand-soft hover:text-white"
               >
-                ← Back to log in
+                {t("auth.backToLoginArrow")}
               </button>
             ) : (
               <>
-                {mode === "signup" ? "Already have an account?" : "New to KREATIV?"}{" "}
+                {mode === "signup" ? t("auth.haveAccount") : t("auth.newHere")}{" "}
                 <button
                   onClick={() => {
                     setMode(mode === "signup" ? "login" : "signup");
@@ -399,7 +401,7 @@ export default function Auth() {
                   }}
                   className="font-semibold text-brand-soft hover:text-white"
                 >
-                  {mode === "signup" ? "Log in" : "Sign up"}
+                  {mode === "signup" ? t("common.logIn") : t("common.signUp")}
                 </button>
               </>
             )}
