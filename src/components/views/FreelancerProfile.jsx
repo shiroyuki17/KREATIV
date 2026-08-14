@@ -21,6 +21,24 @@ function initialsOf(name) {
   return (name || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 }
 
+// Ажил авах боломж — захиалагчийн хамгийн эхэнд хайдаг дохио.
+const AVAILABILITY = {
+  OPEN: { label: "Ажил авч байна", cls: "border-mint/35 bg-mint/10 text-mint", dot: "bg-mint" },
+  BUSY: { label: "Ачаалалтай", cls: "border-amber-400/35 bg-amber-400/10 text-amber-300", dot: "bg-amber-300" },
+  CLOSED: { label: "Ажил авахгүй", cls: "border-white/15 bg-white/[0.05] text-white/45", dot: "bg-white/40" },
+};
+
+function AvailabilityBadge({ value }) {
+  const a = AVAILABILITY[value];
+  if (!a) return null;
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold ${a.cls}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${a.dot} ${value === "OPEN" ? "animate-pulse" : ""}`} />
+      {a.label}
+    </span>
+  );
+}
+
 function StatTile({ label, value }) {
   return (
     <div className="rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2.5">
@@ -216,7 +234,8 @@ export default function FreelancerProfile() {
               </p>
               <p className="mt-0.5 text-[13px] text-white/50">{f.role}</p>
 
-              <div className="mt-3 flex items-center gap-2">
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                <AvailabilityBadge value={real.availability} />
                 {isNew && (
                   <span className="inline-flex items-center gap-1 rounded-full border border-neon/40 bg-neon/10 px-2.5 py-1 text-[10.5px] font-bold text-neon">
                     New on KREATIV

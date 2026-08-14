@@ -804,6 +804,7 @@ export default function Settings() {
   const [headline, setHeadline] = useState("");
   const [rate, setRate] = useState("");
   const [bio, setBio] = useState("");
+  const [availability, setAvailability] = useState("OPEN");
   const [orgName, setOrgName] = useState("");
   const [freelancerProfile, setFreelancerProfile] = useState(null);
 
@@ -823,6 +824,7 @@ export default function Settings() {
       if (freelancer) {
         setFreelancerProfile(freelancer);
         setHeadline(freelancer.headline || "");
+        setAvailability(freelancer.availability || "OPEN");
         setBio(freelancer.bio || "");
         setRate(
           freelancer.priceMin != null
@@ -854,7 +856,7 @@ export default function Settings() {
       if (isFreelancer) {
         const nums = rate.match(/\d+/g)?.map(Number) || [];
         await saveFreelancerProfile(
-          { headline, bio, priceMin: nums[0], priceMax: nums[1] ?? nums[0] },
+          { headline, bio, availability, priceMin: nums[0], priceMax: nums[1] ?? nums[0] },
           token
         );
       } else {
@@ -1002,6 +1004,34 @@ export default function Settings() {
                     value={rate}
                     onChange={(e) => setRate(e.target.value)}
                   />
+                  {/* Ажил авах боломж — профайл дээр өнгөт цэгээр харагдана.
+                      Захиалагч чөлөөтэй эсэхийг мэдэхгүй бол ихэвчлэн
+                      бичихээ ч болиод өөр хүн рүү шилждэг. */}
+                  <div className="sm:col-span-2">
+                    <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
+                      Ажлын боломж
+                    </span>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {[
+                        ["OPEN", "Ажил авч байна"],
+                        ["BUSY", "Ачаалалтай"],
+                        ["CLOSED", "Ажил авахгүй"],
+                      ].map(([key, label]) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setAvailability(key)}
+                          className={
+                            availability === key
+                              ? "rounded-xl border border-brand/60 bg-brand/15 px-4 py-2.5 text-[12.5px] font-semibold text-brand-soft"
+                              : "rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-[12.5px] font-medium text-white/55 transition-colors hover:border-white/25 hover:text-white"
+                          }
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </>
               ) : (
                 <Field

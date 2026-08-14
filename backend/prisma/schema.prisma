@@ -130,6 +130,11 @@ model FreelancerProfile {
   ratingAvg     Float    @default(0)
   jobsCompleted Int      @default(0)
 
+  // Одоо ажил авах боломжтой эсэх. Захиалагчийн шийдвэрт хамгийн их
+  // нөлөөлдөг дохионуудын нэг: "чөлөөтэй" гэдгийг мэдэхгүй бол зүгээр л
+  // өөр хүн рүү шилждэг.
+  availability  Availability @default(OPEN)
+
   // FR-5.1: Verified badge — freelancer нотолгоо (portfolio/ID холбоос)
   // илгээж, админ гараар хянаж баталгаажуулдаг бодит урсгал (decorative
   // mock badge биш). AI-аар автоматаар баталгаажуулдаггүй — луйврын эрсдэл
@@ -156,6 +161,12 @@ enum VerificationStatus {
   PENDING
   VERIFIED
   REJECTED
+}
+
+enum Availability {
+  OPEN   // шинэ ажил авч байна
+  BUSY   // ачаалалтай, гэхдээ хаагаагүй
+  CLOSED // одоогоор ажил авахгүй
 }
 
 model ClientProfile {

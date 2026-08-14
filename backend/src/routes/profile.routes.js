@@ -39,6 +39,7 @@ function publicFreelancer(profile) {
     priceMax: profile.priceMax,
     ratingAvg: profile.ratingAvg,
     jobsCompleted: profile.jobsCompleted,
+    availability: profile.availability,
     // FR-5.1: зөвхөн "VERIFIED" эсэхийг л нийтэд харуулна — evidence/note нь
     // хувийн (зөвхөн эзэн нь болон админ харна).
     verified: profile.verificationStatus === 'VERIFIED',

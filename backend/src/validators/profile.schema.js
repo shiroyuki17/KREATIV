@@ -12,6 +12,7 @@ export const freelancerProfileSchema = z
     skills: z.array(z.string().min(1)).max(30).optional(),
     priceMin: z.coerce.number().int().nonnegative().optional(),
     priceMax: z.coerce.number().int().nonnegative().optional(),
+    availability: z.enum(['OPEN', 'BUSY', 'CLOSED']).optional(),
   })
   .refine(
     (d) => d.priceMin == null || d.priceMax == null || d.priceMin <= d.priceMax,
