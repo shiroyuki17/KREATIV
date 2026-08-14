@@ -22,6 +22,8 @@ export const gigUpdateSchema = gigCreateSchema.partial().extend({
 export const gigQuerySchema = z.object({
   q: z.string().max(200).optional(),
   category: z.enum(FREELANCER_CATEGORIES).optional(),
+  // Профайл дээрх "Services" таб тухайн хүний үйлчилгээг л татна.
+  freelancerUserId: z.string().uuid().optional(),
   sort: z.enum(['relevant', 'priceLow', 'priceHigh', 'newest']).default('relevant'),
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(50).default(12),

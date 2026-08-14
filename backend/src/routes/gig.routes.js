@@ -158,6 +158,7 @@ router.get('/gigs', async (req, res, next) => {
 
     const and = [{ active: true }];
     if (data.category) and.push({ category: data.category });
+    if (data.freelancerUserId) and.push({ freelancer: { userId: data.freelancerUserId } });
     if (data.q) {
       and.push({
         OR: [

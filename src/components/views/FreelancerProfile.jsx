@@ -5,6 +5,7 @@ import { useNav } from "../../nav.jsx";
 import { avatarSrc } from "../../lib/authApi.js";
 import { fetchFreelancerByUserId, fetchFreelancerByUsername, fetchFreelancerStats, followUser, unfollowUser, fetchMyFollowing } from "../../lib/talentApi.js";
 import { fetchReviewsFor } from "../../lib/contractApi.js";
+import { fetchGigs } from "../../lib/gigApi.js";
 
 // StandoutWork.jsx-ийн CAT_GRAD-тай ижил санаа — категори бүр өөрийн өнгөтэй
 // тул декоратив cover зурган оронд категориороо л ялгаатай харагдана.
@@ -89,6 +90,7 @@ export default function FreelancerProfile() {
   const [activeTab, setActiveTab] = useState("about");
   const [isFollowing, setIsFollowing] = useState(false);
   const [stats, setStats] = useState(null);
+  const [gigs, setGigs] = useState([]);
 
   // Хоёр замаар орж ирж болно: жагсаалтаас дарж (userId) эсвэл хуваалцсан
   // богино хаягаар (/#/u/bat-erdene → username).
@@ -109,6 +111,7 @@ export default function FreelancerProfile() {
         if (!uid) return;
         fetchReviewsFor(uid).then((r) => setReviews(r.reviews)).catch(() => {});
         fetchFreelancerStats(uid).then(setStats).catch(() => {});
+        fetchGigs({ freelancerUserId: uid, pageSize: 12 }).then((r) => setGigs(r.gigs || [])).catch(() => {});
         // Нэвтрээгүй хүнд дагах товч ажиллахгүй ч хуудас хэвийн харагдана.
         fetchMyFollowing()
           .then((res) => setIsFollowing((res.following || []).includes(uid)))
@@ -347,6 +350,10 @@ export default function FreelancerProfile() {
           <div className="flex gap-2 border-b border-white/8">
             {[
               { id: "about", label: "About" },
+              // Contra дээр service бол профайлын гол хэсэг — өмнө нь манай
+              // Gig-үүд зөвхөн Find Services дээр л харагддаг тул хүн
+              // профайл руу ороод юу захиалж болохыг огт мэдэхгүй байв.
+              ...(gigs.length ? [{ id: "services", label: `Services (${gigs.length})` }] : []),
               { id: "portfolio", label: `Portfolio${f.portfolio.length ? ` (${f.portfolio.length})` : ""}` },
               { id: "reviews", label: `Reviews${reviews.length ? ` (${reviews.length})` : ""}` },
             ].map((t) => (
@@ -382,6 +389,36 @@ export default function FreelancerProfile() {
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {activeTab === "services" && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {gigs.map((g) => (
+                  <button
+                    key={g.id}
+                    onClick={() => nav("gig", { id: g.id })}
+                    className="group overflow-hidden rounded-2xl border border-white/8 bg-white/[0.03] text-left transition-colors hover:border-brand/40"
+                  >
+                    {g.images?.[0] ? (
+                      <img src={avatarSrc(g.images[0])} alt="" className="h-40 w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
+                    ) : (
+                      <div className="flex h-40 w-full items-center justify-center bg-white/[0.02] text-white/15">
+                        <ImageIcon className="h-8 w-8" />
+                      </div>
+                    )}
+                    <div className="p-4">
+                      <p className="line-clamp-2 text-[13.5px] font-semibold leading-snug">{g.title}</p>
+                      <div className="mt-3 flex items-center justify-between border-t border-white/8 pt-3">
+                        <span className="text-[11px] text-white/40">{g.deliveryDays} өдөр</span>
+                        <span className="font-display text-[15px] font-bold text-mint">${g.price}</span>
+                      </div>
+                      {g.ordersCount > 0 && (
+                        <p className="mt-1.5 text-[10.5px] text-white/35">{g.ordersCount} захиалагдсан</p>
+                      )}
+                    </div>
+                  </button>
+                ))}
               </div>
             )}
 
