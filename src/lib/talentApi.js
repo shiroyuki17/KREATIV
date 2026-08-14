@@ -34,3 +34,14 @@ export function fetchFreelancerByUsername(username) {
 export function fetchFreelancerStats(userId) {
   return publicJson(`/profile/freelancer/${userId}/stats`);
 }
+
+// Профайлын үзэлт. Бүртгэх нь нэвтрэлт шаардахгүй (зочид ч үздэг), гэхдээ
+// токен байвал давхардлыг таслахад хэрэглэгдэнэ.
+export function recordProfileView(userId) {
+  return apiJson(`/profile/freelancer/${userId}/view`, { method: "POST" });
+}
+
+// Өөрийн профайлын үзэлтийн тайлан — зөвхөн эзэн нь харна.
+export function fetchMyProfileViews() {
+  return apiJson("/profile/freelancer/me/views");
+}

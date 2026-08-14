@@ -7,6 +7,7 @@ import {
   Wallet,
   Laptop,
   UserRoundPlus,
+  Eye,
 } from "lucide-react";
 import Magnet from "../fx/Magnet.jsx";
 import EmptyState from "../ui/EmptyState.jsx";
@@ -14,6 +15,7 @@ import { useNav } from "../../nav.jsx";
 import { getAccessToken, fetchFreelancerProfile } from "../../lib/authApi.js";
 import { fetchBalance, fetchTransactions } from "../../lib/paymentsApi.js";
 import { fetchJobs } from "../../lib/jobsApi.js";
+import { fetchMyProfileViews } from "../../lib/talentApi.js";
 
 const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -54,6 +56,7 @@ export default function FreelancerDashboard() {
   const [balance, setBalance] = useState(0);
   const [earnings, setEarnings] = useState([]);
   const [matches, setMatches] = useState([]);
+  const [views, setViews] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -65,6 +68,9 @@ export default function FreelancerDashboard() {
       fetchTransactions(token).catch(() => ({ transactions: [] })),
     ]).then(([p, b, t]) => {
       setProfile(p);
+      // Профайлаа хэн үзэж байгааг мэдэх нь дараагийн ажлаа хайхад
+      // хэрэгтэй дохио — өмнө нь ямар ч харагдац байгаагүй.
+      fetchMyProfileViews().then(setViews).catch(() => {});
       setBalance(b.balance);
       setEarnings(last6MonthsBuckets(t.transactions));
       if (p?.category) {
@@ -134,11 +140,12 @@ export default function FreelancerDashboard() {
           </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-4 lg:col-span-2">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:col-span-2">
           {[
             { label: "Jobs completed", value: profile?.jobsCompleted ?? 0, Icon: Briefcase, cls: "text-brand-soft border-brand/30 bg-brand/10" },
             { label: "Rating", value: profile?.ratingAvg ? profile.ratingAvg.toFixed(1) : "—", Icon: Star, cls: "text-amber-400 border-amber-400/30 bg-amber-400/10" },
             { label: "Live matches", value: matches.length, Icon: Sparkles, cls: "text-neon border-neon/30 bg-neon/10" },
+            { label: "Profile views (30d)", value: views ? views.thisMonth : "—", Icon: Eye, cls: "text-violet-soft border-violet/30 bg-violet/10" },
           ].map(({ label, value, Icon, cls }) => (
             <div key={label} className="glass rounded-2xl p-4">
               <span className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border ${cls}`}>

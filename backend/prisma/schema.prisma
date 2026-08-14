@@ -169,6 +169,23 @@ enum Availability {
   CLOSED // одоогоор ажил авахгүй
 }
 
+// Профайлын үзэлт. Мөр тутамд нэг үзэлт — ингэснээр "энэ сард хэд" гэх
+// мэт хугацааны тайланг тооцох боломжтой (нэг тоолуур бол хураангуй
+// боловч цаг хугацааны задаргаа алдагдана).
+//
+// Хэн үзсэнийг НЭРЭЭР хадгалахгүй: viewerId нь зөвхөн давхардлыг таслахад
+// хэрэглэгддэг, нэвтрээгүй зочинд null. IP/User-Agent огт хадгалахгүй.
+model ProfileView {
+  id        String   @id @default(uuid())
+  // Хэний профайл үзэгдсэн (User.id)
+  profileUserId String
+  // Үзсэн хүн — нэвтрээгүй бол null
+  viewerId  String?
+  createdAt DateTime @default(now())
+
+  @@index([profileUserId, createdAt])
+}
+
 model ClientProfile {
   id            String   @id @default(uuid())
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)

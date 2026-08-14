@@ -2,6 +2,7 @@ import { Router } from 'express';
 import prisma from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { usernameError } from '../lib/username.js';
+import { verifyAccessToken } from '../utils/jwt.js';
 import { uploadAvatar, uploadPortfolioImage } from '../middleware/upload.js';
 import { saveUpload, deleteUpload } from '../lib/storage.js';
 import {
@@ -276,6 +277,67 @@ async function publicFreelancerResponse(profile) {
     disputeRate: await freelancerDisputeRate(profile.id),
   };
 }
+
+// ── POST /profile/freelancer/:userId/view ── (үзэлт бүртгэх)
+//
+// Нэвтрэлт шаардахгүй: нийтэд нээлттэй профайлыг зочид ч үздэг тул тоолох
+// нь зөв. Гэхдээ:
+//   • өөрийнхөө профайлыг үзэхийг тоолохгүй — эс тэгвээс хүн өөрөө
+//     сэргээх бүрд тоо өсөж, тоо нь утгагүй болно;
+//   • нэг үзэгчийг 30 минутын дотор дахин тоолохгүй (refresh-ийн эсрэг);
+//   • IP/User-Agent огт хадгалахгүй.
+const VIEW_DEDUPE_MINUTES = 30;
+
+router.post('/freelancer/:userId/view', async (req, res, next) => {
+  try {
+    const profileUserId = req.params.userId;
+    // Токен байвал үзэгчийг мэдэж давхардлыг таслана; байхгүй бол зочин.
+    let viewerId = null;
+    const auth = req.headers.authorization;
+    if (auth?.startsWith('Bearer ')) {
+      try {
+        viewerId = verifyAccessToken(auth.slice(7)).sub;
+      } catch { /* хүчингүй токен — зочин гэж үзнэ */ }
+    }
+
+    if (viewerId && viewerId === profileUserId) {
+      return res.json({ counted: false, reason: 'own-profile' });
+    }
+
+    if (viewerId) {
+      const since = new Date(Date.now() - VIEW_DEDUPE_MINUTES * 60 * 1000);
+      const recent = await prisma.profileView.findFirst({
+        where: { profileUserId, viewerId, createdAt: { gt: since } },
+        select: { id: true },
+      });
+      if (recent) return res.json({ counted: false, reason: 'recent' });
+    }
+
+    await prisma.profileView.create({ data: { profileUserId, viewerId } });
+    res.json({ counted: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /profile/freelancer/me/views ── (өөрийн профайлын үзэлт)
+// Зөвхөн эзэн нь харна — бусдын үзэлтийн тоо нийтэд хамаагүй.
+router.get('/freelancer/me/views', requireAuth, async (req, res, next) => {
+  try {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const [total, thisMonth, last7Days] = await Promise.all([
+      prisma.profileView.count({ where: { profileUserId: req.user.id } }),
+      prisma.profileView.count({ where: { profileUserId: req.user.id, createdAt: { gte: monthStart } } }),
+      prisma.profileView.count({ where: { profileUserId: req.user.id, createdAt: { gte: weekStart } } }),
+    ]);
+    res.json({ total, thisMonth, last7Days });
+  } catch (err) {
+    next(err);
+  }
+});
 
 // ── GET /profile/freelancer/by-username/:username ──
 // Хуваалцах боломжтой хаяг (/#/u/bat-erdene) энэ замаар шийдэгдэнэ.

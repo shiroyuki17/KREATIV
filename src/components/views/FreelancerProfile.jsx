@@ -3,7 +3,7 @@ import { ArrowLeft, BadgeCheck, Star, MessageSquare, Sparkles, Loader2, AlertCir
 import Magnet from "../fx/Magnet.jsx";
 import { useNav } from "../../nav.jsx";
 import { avatarSrc } from "../../lib/authApi.js";
-import { fetchFreelancerByUserId, fetchFreelancerByUsername, fetchFreelancerStats, followUser, unfollowUser, fetchMyFollowing } from "../../lib/talentApi.js";
+import { fetchFreelancerByUserId, fetchFreelancerByUsername, fetchFreelancerStats, recordProfileView, followUser, unfollowUser, fetchMyFollowing } from "../../lib/talentApi.js";
 import { fetchReviewsFor } from "../../lib/contractApi.js";
 import { fetchGigs } from "../../lib/gigApi.js";
 
@@ -112,6 +112,9 @@ export default function FreelancerProfile() {
         fetchReviewsFor(uid).then((r) => setReviews(r.reviews)).catch(() => {});
         fetchFreelancerStats(uid).then(setStats).catch(() => {});
         fetchGigs({ freelancerUserId: uid, pageSize: 12 }).then((r) => setGigs(r.gigs || [])).catch(() => {});
+        // Үзэлт бүртгэнэ. Сервер өөрөө өөрийн профайл болон 30 минутын
+        // доторх давхардлыг таслах тул энд шалгах шаардлагагүй.
+        recordProfileView(uid).catch(() => {});
         // Нэвтрээгүй хүнд дагах товч ажиллахгүй ч хуудас хэвийн харагдана.
         fetchMyFollowing()
           .then((res) => setIsFollowing((res.following || []).includes(uid)))
