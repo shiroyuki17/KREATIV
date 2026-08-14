@@ -28,6 +28,7 @@ import aiRoutes from './routes/ai.routes.js';
 import taskRoutes from './routes/task.routes.js';
 import subscriptionRoutes from './routes/subscription.routes.js';
 import timeRoutes from './routes/time.routes.js';
+import shareRoutes from './routes/share.routes.js';
 import gigRoutes from './routes/gig.routes.js';
 import stripeWebhookRoutes from './routes/stripe-webhook.routes.js';
 
@@ -92,6 +93,9 @@ app.use('/', taskRoutes);
 app.use('/', subscriptionRoutes);
 app.use('/', timeRoutes);
 app.use('/', gigRoutes);
+// Crawler-т зориулсан хуваалцах карт (/u/:username) — meta уншаад SPA руу
+// дамжуулна. Дэлгэрэнгүйг share.routes.js-ээс.
+app.use('/', shareRoutes);
 
 // 404
 app.use((req, res) => {

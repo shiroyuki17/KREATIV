@@ -21,6 +21,10 @@ const envSchema = z.object({
   // Console-д бүртгэсэнтэй яг ижлээр Render дээр тохируулах ёстой.
   GOOGLE_REDIRECT_URI: z.string().optional(),
   FRONTEND_URL: z.string().default('http://localhost:5174'),
+  // Backend-ийн НИЙТИЙН хаяг. /u/:username хуваалцах картад аватарын
+  // абсолют URL угсрахад хэрэгтэй — Facebook зэрэг crawler харьцангуй
+  // хаягийг татаж чадахгүй.
+  PUBLIC_BACKEND_URL: z.string().optional(),
 
   // ── SMTP (заавал биш — тохируулаагүй бол Ethereal демо inbox ашиглана) ──
   SMTP_HOST: z.string().optional(),

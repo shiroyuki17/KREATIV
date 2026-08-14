@@ -20,6 +20,7 @@ import {
   avatarSrc as fileSrc,
   updateAccountName,
   updateUsername,
+  API_BASE,
   fetchSessions,
   revokeOtherSessions,
 } from "../../lib/authApi.js";
@@ -583,7 +584,11 @@ function UsernameField({ me, onSaved }) {
 
   useEffect(() => { setValue(me?.username || ""); }, [me?.username]);
 
-  const shareUrl = me?.username ? `${window.location.origin}/#/u/${me.username}` : "";
+  // Хуваалцахдаа BACKEND-ийн /u/… хаягийг өгнө: тэр зам нь Facebook/Messenger-т
+  // тухайн хүний нэр, тайлбар, зурагтай карт харуулаад бодит хүнийг SPA руу
+  // тэр дор нь дамжуулна. Frontend дээрх #/u/… хаяг нь ажилладаг ч hash нь
+  // серверт илгээгддэггүй тул карт нь үргэлж ерөнхий байна.
+  const shareUrl = me?.username ? `${API_BASE}/u/${me.username}` : "";
 
   const save = async () => {
     setBusy(true); setError(""); setSaved(false);
@@ -611,7 +616,7 @@ function UsernameField({ me, onSaved }) {
         Профайлын хаяг
       </span>
       <div className="mt-2 flex flex-wrap items-center gap-2">
-        <span className="text-[13px] text-white/35">/#/u/</span>
+        <span className="text-[13px] text-white/35">/u/</span>
         <input
           value={value}
           onChange={(e) => { setValue(e.target.value); setSaved(false); }}
