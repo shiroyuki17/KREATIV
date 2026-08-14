@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useT } from "../../i18n.jsx";
 import { Play, Square, Loader2, AlertCircle, Trash2 } from "lucide-react";
 import {
   fetchTimeEntries, startTimer, stopTimer, deleteTimeEntry,
@@ -29,6 +30,7 @@ function shortDate(iso) {
 }
 
 export default function TimeTracker({ contractId }) {
+  const t = useT();
   const [data, setData] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -102,7 +104,7 @@ export default function TimeTracker({ contractId }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-widest text-white/40">
-            Time logged
+            {t("tt.timeLogged")}
           </p>
           <p className="mt-1.5 font-display text-3xl font-bold tabular-nums">
             {data.running ? fmt(total) : fmtHours(total)}
@@ -110,7 +112,7 @@ export default function TimeTracker({ contractId }) {
           {data.running && (
             <p className="mt-1 inline-flex items-center gap-1.5 text-[11px] font-medium text-mint">
               <span className="h-1.5 w-1.5 animate-pulse-soft rounded-full bg-mint" />
-              Running
+              {t("tt.running")}
             </p>
           )}
         </div>
@@ -119,7 +121,7 @@ export default function TimeTracker({ contractId }) {
           <button
             onClick={toggle}
             disabled={busy}
-            aria-label={data.running ? "Stop timer" : "Start timer"}
+            aria-label={data.running ? t("tt.stopTimer") : t("tt.startTimer")}
             className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-semibold transition-all disabled:opacity-50 ${
               data.running
                 ? "border border-white/15 text-white/80 hover:border-red-400/40 hover:text-red-300"
@@ -133,7 +135,7 @@ export default function TimeTracker({ contractId }) {
             ) : (
               <Play className="h-3.5 w-3.5" />
             )}
-            {data.running ? "Stop" : "Start"}
+            {data.running ? t("tt.stop") : t("tt.start")}
           </button>
         )}
       </div>
@@ -147,8 +149,8 @@ export default function TimeTracker({ contractId }) {
       {data.entries.length === 0 ? (
         <p className="mt-4 text-[12.5px] text-white/40">
           {data.canTrack
-            ? "No time logged yet — press Start when you begin working."
-            : "The freelancer hasn't logged any time yet."}
+            ? t("tt.noTimeSelf")
+            : t("tt.noTimeOther")}
         </p>
       ) : (
         <ul className="mt-4 space-y-1.5 border-t border-white/8 pt-3">
@@ -157,12 +159,12 @@ export default function TimeTracker({ contractId }) {
               <span className="text-white/45">{shortDate(e.startedAt)}</span>
               <span className="flex-1 truncate text-white/60">{e.note || ""}</span>
               <span className="tabular-nums font-medium text-white/80">
-                {e.running ? "running" : fmtHours(e.seconds)}
+                {e.running ? t("tt.running") : fmtHours(e.seconds)}
               </span>
               {data.canTrack && !e.running && (
                 <button
                   onClick={() => removeEntry(e.id)}
-                  aria-label="Delete entry"
+                  aria-label={t("tt.deleteEntry")}
                   className="text-white/25 opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100"
                 >
                   <Trash2 className="h-3.5 w-3.5" />

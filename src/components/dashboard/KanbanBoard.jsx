@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
+import { useT } from "../../i18n.jsx";
 import { Plus, X, Loader2, AlertCircle } from "lucide-react";
 import { fetchTasks, createTask, updateTask, deleteTask } from "../../lib/taskApi.js";
 import { getAccessToken } from "../../lib/authApi.js";
 
 const COLUMNS = [
-  { id: "TODO", label: "To-Do", dot: "bg-white/30" },
-  { id: "IN_PROGRESS", label: "In Progress", dot: "bg-neon" },
-  { id: "IN_REVIEW", label: "In Review", dot: "bg-amber-400" },
-  { id: "DONE", label: "Done", dot: "bg-mint" },
+  { id: "TODO", labelKey: "kb.todo", dot: "bg-white/30" },
+  { id: "IN_PROGRESS", labelKey: "kb.inProgress", dot: "bg-neon" },
+  { id: "IN_REVIEW", labelKey: "kb.inReview", dot: "bg-amber-400" },
+  { id: "DONE", labelKey: "kb.done", dot: "bg-mint" },
 ];
 
 // PRD FR-3.1: гэрээ бүрийн Kanban ажлын самбар. Native HTML5 drag-and-drop
@@ -15,6 +16,7 @@ const COLUMNS = [
 // эхлээд UI-г оптимистоор шинэчилж, дараа нь backend рүү PATCH явуулна;
 // алдаа гарвал бодит өгөгдлөөр дахин sync хийнэ.
 export default function KanbanBoard({ contractId }) {
+  const t = useT();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -101,24 +103,24 @@ export default function KanbanBoard({ contractId }) {
             <div className="flex items-center justify-between px-1">
               <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-white/50">
                 <span className={`h-1.5 w-1.5 rounded-full ${col.dot}`} />
-                {col.label}
+                {t(col.labelKey)}
               </span>
               <span className="text-[10.5px] text-white/30">{byColumn(col.id).length}</span>
             </div>
 
             <div className="mt-2.5 min-h-[40px] space-y-2">
-              {byColumn(col.id).map((t) => (
+              {byColumn(col.id).map((task) => (
                 <div
-                  key={t.id}
+                  key={task.id}
                   draggable
-                  onDragStart={() => setDragId(t.id)}
+                  onDragStart={() => setDragId(task.id)}
                   className="group cursor-grab rounded-lg border border-white/8 bg-[#0d1512] p-2.5 text-[12.5px] leading-snug text-white/80 transition-colors hover:border-white/20 active:cursor-grabbing"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <span>{t.title}</span>
+                    <span>{task.title}</span>
                     <button
-                      onClick={() => removeTask(t.id)}
-                      aria-label="Delete task"
+                      onClick={() => removeTask(task.id)}
+                      aria-label={t("kb.deleteTask")}
                       className="shrink-0 text-white/20 opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100"
                     >
                       <X className="h-3.5 w-3.5" />
@@ -141,7 +143,7 @@ export default function KanbanBoard({ contractId }) {
                   }
                 }}
                 onBlur={() => addTask(col.id)}
-                placeholder="Ажлын нэр…"
+                placeholder={t("kb.taskPlaceholder")}
                 className="mt-2 w-full rounded-lg border border-brand/40 bg-white/[0.04] px-2.5 py-2 text-[12.5px] outline-none placeholder:text-white/30"
               />
             ) : (
@@ -149,7 +151,7 @@ export default function KanbanBoard({ contractId }) {
                 onClick={() => setDraftFor(col.id)}
                 className="mt-2 flex w-full items-center gap-1.5 rounded-lg px-2.5 py-2 text-[11.5px] font-medium text-white/35 transition-colors hover:bg-white/5 hover:text-white/70"
               >
-                <Plus className="h-3.5 w-3.5" /> Add card
+                <Plus className="h-3.5 w-3.5" /> {t("kb.addCard")}
               </button>
             )}
           </div>
