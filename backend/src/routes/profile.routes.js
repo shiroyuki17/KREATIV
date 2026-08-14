@@ -291,6 +291,59 @@ router.get('/freelancer/by-username/:username', async (req, res, next) => {
   }
 });
 
+// ── GET /profile/freelancer/:userId/stats ──
+//
+// "Escrow-оор баталгаажсан" статистик. Contra/Fiverr дээрх ижил төстэй
+// тоонууд нь хэрэглэгчийн ӨӨРИЙН бичсэн текст байдаг; эдгээр нь бүгд
+// гүйлгээ/гэрээний бодит мөрөөс тоологддог тул хуурамчлах боломжгүй.
+//
+// ЗӨВХӨН хоёрдмол утгагүй хэмжигдэхүүнийг л оруулав. "Цагтаа хүлээлгэн
+// өгсөн %" зэргийг зориуд ОРХИВ: системд milestone тус бүрийн эцсийн
+// хугацаа гэж байхгүй (autoApproveAt нь хүлээлгэн өгсний ДАРАА тавигддаг),
+// тиймээс түүнийг тооцвол нарийвчлалтай мэт харагдах ч бодитоор
+// таамаглал болно.
+router.get('/freelancer/:userId/stats', async (req, res, next) => {
+  try {
+    const profile = await prisma.freelancerProfile.findUnique({
+      where: { userId: req.params.userId },
+      select: { id: true, userId: true },
+    });
+    if (!profile) return res.status(404).json({ error: 'Олдсонгүй' });
+
+    const [released, contracts, approvedMilestones] = await Promise.all([
+      // Escrow-оос энэ хүн рүү БОДИТООР гарсан мөнгө (комисс хассаны дараа).
+      prisma.transaction.aggregate({
+        where: { userId: profile.userId, kind: 'ESCROW_RELEASE', status: 'COMPLETED' },
+        _sum: { amount: true },
+      }),
+      prisma.contract.findMany({
+        where: { freelancerId: profile.id },
+        select: { clientId: true, status: true },
+      }),
+      prisma.milestone.count({
+        where: { contract: { freelancerId: profile.id }, status: 'APPROVED' },
+      }),
+    ]);
+
+    // Нэгээс олон удаа ажил өгсөн захиалагчийн тоо — итгэлийн хамгийн
+    // хүчтэй дохионуудын нэг бөгөөд зохиох боломжгүй.
+    const perClient = new Map();
+    for (const c of contracts) perClient.set(c.clientId, (perClient.get(c.clientId) || 0) + 1);
+    const repeatClients = [...perClient.values()].filter((n) => n > 1).length;
+
+    res.json({
+      escrowPaidOut: released._sum.amount || 0,
+      contractsTotal: contracts.length,
+      contractsCompleted: contracts.filter((c) => c.status === 'COMPLETED').length,
+      milestonesApproved: approvedMilestones,
+      clientsTotal: perClient.size,
+      repeatClients,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get('/freelancer/:userId', async (req, res, next) => {
   try {
     const profile = await prisma.freelancerProfile.findUnique({

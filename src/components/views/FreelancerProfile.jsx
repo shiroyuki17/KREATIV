@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, BadgeCheck, Star, MessageSquare, Sparkles, Loader2, AlertCircle, Pencil, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Star, MessageSquare, Sparkles, Loader2, AlertCircle, Pencil, Image as ImageIcon, ShieldCheck } from "lucide-react";
 import Magnet from "../fx/Magnet.jsx";
 import { useNav } from "../../nav.jsx";
 import { avatarSrc } from "../../lib/authApi.js";
-import { fetchFreelancerByUserId, fetchFreelancerByUsername, followUser, unfollowUser, fetchMyFollowing } from "../../lib/talentApi.js";
+import { fetchFreelancerByUserId, fetchFreelancerByUsername, fetchFreelancerStats, followUser, unfollowUser, fetchMyFollowing } from "../../lib/talentApi.js";
 import { fetchReviewsFor } from "../../lib/contractApi.js";
 
 // StandoutWork.jsx-ийн CAT_GRAD-тай ижил санаа — категори бүр өөрийн өнгөтэй
@@ -19,6 +19,15 @@ const CAT_COVER = {
 
 function initialsOf(name) {
   return (name || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+}
+
+function StatTile({ label, value }) {
+  return (
+    <div className="rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2.5">
+      <p className="font-display text-[15px] font-bold text-white">{value}</p>
+      <p className="mt-0.5 text-[10px] leading-tight text-white/40">{label}</p>
+    </div>
+  );
 }
 
 function rateLabel(priceMin, priceMax) {
@@ -61,6 +70,7 @@ export default function FreelancerProfile() {
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("about");
   const [isFollowing, setIsFollowing] = useState(false);
+  const [stats, setStats] = useState(null);
 
   // Хоёр замаар орж ирж болно: жагсаалтаас дарж (userId) эсвэл хуваалцсан
   // богино хаягаар (/#/u/bat-erdene → username).
@@ -80,6 +90,7 @@ export default function FreelancerProfile() {
         const uid = profile?.userId;
         if (!uid) return;
         fetchReviewsFor(uid).then((r) => setReviews(r.reviews)).catch(() => {});
+        fetchFreelancerStats(uid).then(setStats).catch(() => {});
         // Нэвтрээгүй хүнд дагах товч ажиллахгүй ч хуудас хэвийн харагдана.
         fetchMyFollowing()
           .then((res) => setIsFollowing((res.following || []).includes(uid)))
@@ -285,6 +296,30 @@ export default function FreelancerProfile() {
                 <p className="flex justify-between"><span>Dispute rate</span><b className={f.disputeRate > 20 ? "text-red-400" : "text-amber-300"}>{f.disputeRate}%</b></p>
               )}
             </div>
+
+            {/* Escrow-оор баталгаажсан тоонууд. Contra/Fiverr дээр ижил
+                төстэй тоог хүн ӨӨРӨӨ бичдэг; эдгээр нь гүйлгээ, гэрээний
+                бодит мөрөөс тоологддог тул зохиох боломжгүй.
+                Бүх тоо 0 бол огт харуулахгүй — шинэ хүнд тэгийн эгнээ нь
+                итгэл нэмэхгүй, харин ч эсрэгээрээ. */}
+            {stats && (stats.escrowPaidOut > 0 || stats.contractsTotal > 0) && (
+              <div className="border-t border-white/8 px-7 pb-7 pt-5">
+                <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-mint">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  Escrow-оор баталгаажсан
+                </p>
+                <div className="mt-3 grid grid-cols-2 gap-2.5">
+                  <StatTile label="Escrow-оор дамжсан" value={`$${stats.escrowPaidOut.toLocaleString("en-US")}`} />
+                  <StatTile label="Батлагдсан milestone" value={stats.milestonesApproved} />
+                  <StatTile label="Захиалагч" value={stats.clientsTotal} />
+                  <StatTile label="Давтан захиалагч" value={stats.repeatClients} />
+                </div>
+                <p className="mt-2.5 text-[10.5px] leading-relaxed text-white/30">
+                  Эдгээр тоог системд бүртгэгдсэн гэрээ, escrow гүйлгээнээс шууд
+                  тооцсон — гараар оруулах боломжгүй.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 

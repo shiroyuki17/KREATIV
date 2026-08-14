@@ -29,3 +29,8 @@ export const fetchMyFollowing = () => apiJson("/profile/follows/mine");
 export function fetchFreelancerByUsername(username) {
   return publicJson(`/profile/freelancer/by-username/${encodeURIComponent(username)}`);
 }
+
+// "Escrow-оор баталгаажсан" статистик — бүгд гүйлгээ/гэрээнээс тоологдоно.
+export function fetchFreelancerStats(userId) {
+  return publicJson(`/profile/freelancer/${userId}/stats`);
+}
