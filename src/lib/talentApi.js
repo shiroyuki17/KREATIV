@@ -24,3 +24,8 @@ export const unfollowUser = (userId) =>
   apiJson(`/profile/follows/${userId}`, { method: "DELETE" });
 
 export const fetchMyFollowing = () => apiJson("/profile/follows/mine");
+
+// Хуваалцах хаягаар (/#/u/bat-erdene) профайл татах.
+export function fetchFreelancerByUsername(username) {
+  return publicJson(`/profile/freelancer/by-username/${encodeURIComponent(username)}`);
+}

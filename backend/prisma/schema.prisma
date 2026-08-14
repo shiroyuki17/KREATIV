@@ -33,6 +33,11 @@ model User {
   passwordResetExpiresAt DateTime?
   phoneVerifiedAt   DateTime?
 
+  // Хуваалцах боломжтой профайлын хаяг: /#/u/bat-erdene
+  // Бүртгүүлэхэд нэрнээс автоматаар үүснэ, Settings-ээс өөрчилж болно.
+  // Хуучин мөрүүдэд null байж болох тул optional.
+  username String? @unique
+
   // Мэдэгдлийн тохиргоо. Settings дээрх toggle-ууд өмнө нь зөвхөн локал
   // useState байсан тул refresh хийхэд л сэргэдэг, ямар ч нөлөө байгаагүй.
   // Одоо эдгээрийг createNotification өөрөө хүндэтгэнэ.

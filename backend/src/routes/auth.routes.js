@@ -11,6 +11,7 @@ import {
   hashToken,
 } from '../utils/jwt.js';
 import { requireAuth } from '../middleware/auth.js';
+import { generateUniqueUsername } from '../lib/username.js';
 import { authLimiter } from '../middleware/rateLimit.js';
 import {
   registerSchema,
@@ -50,6 +51,7 @@ function publicUser(user) {
     id: user.id,
     email: user.email,
     name: user.name,
+    username: user.username,
     phone: user.phone,
     phoneVerifiedAt: user.phoneVerifiedAt,
     avatarUrl: user.avatarUrl,
@@ -82,6 +84,9 @@ router.post('/register', authLimiter, async (req, res, next) => {
         passwordHash: await hashPassword(data.password),
         name: data.name,
         phone: data.phone,
+        // Хуваалцах хаягийг шууд үүсгэнэ — эс тэгвээс хэрэглэгч Settings
+        // рүү орж гараар үүсгэх хүртэл профайлаа линкээр хуваалцаж чадахгүй.
+        username: await generateUniqueUsername(data.name || data.email),
       },
     });
 

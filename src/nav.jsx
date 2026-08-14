@@ -51,13 +51,74 @@ function pageFromHash() {
   const h = window.location.hash || "";
   if (h.startsWith("#/")) {
     const path = h.slice(2).split("?")[0];
+    // Хуваалцах богино хаяг: /#/u/bat-erdene → профайлын хуудас.
+    if (path.startsWith("u/")) return "profile";
     return path || "home";
   }
   return "home";
 }
 
+/** /#/u/<username> хэлбэрээс хэрэглэгчийн хаягийг салгана. */
+function usernameFromHash() {
+  const h = window.location.hash || "";
+  if (!h.startsWith("#/u/")) return null;
+  const seg = h.slice(4).split("?")[0].split("/")[0];
+  return seg ? decodeURIComponent(seg) : null;
+}
+
+// Хуудсын params-ыг hash-ийн query хэсэгт бичнэ.
+//
+// Өмнө нь params нь ЗӨВХӨН санах ойд байсан тул `#/profile` гэсэн линк
+// хуваалцахад хүлээн авагч "Профайл сонгогдоогүй" гэж хардаг байв — мөн
+// back/forward дарахад params алдагддаг байлаа.
+//
+// Токенууд (auth-callback-ийн accessToken) нь энд ХАМААРАХГҮЙ: тэдгээрийг
+// AuthCallback өөрөө window.location.hash-аас шууд уншдаг бөгөөд бид
+// хэзээ ч nav()-ээр дамжуулдаггүй.
+// URL-д бичих ЦАГААН ЖАГСААЛТ. Заримдаа nav()-д бүтэн обьект дамжуулдаг
+// (`nav("project", job)`) тул бүх талбарыг бичвэл гарчиг, тайлбар зэрэг
+// бүхэлдээ хаяг руу цутгаж, аварга URL үүснэ. Зөвхөн таних/шүүх утгыг
+// үлдээвэл хаяг цэвэрхэн бөгөөд хуваалцахад хангалттай.
+const URL_PARAM_KEYS = [
+  "id",
+  "userId",
+  "username",
+  "category",
+  "query",
+  "withUserId",
+  "highlightContractId",
+  "role",
+  "oauthError",
+];
+
+function serializeParams(params) {
+  if (!params) return "";
+  const usp = new URLSearchParams();
+  for (const k of URL_PARAM_KEYS) {
+    const v = params[k];
+    if (v == null || v === "" || typeof v === "object") continue;
+    usp.set(k, String(v));
+  }
+  const s = usp.toString();
+  return s ? `?${s}` : "";
+}
+
+function paramsFromHash() {
+  const out = {};
+  const uname = usernameFromHash();
+  if (uname) out.username = uname;
+
+  const q = (window.location.hash || "").split("?")[1];
+  if (q) {
+    for (const [k, v] of new URLSearchParams(q)) {
+      if (URL_PARAM_KEYS.includes(k)) out[k] = v;
+    }
+  }
+  return Object.keys(out).length ? out : null;
+}
+
 export function NavProvider({ children }) {
-  const [route, setRoute] = useState(() => ({ page: pageFromHash(), params: null }));
+  const [route, setRoute] = useState(() => ({ page: pageFromHash(), params: paramsFromHash() }));
 
   // Real logged-in user (hydrated from the JWT access token, not a fake
   // localStorage flag) — null until the initial /auth/me call resolves, so
@@ -108,7 +169,15 @@ export function NavProvider({ children }) {
 
   const nav = (page, params = null) => {
     setRoute({ page, params });
-    const target = page === "home" ? "#/" : `#/${page}`;
+    // params-ыг URL-д бичнэ — ингэснээр линк хуваалцах, дахин ачаалах,
+    // back/forward бүгд ажиллана. Профайлыг хаягаар нь дуудсан бол
+    // /#/u/bat-erdene гэсэн богино, уншигдахуйц хэлбэрээр бичнэ.
+    const target =
+      page === "home"
+        ? "#/"
+        : page === "profile" && params?.username
+        ? `#/u/${encodeURIComponent(params.username)}`
+        : `#/${page}${serializeParams(params)}`;
     if (window.location.hash !== target) {
       // pushing the hash adds a history entry → browser back/forward works
       window.location.hash = target;
@@ -151,9 +220,17 @@ export function NavProvider({ children }) {
   useEffect(() => {
     const onHash = () => {
       const p = pageFromHash();
-      // Keep current params when the page didn't actually change (this fires
-      // right after nav() sets the hash); clear them on real back/forward.
-      setRoute((prev) => (prev.page === p ? prev : { page: p, params: null }));
+      const hashParams = paramsFromHash();
+      setRoute((prev) => {
+        // nav() өөрөө hash-ыг тавьсны дараа энэ эвент шууд ажилладаг —
+        // тэр үед санах ойд байгаа params (URL-д багтаагүй обьект гэх мэт)
+        // илүү бүрэн тул хэвээр үлдээнэ.
+        if (prev.page === p && !hashParams) return prev;
+        // Back/forward: өмнө нь энд params-ыг УСТГАДАГ байсан тул буцахад
+        // профайл/зар "сонгогдоогүй" болж хоосон гардаг байв. Одоо URL-аас
+        // сэргээнэ.
+        return { page: p, params: hashParams };
+      });
     };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);

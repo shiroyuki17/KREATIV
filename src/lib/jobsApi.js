@@ -11,6 +11,11 @@ export function fetchJobs(params = {}) {
   return publicJson(`/jobs${query ? `?${query}` : ""}`);
 }
 
+// Ганц зар — хуваалцсан линкээр орж ирэхэд (URL-д зөвхөн id байна) хэрэгтэй.
+export function fetchJob(id) {
+  return publicJson(`/jobs/${id}`);
+}
+
 export function createJob(data) {
   return apiJson("/jobs", { method: "POST", body: data });
 }

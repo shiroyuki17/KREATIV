@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import prisma from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
+import { usernameError } from '../lib/username.js';
 import { uploadAvatar, uploadPortfolioImage } from '../middleware/upload.js';
 import { saveUpload, deleteUpload } from '../lib/storage.js';
 import {
@@ -92,7 +93,30 @@ router.patch('/account', requireAuth, async (req, res, next) => {
     const user = await prisma.user.update({
       where: { id: req.user.id },
       data: { name },
-      select: { id: true, email: true, name: true, avatarUrl: true, role: true },
+      select: { id: true, email: true, name: true, username: true, avatarUrl: true, role: true },
+    });
+    res.json(user);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── PATCH /profile/username ── (хуваалцах хаягаа солих)
+router.patch('/username', requireAuth, async (req, res, next) => {
+  try {
+    const username = String(req.body?.username || '').trim().toLowerCase();
+    const invalid = usernameError(username);
+    if (invalid) return res.status(400).json({ error: invalid });
+
+    const taken = await prisma.user.findUnique({ where: { username }, select: { id: true } });
+    if (taken && taken.id !== req.user.id) {
+      return res.status(409).json({ error: 'Энэ хаяг аль хэдийн эзэмшигдсэн байна' });
+    }
+
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data: { username },
+      select: { id: true, email: true, name: true, username: true, avatarUrl: true, role: true },
     });
     res.json(user);
   } catch (err) {
@@ -227,25 +251,54 @@ router.get('/freelancer/me', requireAuth, async (req, res, next) => {
 });
 
 // ── GET /profile/freelancer/:userId ── (нийтэд харагдах)
+const PUBLIC_PROFILE_INCLUDE = {
+  portfolio: true,
+  user: { select: { id: true, name: true, avatarUrl: true, username: true } },
+};
+
+async function publicFreelancerResponse(profile) {
+  // verificationEvidence/verificationNote нь хувийн (эзэн+админ л харна) —
+  // нийтэд харагдах endpoint-оос заавал хасна, зөвхөн эцсийн "verified" bool-ыг үлдээнэ.
+  const { verificationEvidence, verificationNote, ...publicProfile } = profile;
+  return {
+    ...publicProfile,
+    verified: profile.verificationStatus === 'VERIFIED',
+    completeness: freelancerCompleteness(profile),
+    disputeRate: await freelancerDisputeRate(profile.id),
+  };
+}
+
+// ── GET /profile/freelancer/by-username/:username ──
+// Хуваалцах боломжтой хаяг (/#/u/bat-erdene) энэ замаар шийдэгдэнэ.
+// Замын сегментийн тоо ялгаатай тул доорх `/freelancer/:userId` үүнийг
+// таслан авахгүй.
+router.get('/freelancer/by-username/:username', async (req, res, next) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { username: String(req.params.username).toLowerCase() },
+      select: { id: true },
+    });
+    if (!user) return res.status(404).json({ error: 'Олдсонгүй' });
+
+    const profile = await prisma.freelancerProfile.findUnique({
+      where: { userId: user.id },
+      include: PUBLIC_PROFILE_INCLUDE,
+    });
+    if (!profile) return res.status(404).json({ error: 'Олдсонгүй' });
+    res.json(await publicFreelancerResponse(profile));
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get('/freelancer/:userId', async (req, res, next) => {
   try {
     const profile = await prisma.freelancerProfile.findUnique({
       where: { userId: req.params.userId },
-      include: {
-        portfolio: true,
-        user: { select: { id: true, name: true, avatarUrl: true } },
-      },
+      include: PUBLIC_PROFILE_INCLUDE,
     });
     if (!profile) return res.status(404).json({ error: 'Олдсонгүй' });
-    // verificationEvidence/verificationNote нь хувийн (эзэн+админ л харна) —
-    // нийтэд харагдах endpoint-оос заавал хасна, зөвхөн эцсийн "verified" bool-ыг үлдээнэ.
-    const { verificationEvidence, verificationNote, ...publicProfile } = profile;
-    res.json({
-      ...publicProfile,
-      verified: profile.verificationStatus === 'VERIFIED',
-      completeness: freelancerCompleteness(profile),
-      disputeRate: await freelancerDisputeRate(profile.id),
-    });
+    res.json(await publicFreelancerResponse(profile));
   } catch (err) {
     next(err);
   }

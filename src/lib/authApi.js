@@ -231,3 +231,7 @@ export const revokeOtherSessions = () =>
 /** Нэрээ солих — Settings → Profile. */
 export const updateAccountName = (name) =>
   apiJson("/profile/account", { method: "PATCH", body: { name } });
+
+/** Хуваалцах хаягаа солих — Settings → Profile. */
+export const updateUsername = (username) =>
+  apiJson("/profile/username", { method: "PATCH", body: { username } });

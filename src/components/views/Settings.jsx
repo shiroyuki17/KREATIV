@@ -19,6 +19,7 @@ import {
   deletePortfolioItem,
   avatarSrc as fileSrc,
   updateAccountName,
+  updateUsername,
   fetchSessions,
   revokeOtherSessions,
 } from "../../lib/authApi.js";
@@ -548,6 +549,79 @@ function GigManager() {
   );
 }
 
+// Хуваалцах боломжтой профайлын хаяг. Бүртгүүлэхэд нэрнээс автоматаар
+// үүсдэг тул энд зөвхөн засварлана.
+function UsernameField({ me, onSaved }) {
+  const [value, setValue] = useState(me?.username || "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [saved, setSaved] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => { setValue(me?.username || ""); }, [me?.username]);
+
+  const shareUrl = me?.username ? `${window.location.origin}/#/u/${me.username}` : "";
+
+  const save = async () => {
+    setBusy(true); setError(""); setSaved(false);
+    try {
+      onSaved(await updateUsername(value.trim().toLowerCase()));
+      setSaved(true);
+    } catch (err) {
+      setError(Array.isArray(err.message) ? err.message.join(", ") : err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch { /* clipboard хориотой орчин — товч зүгээр л юу ч хийхгүй */ }
+  };
+
+  return (
+    <div className="mb-5 rounded-xl border border-white/8 bg-white/[0.03] p-4">
+      <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
+        Профайлын хаяг
+      </span>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <span className="text-[13px] text-white/35">/#/u/</span>
+        <input
+          value={value}
+          onChange={(e) => { setValue(e.target.value); setSaved(false); }}
+          placeholder="bat-erdene"
+          className="w-52 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] outline-none transition-colors placeholder:text-white/25 focus:border-brand/50"
+        />
+        <button
+          onClick={save}
+          disabled={busy || !value.trim() || value.trim().toLowerCase() === me?.username}
+          className="rounded-lg bg-brand px-3.5 py-2 text-[12px] font-bold text-fg-1 glow-brand disabled:opacity-40"
+        >
+          {busy ? "Хадгалж байна…" : "Хадгалах"}
+        </button>
+        {saved && <span className="text-[12px] font-semibold text-mint">Хадгаллаа</span>}
+      </div>
+      {error && <p className="mt-2 text-[11.5px] font-medium text-red-400">{error}</p>}
+      {shareUrl && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <code className="min-w-0 flex-1 truncate rounded-lg bg-white/[0.04] px-2.5 py-1.5 text-[11.5px] text-white/55">
+            {shareUrl}
+          </code>
+          <button
+            onClick={copy}
+            className="rounded-lg border border-white/12 px-3 py-1.5 text-[11.5px] font-semibold text-white/70 transition-colors hover:border-white/25 hover:text-white"
+          >
+            {copied ? "Хуулагдлаа" : "Хуулах"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Field({ label, disabled, ...props }) {
   return (
     <label className="block">
@@ -900,6 +974,8 @@ export default function Settings() {
                 )}
               </div>
             </div>
+            <UsernameField me={me} onSaved={(u) => { setMe(u); setUser((p) => (p ? { ...p, username: u.username } : p)); }} />
+
             <div className="grid gap-5 sm:grid-cols-2">
               <Field
                 label="Full name"

@@ -3,7 +3,7 @@ import { ArrowLeft, BadgeCheck, Star, MessageSquare, Sparkles, Loader2, AlertCir
 import Magnet from "../fx/Magnet.jsx";
 import { useNav } from "../../nav.jsx";
 import { avatarSrc } from "../../lib/authApi.js";
-import { fetchFreelancerByUserId, followUser, unfollowUser, fetchMyFollowing } from "../../lib/talentApi.js";
+import { fetchFreelancerByUserId, fetchFreelancerByUsername, followUser, unfollowUser, fetchMyFollowing } from "../../lib/talentApi.js";
 import { fetchReviewsFor } from "../../lib/contractApi.js";
 
 // StandoutWork.jsx-ийн CAT_GRAD-тай ижил санаа — категори бүр өөрийн өнгөтэй
@@ -57,33 +57,46 @@ export default function FreelancerProfile() {
   const { params, nav, user } = useNav();
   const [real, setReal] = useState(null);
   const [reviews, setReviews] = useState([]);
-  const [loading, setLoading] = useState(!!params?.userId);
+  const [loading, setLoading] = useState(!!(params?.userId || params?.username));
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("about");
   const [isFollowing, setIsFollowing] = useState(false);
 
+  // Хоёр замаар орж ирж болно: жагсаалтаас дарж (userId) эсвэл хуваалцсан
+  // богино хаягаар (/#/u/bat-erdene → username).
   useEffect(() => {
-    if (!params?.userId) return;
+    if (!params?.userId && !params?.username) return;
     setLoading(true);
     setError("");
-    fetchFreelancerByUserId(params.userId)
-      .then(setReal)
+    const load = params.username
+      ? fetchFreelancerByUsername(params.username)
+      : fetchFreelancerByUserId(params.userId);
+
+    load
+      .then((profile) => {
+        setReal(profile);
+        // Дагасан эсэх/сэтгэгдлийг ЗӨВХӨН профайл ирсний дараа татна —
+        // username-ээр орж ирэхэд userId нь эхэндээ мэдэгдэхгүй.
+        const uid = profile?.userId;
+        if (!uid) return;
+        fetchReviewsFor(uid).then((r) => setReviews(r.reviews)).catch(() => {});
+        // Нэвтрээгүй хүнд дагах товч ажиллахгүй ч хуудас хэвийн харагдана.
+        fetchMyFollowing()
+          .then((res) => setIsFollowing((res.following || []).includes(uid)))
+          .catch(() => {});
+      })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
-    fetchReviewsFor(params.userId).then((r) => setReviews(r.reviews)).catch(() => {});
-    // Нэвтрээгүй хүнд дагах товч ажиллахгүй ч хуудас хэвийн харагдана.
-    fetchMyFollowing()
-      .then((res) => setIsFollowing((res.following || []).includes(params.userId)))
-      .catch(() => {});
-  }, [params?.userId]);
+  }, [params?.userId, params?.username]);
 
   // Optimistic — сервер унавал төлөвийг эргүүлж буцаана.
   async function toggleFollow() {
     const was = isFollowing;
     setIsFollowing(!was);
     try {
-      if (was) await unfollowUser(params.userId);
-      else await followUser(params.userId);
+      const uid = real?.userId || params.userId;
+      if (was) await unfollowUser(uid);
+      else await followUser(uid);
     } catch (err) {
       setIsFollowing(was);
       setError(err.message);
@@ -94,7 +107,7 @@ export default function FreelancerProfile() {
   // StandoutWork, dashboard, mobile tab). Өмнө нь userId байхгүй үед mock
   // хүн (TALENT[1]) харуулдаг байсан — DB-д байхгүй хүний профайл, зохиомол
   // "112 ажил, 98% цагтаа, 64% давтан захиалагч" гэсэн тоонуудтай.
-  if (!params?.userId) {
+  if (!params?.userId && !params?.username) {
     return (
       <div className="mx-auto max-w-xl px-6 pb-24 pt-20 text-center">
         <AlertCircle className="mx-auto h-8 w-8 text-white/30" />
@@ -118,7 +131,7 @@ export default function FreelancerProfile() {
       // Client-only акаунт өөрийн "View profile" дарахад freelancer профайл
       // байхгүй тул 404 ирдэг — "олдсонгүй" гэсэн ерөнхий алдаа биш, яг юу
       // болсныг тайлбарлаж Settings рүү чиглүүлнэ.
-      const isOwn = user?.id === params.userId;
+      const isOwn = !!params.userId && user?.id === params.userId;
       return (
         <div className="mx-auto max-w-xl px-6 pb-24 pt-20 text-center">
           <AlertCircle className="mx-auto h-8 w-8 text-red-400" />
@@ -136,7 +149,8 @@ export default function FreelancerProfile() {
     }
   }
 
-  const f = normalizeReal(real, params.userId);
+  // username-ээр орж ирэхэд userId нь зөвхөн серверийн хариултад байна.
+  const f = normalizeReal(real, real.userId || params.userId);
   const topRated = f.rating >= 4.8;
   const isNew = f.rating === 0 && f.hired === 0;
   const isOwn = user?.id === f.userId;

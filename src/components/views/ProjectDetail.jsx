@@ -3,7 +3,7 @@ import { ArrowLeft, Star, BadgeCheck, ShieldCheck, Clock, Users, Check, AlertCir
 import SpotlightCard from "../fx/SpotlightCard.jsx";
 import Magnet from "../fx/Magnet.jsx";
 import { useNav } from "../../nav.jsx";
-import { fetchJobs } from "../../lib/jobsApi.js";
+import { fetchJobs, fetchJob } from "../../lib/jobsApi.js";
 import { submitProposal } from "../../lib/contractApi.js";
 import { getAccessToken } from "../../lib/authApi.js";
 
@@ -29,8 +29,21 @@ function normalize(job) {
 
 export default function ProjectDetail() {
   const { params, nav } = useNav();
-  const raw = params;
+  // Хуваалцсан линк/дахин ачаалалтаар орж ирэхэд URL-д зөвхөн `id` байна —
+  // тэр үед зарыг сервэрээс татна. Жагсаалтаас дарж ирсэн бол бүтэн обьект
+  // аль хэдийн params-д байгаа тул нэмэлт хүсэлт явуулахгүй.
+  const [fetched, setFetched] = useState(null);
+  const raw = params?.title ? params : fetched;
   const job = raw ? normalize(raw) : null;
+
+  useEffect(() => {
+    if (params?.title || !params?.id) return;
+    let cancelled = false;
+    fetchJob(params.id)
+      .then((j) => { if (!cancelled) setFetched(j); })
+      .catch(() => { if (!cancelled) setFetched(null); });
+    return () => { cancelled = true; };
+  }, [params?.id, params?.title]);
   const [bid, setBid] = useState("");
   const [coverLetter, setCoverLetter] = useState("");
   const [sent, setSent] = useState(false);
