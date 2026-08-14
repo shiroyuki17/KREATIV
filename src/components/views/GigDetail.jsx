@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, Star, BadgeCheck, Clock, ImageIcon, AlertCircle, Loader2, MessageSquare } from "lucide-react";
 import { useNav } from "../../nav.jsx";
+import { useT } from "../../i18n.jsx";
 import { avatarSrc } from "../../lib/authApi.js";
 import { fetchGig, orderGig } from "../../lib/gigApi.js";
 
@@ -9,6 +10,7 @@ function initialsOf(name) {
 }
 
 export default function GigDetail() {
+  const t = useT();
   const { params, nav, user, mode } = useNav();
   const [gig, setGig] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -67,7 +69,7 @@ export default function GigDetail() {
         className="inline-flex items-center gap-2 text-[13px] font-medium text-white/50 transition-colors hover:text-white"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to services
+        {t("gd.backToServices")}
       </button>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1.6fr_1fr]">
@@ -124,7 +126,7 @@ export default function GigDetail() {
             <div className="flex items-center justify-between">
               <p className="font-display text-3xl font-bold text-mint">${gig.price}</p>
               <span className="flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 text-[12px] font-semibold text-white/70">
-                <Clock className="h-3.5 w-3.5" /> {gig.deliveryDays} day{gig.deliveryDays !== 1 ? "s" : ""}
+                <Clock className="h-3.5 w-3.5" /> {t("gd.deliveryDays", { n: gig.deliveryDays })}
               </span>
             </div>
 
@@ -135,7 +137,7 @@ export default function GigDetail() {
                     <Star className="h-3.5 w-3.5 fill-amber-400" /> {gig.ratingAvg.toFixed(1)} ({gig.reviewCount})
                   </span>
                 )}
-                {gig.ordersCount > 0 && <span>{gig.ordersCount} захиалагдсан</span>}
+                {gig.ordersCount > 0 && <span>{t("gd.ordered", { n: gig.ordersCount })}</span>}
               </div>
             )}
 
@@ -147,7 +149,7 @@ export default function GigDetail() {
 
             {isOwn ? (
               <p className="mt-5 rounded-xl border border-white/12 bg-white/[0.03] px-3.5 py-2.5 text-center text-[12.5px] text-white/50">
-                Энэ бол таны өөрийн үйлчилгээ
+                {t("gd.ownService")}
               </p>
             ) : (
               <button
@@ -155,12 +157,12 @@ export default function GigDetail() {
                 disabled={ordering || mode === "freelancer"}
                 className="mt-5 w-full rounded-xl bg-brand py-3.5 text-[14px] font-semibold text-fg-1 glow-brand transition-shadow disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {ordering ? "Захиалж байна…" : "Захиалах"}
+                {ordering ? t("gd.ordering") : t("gd.order")}
               </button>
             )}
             {mode === "freelancer" && !isOwn && (
               <p className="mt-2 text-center text-[11.5px] text-white/40">
-                Захиалахын тулд client горим руу шилжинэ үү
+                {t("gd.switchToClient")}
               </p>
             )}
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { CircleDollarSign, MessageSquare, Mail, Star, Info, Briefcase, CheckCheck, AlertCircle } from "lucide-react";
+import { CircleDollarSign, MessageSquare, Mail, Star, Info, Briefcase, CheckCheck, AlertCircle, Bell } from "lucide-react";
 import { useNav } from "../../nav.jsx";
+import { useT } from "../../i18n.jsx";
 import { getAccessToken } from "../../lib/authApi.js";
 import { fetchNotifications, markNotificationRead, markAllNotificationsRead } from "../../lib/notificationsApi.js";
 
@@ -17,10 +18,11 @@ function groupOf(iso) {
   const d = new Date(iso);
   const now = new Date();
   const sameDay = d.toDateString() === now.toDateString();
-  return sameDay ? "Today" : "Earlier";
+  return sameDay ? "today" : "earlier";
 }
 
 export default function Notifications() {
+  const t = useT();
   const { nav, user } = useNav();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +38,7 @@ export default function Notifications() {
   }, []);
 
   const unread = items.filter((n) => !n.read).length;
-  const groups = ["Today", "Earlier"];
+  const groups = [["today", t("nt.today")], ["earlier", t("nt.earlier")]];
 
   // Дарахад уншсанаар тэмдэглээд, Notification.link байвал ШУУД тийш
   // шилжинэ. Өмнө нь зөвхөн уншсан болгодог байсан тул хэрэглэгч мэдэгдлээ
@@ -62,9 +64,9 @@ export default function Notifications() {
     <div className="mx-auto max-w-4xl px-6 pb-24 pt-8">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-6">
         <div>
-          <h1 className="font-display text-3xl font-bold tracking-tight text-white">Notifications</h1>
+          <h1 className="font-display text-3xl font-bold tracking-tight text-white">{t("notif.title")}</h1>
           <p className="mt-1.5 text-[13px] text-white/50">
-            {unread > 0 ? `${unread} unread notifications` : "All caught up! No unread notifications."}
+            {unread > 0 ? t("nt.unreadCount", { count: unread }) : t("nt.allRead")}
           </p>
         </div>
         {unread > 0 && (
@@ -72,7 +74,7 @@ export default function Notifications() {
             onClick={markAllRead}
             className="inline-flex items-center gap-2 rounded-xl border border-brand/30 bg-brand/10 px-4 py-2 text-[12.5px] font-semibold text-brand-soft transition-all hover:bg-brand/20 glow-brand"
           >
-            <CheckCheck className="h-4 w-4" /> Mark all read
+            <CheckCheck className="h-4 w-4" /> {t("nt.markAllRead")}
           </button>
         )}
       </div>
@@ -100,14 +102,22 @@ export default function Notifications() {
         </div>
       )}
 
+      {!loading && items.length === 0 && !error && (
+        <div className="glass mt-8 rounded-2xl p-12 text-center">
+          <Bell className="mx-auto h-8 w-8 text-white/20" />
+          <p className="mt-4 text-[14px] font-semibold">{t("nt.empty")}</p>
+          <p className="mt-1.5 text-[12.5px] text-white/45">{t("nt.emptyHint")}</p>
+        </div>
+      )}
+
       {!loading && items.length > 0 && (
         <div className="mt-6 space-y-6">
-          {groups.map((grp) => {
+          {groups.map(([grp, grpLabel]) => {
             const list = items.filter((n) => groupOf(n.createdAt) === grp);
             if (list.length === 0) return null;
             return (
               <div key={grp} className="space-y-3">
-                <p className="text-[11px] font-bold uppercase tracking-widest text-white/40">{grp}</p>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-white/40">{grpLabel}</p>
                 {list.map((n) => {
                   const meta = META[n.type] || META.system;
                   const { Icon, cls } = meta;
@@ -129,7 +139,7 @@ export default function Notifications() {
                           <p className={`text-[13px] leading-relaxed ${n.read ? "text-white/70" : "text-white"}`}>
                             {n.text}
                           </p>
-                          <span className="text-[11px] text-white/40 shrink-0">{n.createdAt ? new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Just now"}</span>
+                          <span className="text-[11px] text-white/40 shrink-0">{n.createdAt ? new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : t("nt.justNow")}</span>
                         </div>
                       </div>
                       {!n.read && (

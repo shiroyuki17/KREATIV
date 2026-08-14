@@ -882,4 +882,45 @@ export const en = {
   "sv.paused": "Paused",
   "sv.pause": "Pause",
   "sv.activate": "Activate",
+
+  // ── Service detail ──
+  "gd.backToServices": "Back to services",
+  "gd.deliveryDays": "{n} days",
+  "gd.ordered": "{n} ordered",
+  "gd.ownService": "This is your own service",
+  "gd.order": "Order",
+  "gd.ordering": "Ordering…",
+  "gd.switchToClient": "Switch to client mode to order",
+
+  // ── 404 ──
+  "nf.title": "This page went freelance.",
+  "nf.desc": "The page you're after doesn't exist or has moved. Let's get you back to work.",
+  "nf.backHome": "Back home",
+  "nf.findWork": "Find work",
+
+  // ── Notifications page ──
+  "nt.today": "Today",
+  "nt.earlier": "Earlier",
+  "nt.unreadCount": "{count} unread notifications",
+  "nt.allRead": "All caught up! No unread notifications.",
+  "nt.markAllRead": "Mark all read",
+  "nt.justNow": "Just now",
+  "nt.empty": "No notifications yet",
+  "nt.emptyHint": "Project invites, escrow updates and messages will show up here.",
+
+  // ── Reset password ──
+  "rp.backToLogin": "Back to log in",
+  "rp.setNewPassword": "Set a new password",
+  "rp.newPassword": "New password",
+  "rp.minChars": "At least 8 characters",
+  "rp.verifyPassword": "Verify password",
+  "rp.reenter": "Re-enter your new password",
+  "rp.reset": "Reset password",
+  "rp.pleaseWait": "Please wait…",
+  "rp.missingLink": "The link is incomplete — open the link from your email again.",
+  "rp.done": "Your password has been changed.",
+
+  // ── Google sign-in ──
+  "ac.noToken": "No token came back from Google.",
+  "ac.fetchFailed": "Could not load your account details.",
 };

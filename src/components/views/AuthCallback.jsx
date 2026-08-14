@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { AlertCircle } from "lucide-react";
 import { useNav } from "../../nav.jsx";
+import { useT } from "../../i18n.jsx";
 import { saveTokens, fetchMe, resolveHomeRoute, consumeStashedRedirect } from "../../lib/authApi.js";
 
 export default function AuthCallback() {
+  const t = useT();
   const { nav, setUser } = useNav();
   const [error, setError] = useState(null);
 
@@ -19,7 +21,7 @@ export default function AuthCallback() {
       return;
     }
     if (!accessToken || !refreshToken) {
-      setError("Google-ээс токен ирсэнгүй.");
+      setError(t("ac.noToken"));
       return;
     }
 
@@ -32,7 +34,7 @@ export default function AuthCallback() {
         const { page, params: routeParams } = stashed || home;
         nav(page, routeParams);
       })
-      .catch(() => setError("Хэрэглэгчийн мэдээлэл татахад алдаа гарлаа."));
+      .catch(() => setError(t("ac.fetchFailed")));
   }, [nav, setUser]);
 
   return (
