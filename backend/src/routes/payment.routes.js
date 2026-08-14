@@ -12,6 +12,7 @@ import { logEvent, logError } from '../lib/logger.js';
 import * as qpay from '../lib/qpay.js';
 import * as stripe from '../lib/payments/stripe.js';
 import { activeProvider, demoAllowed, paymentStatus } from '../lib/payments/index.js';
+import { reconcilePendingDeposits } from '../lib/depositSync.js';
 import { config } from '../config/env.js';
 
 const router = Router();
@@ -34,6 +35,11 @@ router.get('/status', (req, res) => {
 // ── GET /payments/balance ──
 router.get('/balance', requireAuth, async (req, res, next) => {
   try {
+    // Webhook ирээгүй/тохируулаагүй бол төлсөн цэнэглэлт PENDING дээр
+    // мөнхөд гацаж, үлдэгдэл 0 хэвээр үлддэг байв. Үлдэгдлээ харах бүрд
+    // Stripe-аас ШУУД асууж тулгана (клиентийн үгэнд итгэхгүй).
+    await reconcilePendingDeposits(req.user.id);
+
     const [balance, escrowHeld, pending] = await Promise.all([
       computeBalance(req.user.id),
       computeEscrowHeld(req.user.id),

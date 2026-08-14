@@ -16,27 +16,15 @@ import { Router } from 'express';
 import express from 'express';
 import prisma from '../lib/prisma.js';
 import * as stripe from '../lib/payments/stripe.js';
-import { createNotification } from './notification.routes.js';
 import { logError, logEvent } from '../lib/logger.js';
 // Захиалгыг DB рүү бичих логик нь subscription.routes.js-ийн тулгах
 // (reconcile) зам ХОЁУЛАА ижил байх ёстой тул хуваалцсан модульд байна.
 import { upsertSubscription } from '../lib/subscriptionSync.js';
+// Цэнэглэлт бичих логик нь payment.routes.js-ийн тулгах замтай ижил байх
+// ёстой тул хуваалцсан модульд байна.
+import { completeDeposit } from '../lib/depositSync.js';
 
 const router = Router();
-
-async function completeDeposit(tx) {
-  const updated = await prisma.transaction.update({
-    where: { id: tx.id },
-    data: { status: 'COMPLETED', completedAt: new Date() },
-  });
-  createNotification({
-    userId: tx.userId,
-    type: 'payment',
-    text: `$${updated.amount.toLocaleString('en-US')} үлдэгдэлд амжилттай нэмэгдлээ`,
-    link: 'payments',
-  });
-  return updated;
-}
 
 async function handleCheckoutCompleted(session) {
   if (session.mode === 'payment') {
