@@ -119,8 +119,8 @@ function Avatar({ name, avatarUrl, size = "md", online = false }) {
         {src ? <img src={src} alt="" className="h-full w-full object-cover" /> : initialsOf(name)}
       </span>
       {online && (
-        <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-[#1b1d20]"
-          style={{ background: "#7B39FC" }} />
+        <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-[#1b1730]"
+          style={{ background: "var(--color-brand)" }} />
       )}
     </span>
   );
@@ -156,7 +156,7 @@ function DetailsPanel({ contact, messages = [], onVoiceCall, onVideoCall, onView
         <p className="mt-3 text-[15px] font-bold tracking-tight">{contact.name}</p>
         {contact.online ? (
           <span className="mt-1 flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium"
-            style={{ background: "rgba(123, 57, 252, 0.1)", color: "#7B39FC" }}>
+            style={{ background: "rgba(123, 57, 252, 0.1)", color: "var(--color-brand)" }}>
             <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />
             Online
           </span>
@@ -200,13 +200,13 @@ function DetailsPanel({ contact, messages = [], onVoiceCall, onVideoCall, onView
               time" гэх мэт бидний схемд огт байхгүй хэмжигдэхүүнийг зохиохгүй. */}
           <div className="grid grid-cols-2 gap-3 p-5">
             <div className="rounded-xl p-3 text-center" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-              <p className="text-[15px] font-bold" style={{ color: "#7B39FC" }}>
+              <p className="text-[15px] font-bold" style={{ color: "var(--color-brand)" }}>
                 {profile.ratingAvg > 0 ? `${profile.ratingAvg.toFixed(1)}★` : "—"}
               </p>
               <p className="text-[10.5px] text-white/40">Rating</p>
             </div>
             <div className="rounded-xl p-3 text-center" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-              <p className="text-[15px] font-bold" style={{ color: "#7B39FC" }}>{profile.jobsCompleted}</p>
+              <p className="text-[15px] font-bold" style={{ color: "var(--color-brand)" }}>{profile.jobsCompleted}</p>
               <p className="text-[10.5px] text-white/40">Jobs done</p>
             </div>
           </div>
@@ -258,7 +258,7 @@ function DetailsPanel({ contact, messages = [], onVoiceCall, onVideoCall, onView
         <button
           onClick={onVoiceCall}
           className="flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-[13px] font-semibold transition-all hover:brightness-110"
-          style={{ background: "rgba(123, 57, 252, 0.15)", color: "#7B39FC", border: "1px solid rgba(123, 57, 252, 0.25)" }}>
+          style={{ background: "rgba(123, 57, 252, 0.15)", color: "var(--color-brand)", border: "1px solid rgba(123, 57, 252, 0.25)" }}>
           <Phone className="h-4 w-4" /> Voice Call
         </button>
         <button
@@ -680,7 +680,7 @@ export default function Messages() {
                   className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-all"
                   style={{
                     background: isActive ? "rgba(123, 57, 252, 0.08)" : "transparent",
-                    borderLeft: isActive ? "2px solid #7B39FC" : "2px solid transparent",
+                    borderLeft: isActive ? "2px solid var(--color-brand)" : "2px solid transparent",
                     borderBottom: "1px solid rgba(255,255,255,0.04)",
                   }}
                 >
@@ -705,7 +705,7 @@ export default function Messages() {
                       </span>
                       {c.unread > 0 && (
                         <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-[9.5px] font-bold text-white"
-                          style={{ background: "#7B39FC", boxShadow: "0 0 10px rgba(123, 57, 252, 0.5)" }}>
+                          style={{ background: "var(--color-brand)", boxShadow: "0 0 10px rgba(123, 57, 252, 0.5)" }}>
                           {c.unread}
                         </span>
                       )}
@@ -727,7 +727,7 @@ export default function Messages() {
                 <Avatar name={active.with.name} avatarUrl={active.with.avatarUrl} size="sm" online={active.with.online} />
                 <div className="flex-1 min-w-0">
                   <p className="text-[14px] font-bold truncate">{active.with.name}</p>
-                  <p className="text-[11px]" style={{ color: active.with.blockedByMe ? "rgba(248,113,113,0.8)" : (peerTyping || active.with.online) ? "#7B39FC" : "rgba(255,255,255,0.35)" }}>
+                  <p className="text-[11px]" style={{ color: active.with.blockedByMe ? "rgba(248,113,113,0.8)" : (peerTyping || active.with.online) ? "var(--color-brand)" : "rgba(255,255,255,0.35)" }}>
                     {active.with.blockedByMe
                       ? "Блоклосон"
                       : peerTyping ? "typing…" : active.with.online ? "● Online" : "Offline"}
@@ -818,7 +818,7 @@ export default function Messages() {
                                 // хуучин theme-ийн үлдэгдэл байсан бөгөөд шинэ
                                 // ягаан брэндтэй зөрчилдөж, бараан ногоон текст нь
                                 // уншихад ч хүнд байв.
-                                background: "linear-gradient(135deg, #7B39FC 0%, #b06bfb 100%)",
+                                background: "linear-gradient(135deg, var(--color-brand) 0%, #b06bfb 100%)",
                                 color: "#ffffff",
                                 boxShadow: "0 4px 20px rgba(123, 57, 252, 0.3)",
                                 fontWeight: 500,
@@ -939,7 +939,7 @@ export default function Messages() {
                   aria-label="Send message"
                   className="shrink-0 rounded-xl p-2.5 transition-all disabled:cursor-not-allowed disabled:opacity-40 hover:scale-105 active:scale-95"
                   style={{
-                    background: draft.trim() ? "linear-gradient(135deg, #7B39FC, #b06bfb)" : "rgba(255,255,255,0.06)",
+                    background: draft.trim() ? "linear-gradient(135deg, var(--color-brand), #b06bfb)" : "rgba(255,255,255,0.06)",
                     color: draft.trim() ? "#ffffff" : "rgba(255,255,255,0.3)",
                     boxShadow: draft.trim() ? "0 4px 16px rgba(123, 57, 252, 0.35)" : "none",
                   }}
@@ -990,7 +990,7 @@ export default function Messages() {
           />
           <div
             className="fixed inset-y-0 right-0 z-50 w-[300px] max-w-[85vw] xl:hidden animate-feed-in overflow-hidden"
-            style={{ background: "#1b1d20", borderLeft: "1px solid rgba(255,255,255,0.08)" }}
+            style={{ background: "#1b1730", borderLeft: "1px solid rgba(255,255,255,0.08)" }}
           >
             <div className="flex items-center justify-between px-4 py-3.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
               <p className="text-[13px] font-bold">Contact Info</p>
