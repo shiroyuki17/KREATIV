@@ -30,6 +30,8 @@ export const freelancerQuerySchema = z.object({
 
 export const clientProfileSchema = z.object({
   orgName: z.string().max(120).optional(),
+  contactRole: z.string().max(120).optional(),
+  teamSize: z.string().max(60).optional(),
 });
 
 // Манай өөрийн /profile/freelancer/portfolio/image endpoint нь харьцангуй

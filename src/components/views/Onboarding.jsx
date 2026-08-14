@@ -3,7 +3,8 @@ import { ArrowLeft, ArrowRight, Check, Sparkles, AlertCircle } from "lucide-reac
 import Magnet from "../fx/Magnet.jsx";
 import { FL_SKILLS, FL_CATEGORIES, CL_CATEGORIES, CL_BUDGETS } from "../../data/appMock.js";
 import { useNav } from "../../nav.jsx";
-import { getAccessToken, saveFreelancerProfile, saveClientProfile, fetchMe } from "../../lib/authApi.js";
+import { useT } from "../../i18n.jsx";
+import { getAccessToken, saveFreelancerProfile, saveClientProfile, fetchMe, updateAccountName } from "../../lib/authApi.js";
 import { fetchJobs } from "../../lib/jobsApi.js";
 import { fetchFreelancers } from "../../lib/talentApi.js";
 
@@ -68,13 +69,14 @@ function Steps({ step }) {
 
 export default function Onboarding() {
   const { params, nav, setUser, setPreferredMode } = useNav();
+  const t = useT();
   const role = params?.role || "freelancer";
   const isFl = role === "freelancer";
 
   const [step, setStep] = useState(0);
   const [category, setCategory] = useState(FL_CATEGORIES[0]);
   const [picked, setPicked] = useState([]);
-  const [avail, setAvail] = useState(isFl ? "Full-time" : "$1k – $5k");
+  const [avail, setAvail] = useState(isFl ? "OPEN" : CL_BUDGETS[1]);
   const [fullName, setFullName] = useState("");
   const [title, setTitle] = useState("");
   const [rate, setRate] = useState("");
@@ -101,7 +103,17 @@ export default function Onboarding() {
   }, [step]);
 
   const chips = isFl ? FL_SKILLS : CL_CATEGORIES;
-  const availOptions = isFl ? ["Full-time", "Part-time", "Weekends"] : CL_BUDGETS;
+  // Утга нь backend-ийн Availability enum — өмнө нь "Full-time/Part-time/
+  // Weekends" гэсэн гурван чип байсан ч тэдгээрт тохирох талбар байхгүй тул
+  // сонголт нь хадгалагдалгүй устдаг байв. Одоо профайл дээр гарах бодит
+  // төлөв рүү шууд буудаг.
+  const availOptions = isFl
+    ? [
+        { value: "OPEN", label: t("onb.availOpen") },
+        { value: "BUSY", label: t("onb.availBusy") },
+        { value: "CLOSED", label: t("onb.availClosed") },
+      ]
+    : CL_BUDGETS.map((b) => ({ value: b, label: b }));
   const doneTarget = isFl ? "freelancer-dashboard" : "client-dashboard";
 
   async function finish() {
@@ -111,14 +123,34 @@ export default function Onboarding() {
     setSubmitting(true);
     setError("");
     try {
+      // Бөглүүлсэн бүх талбарыг хадгална. Өмнө нь нэр, ажиллах боломж,
+      // албан тушаал, багийн хэмжээ дөрвийг асуугаад хаядаг байсан —
+      // хэрэглэгчийн бичсэн зүйл алга болох нь асуухгүй байхаас ч дор.
+      if (fullName.trim().length >= 2) {
+        await updateAccountName(fullName.trim()).catch(() => {});
+      }
       if (isFl) {
         const priceMin = parseInt(rate.replace(/[^0-9]/g, ""), 10) || undefined;
         await saveFreelancerProfile(
-          { headline: title || undefined, category, skills: picked, priceMin, priceMax: priceMin },
+          {
+            headline: title || undefined,
+            category,
+            skills: picked,
+            priceMin,
+            priceMax: priceMin,
+            availability: avail,
+          },
           token
         );
       } else {
-        await saveClientProfile({ orgName: companyName || undefined }, token);
+        await saveClientProfile(
+          {
+            orgName: companyName || undefined,
+            contactRole: yourRole || undefined,
+            teamSize: teamSize || undefined,
+          },
+          token
+        );
       }
       // Бүртгүүлэхэд сонгосон тал (I'm hiring / I'm freelancing) нь ҮНДСЭН
       // горим болно. Үүнийг хадгалахгүй бол resolveMode нь өгөгдмөлөөр
@@ -149,7 +181,7 @@ export default function Onboarding() {
 
       <div className="relative w-full max-w-xl">
         <p className="mb-2 text-center text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-soft">
-          {isFl ? "Freelancer setup" : "Client setup"} · Step {step + 1} of 3
+          {isFl ? t("onb.freelancerSetup") : t("onb.clientSetup")} · {t("onb.stepOf", { n: step + 1 })}
         </p>
         <div className="mx-auto mb-8 max-w-xs">
           <Steps step={step} />
@@ -159,19 +191,19 @@ export default function Onboarding() {
           {step === 0 && (
             <div className="space-y-5">
               <h1 className="font-display text-2xl font-bold tracking-tight">
-                {isFl ? "Tell us about you" : "Tell us about your company"}
+                {isFl ? t("onb.aboutYou") : t("onb.aboutCompany")}
               </h1>
               {isFl ? (
                 <>
-                  <Field label="Full name" placeholder="Daniel Kim" value={fullName} onChange={(e) => setFullName(e.target.value)} />
-                  <Field label="Professional title" placeholder="Full-Stack Developer" value={title} onChange={(e) => setTitle(e.target.value)} />
-                  <Field label="Hourly rate" placeholder="$95/hr" value={rate} onChange={(e) => setRate(e.target.value)} />
+                  <Field label={t("onb.fullName")} placeholder="Daniel Kim" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+                  <Field label={t("onb.professionalTitle")} placeholder="Full-Stack Developer" value={title} onChange={(e) => setTitle(e.target.value)} />
+                  <Field label={t("onb.hourlyRate")} placeholder="$95/hr" value={rate} onChange={(e) => setRate(e.target.value)} />
                 </>
               ) : (
                 <>
-                  <Field label="Company name" placeholder="Nova Studio" value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
-                  <Field label="Your role" placeholder="Head of Product" value={yourRole} onChange={(e) => setYourRole(e.target.value)} />
-                  <Field label="Team size" placeholder="11 – 50" value={teamSize} onChange={(e) => setTeamSize(e.target.value)} />
+                  <Field label={t("onb.companyName")} placeholder="Nova Studio" value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
+                  <Field label={t("onb.yourRole")} placeholder="Head of Product" value={yourRole} onChange={(e) => setYourRole(e.target.value)} />
+                  <Field label={t("onb.teamSize")} placeholder="11 – 50" value={teamSize} onChange={(e) => setTeamSize(e.target.value)} />
                 </>
               )}
             </div>
@@ -180,17 +212,17 @@ export default function Onboarding() {
           {step === 1 && (
             <div>
               <h1 className="font-display text-2xl font-bold tracking-tight">
-                {isFl ? "What are your superpowers?" : "What do you need built?"}
+                {isFl ? t("onb.superpowers") : t("onb.whatNeedBuilt")}
               </h1>
               <p className="mt-1.5 text-[13px] text-white/45">
                 {isFl
-                  ? "Pick your core skills — our AI matches briefs to them."
-                  : "Pick categories — our AI shortlists matching talent."}
+                  ? t("onb.pickSkills")
+                  : t("onb.pickCategories")}
               </p>
               {isFl && (
                 <>
                   <p className="mt-6 text-[11px] font-semibold uppercase tracking-widest text-white/40">
-                    Primary category
+                    {t("onb.primaryCategory")}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2.5">
                     {FL_CATEGORIES.map((c) => (
@@ -200,7 +232,7 @@ export default function Onboarding() {
                     ))}
                   </div>
                   <p className="mt-7 text-[11px] font-semibold uppercase tracking-widest text-white/40">
-                    Skills
+                    {t("onb.skills")}
                   </p>
                 </>
               )}
@@ -212,12 +244,12 @@ export default function Onboarding() {
                 ))}
               </div>
               <p className="mt-7 text-[11px] font-semibold uppercase tracking-widest text-white/40">
-                {isFl ? "Availability" : "Typical budget"}
+                {isFl ? t("onb.availability") : t("onb.typicalBudget")}
               </p>
               <div className="mt-3 flex flex-wrap gap-2.5">
-                {availOptions.map((o) => (
-                  <Chip key={o} active={avail === o} onClick={() => setAvail(o)}>
-                    {o}
+                {availOptions.map(({ value, label }) => (
+                  <Chip key={value} active={avail === value} onClick={() => setAvail(value)}>
+                    {label}
                   </Chip>
                 ))}
               </div>
@@ -230,12 +262,12 @@ export default function Onboarding() {
                 <Check className="h-9 w-9" />
               </span>
               <h1 className="mt-6 font-display text-2xl font-bold tracking-tight">
-                You're in.
+                {t("onb.done")}
               </h1>
               <p className="mx-auto mt-2 max-w-sm text-[13.5px] leading-relaxed text-white/50">
                 {isFl
-                  ? "Your profile is live. Our AI is already scanning open briefs that match your skills."
-                  : "Your workspace is ready. Post your first brief and get AI-matched within hours."}
+                  ? t("onb.doneFreelancer")
+                  : t("onb.doneClient")}
               </p>
               {picked.length > 0 && (
                 <div className="mt-5 flex flex-wrap justify-center gap-2">
@@ -254,9 +286,9 @@ export default function Onboarding() {
                   <Sparkles className="h-3.5 w-3.5" />
                   {isFl
                     ? liveStat > 0
-                      ? `${liveStat} open brief${liveStat === 1 ? "" : "s"} in ${category} right now`
-                      : `No open briefs in ${category} right now — check back soon`
-                    : `${liveStat.toLocaleString("en-US")} freelancer${liveStat === 1 ? "" : "s"} ready to help`}
+                      ? t("onb.openBriefs", { count: liveStat, category })
+                      : t("onb.noOpenBriefs", { category })
+                    : t("onb.freelancersReady", { count: liveStat.toLocaleString("en-US") })}
                 </p>
               )}
             </div>
@@ -275,7 +307,7 @@ export default function Onboarding() {
                 className="inline-flex items-center gap-2 text-[13px] font-medium text-white/50 transition-colors hover:text-white"
               >
                 <ArrowLeft className="h-4 w-4" />
-                Back
+                {t("common.back")}
               </button>
             ) : (
               <button
@@ -283,7 +315,7 @@ export default function Onboarding() {
                 className="inline-flex items-center gap-2 text-[13px] font-medium text-white/50 transition-colors hover:text-white"
               >
                 <ArrowLeft className="h-4 w-4" />
-                Cancel
+                {t("common.cancel")}
               </button>
             )}
             <Magnet strength={0.15}>
@@ -292,7 +324,7 @@ export default function Onboarding() {
                 disabled={submitting}
                 className="inline-flex items-center gap-2 rounded-xl bg-brand px-6 py-3 text-[13.5px] font-semibold glow-brand transition-shadow disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {step < 2 ? "Continue" : submitting ? "Setting up…" : "Go to dashboard"}
+                {step < 2 ? t("common.continue") : submitting ? t("onb.settingUp") : t("onb.goToDashboard")}
                 <ArrowRight className="h-4 w-4" />
               </button>
             </Magnet>

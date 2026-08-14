@@ -191,6 +191,13 @@ model ClientProfile {
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId        String   @unique
   orgName       String?
+
+  // Онбординг дээр эдгээрийг асуудаг байсан ч хадгалдаг газар байгаагүй тул
+  // хариултууд нь чимээгүй устдаг байв. Гүйцэтгэгчид "хэнтэй ажиллах гэж
+  // байна" гэдгээ мэдэхэд нөлөөтэй мэдээлэл учир хадгална.
+  contactRole   String?
+  teamSize      String?
+
   verifiedPayer Boolean  @default(false)
   ratingAvg     Float    @default(0)
   jobsPosted    Int      @default(0)
