@@ -18,10 +18,21 @@ const STORAGE_KEY = "kreativ:locale";
 // -аас таамаглах нь энд эсрэг үр дүн өгнө.
 const DEFAULT_LOCALE = "mn";
 
+function isLocale(v) {
+  return v === "mn" || v === "en";
+}
+
 function storedLocale() {
   try {
+    // ?lang=en нь хадгалсан сонголтыг дардаг: профайлын холбоосыг англи
+    // ярьдаг захиалагч руу илгээхэд тэр хүн эхний хормоос эхлэн ойлгомжтой
+    // хуудас нээнэ. Hash routing тул query нь # -ээс ӨМНӨ байна
+    // (?lang=en#/u/bat-erdene).
+    const fromUrl = new URLSearchParams(window.location.search).get("lang");
+    if (isLocale(fromUrl)) return fromUrl;
+
     const v = localStorage.getItem(STORAGE_KEY);
-    return v === "mn" || v === "en" ? v : DEFAULT_LOCALE;
+    return isLocale(v) ? v : DEFAULT_LOCALE;
   } catch {
     return DEFAULT_LOCALE;
   }
@@ -33,7 +44,7 @@ export function I18nProvider({ children }) {
   const [locale, setLocaleState] = useState(storedLocale);
 
   const setLocale = useCallback((next) => {
-    if (next !== "mn" && next !== "en") return;
+    if (!isLocale(next)) return;
     setLocaleState(next);
     try { localStorage.setItem(STORAGE_KEY, next); } catch { /* private mode */ }
     // <html lang> нь screen reader-ийн дуудлага, browser-ийн орчуулгын

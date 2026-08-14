@@ -28,9 +28,12 @@ function jsxFiles(dir) {
 // Функц бүрийн биеийг ойролцоогоор олох: дараагийн top-level `function`
 // хүртэл. Компонентууд файлын эхний түвшинд зарлагддаг тул хангалттай.
 function topLevelFunctions(src) {
-  const starts = [...src.matchAll(/^(?:export default )?function (\w+)\s*\(/gm)];
+  const starts = [...src.matchAll(/^(?:export default )?function (\w+)\s*\(([^)]*)\)/gm)];
   return starts.map((m, i) => ({
     name: m[1],
+    // Тусламжийн функцүүд t()-г параметрээр авч болно (hook нь зөвхөн
+    // компонент дотор дуудагдана) — тэдгээрийг алдаа гэж үзэхгүй.
+    takesT: /(^|[\s,{])t\s*(,|$|\}|=)/.test(m[2]),
     body: src.slice(m.index, i + 1 < starts.length ? starts[i + 1].index : src.length),
   }));
 }
@@ -53,7 +56,7 @@ for (const file of jsxFiles(SRC)) {
     const calls = [...fn.body.matchAll(T_CALL)];
     if (!calls.length) continue;
     for (const c of calls) usedKeys.add(c[1]);
-    if (!HAS_HOOK.test(fn.body)) {
+    if (!fn.takesT && !HAS_HOOK.test(fn.body)) {
       problems.push(`${rel}: ${fn.name}() calls t() but never calls useT()`);
     }
   }

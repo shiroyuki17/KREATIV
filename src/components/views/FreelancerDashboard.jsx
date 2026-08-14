@@ -12,6 +12,7 @@ import {
 import Magnet from "../fx/Magnet.jsx";
 import EmptyState from "../ui/EmptyState.jsx";
 import { useNav } from "../../nav.jsx";
+import { useT } from "../../i18n.jsx";
 import { getAccessToken, fetchFreelancerProfile } from "../../lib/authApi.js";
 import { fetchBalance, fetchTransactions } from "../../lib/paymentsApi.js";
 import { fetchJobs } from "../../lib/jobsApi.js";
@@ -50,6 +51,7 @@ function timeAgo(iso) {
 
 export default function FreelancerDashboard() {
   const { nav, user } = useNav();
+  const t = useT();
   const firstName = user?.name?.split(" ")[0] || user?.email?.split("@")[0] || "there";
 
   const [profile, setProfile] = useState(null);
@@ -87,19 +89,21 @@ export default function FreelancerDashboard() {
       <div className="flex flex-wrap items-end justify-between gap-5">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-soft">
-            — Freelancer workspace
+            {t("fld.workspace")}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <h1 className="font-display text-3xl font-bold tracking-tight">
-              Welcome back, {firstName}
+              {t("fld.welcome", { name: firstName })}
             </h1>
             <span className="inline-flex items-center gap-1.5 rounded-full border border-neon/40 bg-neon/10 px-3.5 py-1.5 text-[10.5px] font-bold uppercase tracking-widest text-neon">
               <Laptop className="h-3.5 w-3.5" />
-              Freelancer
+              {t("fld.roleBadge")}
             </span>
           </div>
           <p className="mt-1.5 text-[13px] text-white/45">
-            {profile ? `${profile.category || "General"} · ${profile.skills?.length || 0} skills listed` : "Complete your profile to appear in Find Talent"}
+            {profile
+              ? t("fld.profileSummary", { category: profile.category || "—", count: profile.skills?.length || 0 })
+              : t("fld.completeProfile")}
           </p>
         </div>
       </div>
@@ -110,13 +114,13 @@ export default function FreelancerDashboard() {
             <UserRoundPlus className="h-5 w-5" />
           </span>
           <p className="min-w-0 flex-1 text-[13px] leading-relaxed text-white/70">
-            <b className="text-white">Set up your freelancer profile</b> to appear in Find Talent and get matched to briefs in your category.
+            <b className="text-white">{t("fld.setUpPromptBold")}</b>{t("fld.setUpPromptRest")}
           </p>
           <button
             onClick={() => nav("settings")}
             className="shrink-0 rounded-lg bg-brand px-4 py-2.5 text-[12.5px] font-bold text-fg-1 glow-brand transition-shadow"
           >
-            Set up profile
+            {t("fld.setUpProfile")}
           </button>
         </div>
       )}
@@ -131,21 +135,21 @@ export default function FreelancerDashboard() {
             <Wallet className="h-4.5 w-4.5" />
           </span>
           <p className="relative mt-5 font-display text-4xl font-bold">${balance.toLocaleString("en-US")}</p>
-          <p className="relative mt-1 text-[11px] font-medium uppercase tracking-wider text-white/40">Available balance</p>
+          <p className="relative mt-1 text-[11px] font-medium uppercase tracking-wider text-white/40">{t("fld.availableBalance")}</p>
           <button
             onClick={() => nav("payments")}
             className="relative mt-4 text-[12px] font-semibold text-mint hover:text-brand-soft"
           >
-            Manage payments →
+            {t("fld.managePayments")}
           </button>
         </div>
 
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:col-span-2">
           {[
-            { label: "Jobs completed", value: profile?.jobsCompleted ?? 0, Icon: Briefcase, cls: "text-brand-soft border-brand/30 bg-brand/10" },
-            { label: "Rating", value: profile?.ratingAvg ? profile.ratingAvg.toFixed(1) : "—", Icon: Star, cls: "text-amber-400 border-amber-400/30 bg-amber-400/10" },
-            { label: "Live matches", value: matches.length, Icon: Sparkles, cls: "text-neon border-neon/30 bg-neon/10" },
-            { label: "Profile views (30d)", value: views ? views.thisMonth : "—", Icon: Eye, cls: "text-violet-soft border-violet/30 bg-violet/10" },
+            { label: t("fld.jobsCompleted"), value: profile?.jobsCompleted ?? 0, Icon: Briefcase, cls: "text-brand-soft border-brand/30 bg-brand/10" },
+            { label: t("fld.rating"), value: profile?.ratingAvg ? profile.ratingAvg.toFixed(1) : "—", Icon: Star, cls: "text-amber-400 border-amber-400/30 bg-amber-400/10" },
+            { label: t("fld.liveMatches"), value: matches.length, Icon: Sparkles, cls: "text-neon border-neon/30 bg-neon/10" },
+            { label: t("fld.profileViews"), value: views ? views.thisMonth : "—", Icon: Eye, cls: "text-violet-soft border-violet/30 bg-violet/10" },
           ].map(({ label, value, Icon, cls }) => (
             <div key={label} className="glass rounded-2xl p-4">
               <span className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border ${cls}`}>
@@ -164,13 +168,13 @@ export default function FreelancerDashboard() {
             <div className="flex items-center justify-between">
               <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-white/40">
                 <Sparkles className="h-3.5 w-3.5 text-brand-soft" />
-                Live briefs matching your category
+                {t("fld.liveBriefs")}
               </p>
               <button
                 onClick={() => nav("find-work")}
                 className="text-[12px] font-medium text-brand-soft hover:text-white"
               >
-                Browse all →
+                {t("fld.browseAll")}
               </button>
             </div>
             <div className="mt-4 space-y-3">
@@ -184,7 +188,7 @@ export default function FreelancerDashboard() {
                     <div className="min-w-0">
                       <p className="truncate text-[14px] font-semibold">{job.title}</p>
                       <p className="mt-0.5 text-[11.5px] text-white/40">
-                        {job.client?.name || job.client?.orgName || "Client"} ·{" "}
+                        {job.client?.name || job.client?.orgName || t("fld.client")} ·{" "}
                         {job.budgetMin ? `$${job.budgetMin.toLocaleString("en-US")}${job.budgetType === "HOURLY" ? "/hr" : ""}` : "—"} · {timeAgo(job.createdAt)}
                       </p>
                     </div>
@@ -196,9 +200,9 @@ export default function FreelancerDashboard() {
                 <EmptyState
                   Icon={Sparkles}
                   compact
-                  title={profile ? "No open briefs in your category right now" : "No matches yet"}
-                  desc={profile ? "Check back soon, or browse everything that's open." : "Set up your profile to start seeing briefs matched to your skills."}
-                  actionLabel={profile ? "Browse all briefs" : undefined}
+                  title={profile ? t("fld.noBriefsTitle") : t("fld.noMatchesTitle")}
+                  desc={profile ? t("fld.noBriefsDesc") : t("fld.noProfileDesc")}
+                  actionLabel={profile ? t("fld.browseAllBriefs") : undefined}
                   onAction={() => nav("find-work")}
                 />
               )}
@@ -209,7 +213,7 @@ export default function FreelancerDashboard() {
         <div className="space-y-5">
           <div className="glass rounded-2xl p-6">
             <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
-              Earnings · last 6 months
+              {t("fld.earnings")}
             </p>
             <div className="mt-5 flex h-36 items-end gap-2.5">
               {earnings.map((e, i) => {
@@ -233,25 +237,27 @@ export default function FreelancerDashboard() {
               })}
             </div>
             <p className="mt-4 border-t border-white/8 pt-4 text-[12px] text-white/45">
-              Total: <b className="text-white">${monthTotal.toLocaleString("en-US")}</b>
+              {t("fld.total")} <b className="text-white">${monthTotal.toLocaleString("en-US")}</b>
             </p>
           </div>
 
           <div className="glass rounded-2xl p-6">
             <p className="inline-flex items-center gap-2 text-[12.5px] font-semibold text-white/75">
               <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-              Reputation
+              {t("fld.reputation")}
             </p>
             <p className="mt-3 font-display text-2xl font-bold">{profile?.ratingAvg ? profile.ratingAvg.toFixed(1) : "—"}</p>
             <p className="mt-1 text-[11.5px] text-white/40">
-              {profile?.jobsCompleted ? `${profile.jobsCompleted} jobs completed` : "No jobs completed yet"}
+              {profile?.jobsCompleted
+                ? t("fld.jobsCompletedCount", { count: profile.jobsCompleted })
+                : t("fld.noJobsCompleted")}
             </p>
             <Magnet strength={0.15} className="mt-4 w-full">
               <button
                 onClick={() => nav("profile", { userId: user?.id })}
                 className="w-full rounded-xl bg-brand py-2.5 text-[12.5px] font-semibold glow-brand transition-shadow"
               >
-                View public profile
+                {t("fld.viewPublicProfile")}
               </button>
             </Magnet>
           </div>

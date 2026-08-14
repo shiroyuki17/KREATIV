@@ -6,18 +6,20 @@ import CountUp from "../fx/CountUp.jsx";
 import BlurText from "../fx/BlurText.jsx";
 import { useEffect, useState } from "react";
 import { useNav } from "../../nav.jsx";
+import { useT } from "../../i18n.jsx";
 import { useLive } from "../../live.jsx";
 import { useHomeJobs, useHomeTalent, toJobCard, toTalentCard } from "../../lib/homeData.js";
 import { fetchPublicStats } from "../../lib/analyticsApi.js";
 
-function rateLabel(f) {
-  if (f.priceMin == null) return "Rate on request";
+function rateLabel(f, t) {
+  if (f.priceMin == null) return t("bnt.rateOnRequest");
   if (f.priceMax && f.priceMax !== f.priceMin) return `$${f.priceMin}–${f.priceMax}/hr`;
   return `$${f.priceMin}/hr`;
 }
 
 export default function BentoShowcase() {
   const { nav } = useNav();
+  const t = useT();
   const { openBriefs } = useLive();
   const jobs = useHomeJobs();
   const talent = useHomeTalent();
@@ -46,10 +48,10 @@ export default function BentoShowcase() {
     <section id="showcase" className="relative py-12 md:py-24">
       <div className="mx-auto max-w-6xl px-6">
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-soft">
-          — Live on KREATIV
+          {t("bnt.eyebrow")}
         </p>
         <h2 className="mt-3 font-display text-[clamp(1.9rem,3.6vw,2.8rem)] font-bold text-brand text-glow tracking-tight">
-          <BlurText text="One marketplace. Every signal live." />
+          <BlurText text={t("bnt.title")} />
         </h2>
 
         <div className="mt-12 grid gap-4 md:grid-cols-4 md:[grid-template-rows:repeat(2,minmax(180px,auto))]">
@@ -62,10 +64,10 @@ export default function BentoShowcase() {
               />
               <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-brand/30 bg-brand/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-brand-soft">
                 <Flame className="h-3 w-3" />
-                Featured brief
+                {t("bnt.featuredBrief")}
               </span>
               <h3 className="mt-5 max-w-sm font-display text-2xl font-bold leading-snug">
-                {featured ? featured.title : "No open briefs yet"}
+                {featured ? featured.title : t("bnt.noBriefs")}
               </h3>
               <div className="mt-3 flex items-center gap-2 text-[13px] text-white/55">
                 {featured?.client}
@@ -78,19 +80,19 @@ export default function BentoShowcase() {
                 )}
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
-                {(featured?.tags || []).slice(0, 5).map((t) => (
+                {(featured?.tags || []).slice(0, 5).map((tag) => (
                   <span
-                    key={t}
+                    key={tag}
                     className="rounded-full border border-white/10 px-3 py-1 text-[11px] text-white/50"
                   >
-                    {t}
+                    {tag}
                   </span>
                 ))}
               </div>
               <div className="mt-auto flex items-center justify-between pt-8">
                 <div>
                   <p className="text-[11px] uppercase tracking-wider text-white/40">
-                    {featured ? `${featured.type} budget` : "Budget"}
+                    {featured ? t("bnt.budgetOf", { type: featured.type }) : t("bnt.budget")}
                   </p>
                   <p className="font-display text-2xl font-bold text-mint">
                     {featured ? featured.budget : "—"}
@@ -102,7 +104,7 @@ export default function BentoShowcase() {
                     onClick={() => featured && nav("project", featured.raw)}
                     className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-3 text-[13px] font-semibold glow-brand transition-shadow"
                   >
-                    Apply Now
+                    {t("bnt.applyNow")}
                     <ArrowRight className="h-4 w-4" />
                   </button>
                 </Magnet>
@@ -119,13 +121,13 @@ export default function BentoShowcase() {
               <div className="flex items-center justify-between">
                 <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-white/40">
                   <Users className="h-3.5 w-3.5 text-neon" />
-                  Top rated this week
+                  {t("bnt.topRated")}
                 </p>
                 <button
                   onClick={() => nav("find-talent")}
                   className="text-[12px] font-medium text-brand-soft hover:text-white"
                 >
-                  View all →
+                  {t("bnt.viewAll")}
                 </button>
               </div>
               <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -151,9 +153,9 @@ export default function BentoShowcase() {
                     <div className="mt-2.5 flex items-center justify-between text-[11px]">
                       <span className="inline-flex items-center gap-1 text-white/60">
                         <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                        {f.rating != null ? f.rating.toFixed(1) : "New"}
+                        {f.rating != null ? f.rating.toFixed(1) : t("bnt.new")}
                       </span>
-                      <span className="font-semibold text-mint">{rateLabel(raw)}</span>
+                      <span className="font-semibold text-mint">{rateLabel(raw, t)}</span>
                     </div>
                   </div>
                   );
@@ -167,7 +169,7 @@ export default function BentoShowcase() {
             <div className="flex h-full flex-col justify-between p-6">
               <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-mint/30 bg-mint/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-mint">
                 <span className="h-1.5 w-1.5 animate-pulse-soft rounded-full bg-mint" />
-                Live
+                {t("bnt.live")}
               </span>
               <div>
                 {/* null = /analytics/public хараахан ирээгүй. Өмнөх кодын
@@ -177,7 +179,7 @@ export default function BentoShowcase() {
                   {openBriefs == null ? "—" : openBriefs.toLocaleString("en-US")}
                 </p>
                 <p className="mt-1 text-[11.5px] text-white/45">
-                  briefs open right now
+                  {t("bnt.briefsOpen")}
                 </p>
               </div>
             </div>
@@ -195,7 +197,7 @@ export default function BentoShowcase() {
                   {clients == null ? "—" : <CountUp to={clients} />}
                 </p>
                 <p className="mt-1 text-[11.5px] text-white/45">
-                  companies hiring
+                  {t("bnt.companiesHiring")}
                 </p>
               </div>
             </div>

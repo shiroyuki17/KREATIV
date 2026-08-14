@@ -1,51 +1,53 @@
 import { ShieldCheck } from "lucide-react";
 import { useNav } from "../../nav.jsx";
+import { useT } from "../../i18n.jsx";
 
 const COLS = [
   {
-    title: "For freelancers",
+    titleKey: "ftr.forFreelancers",
     links: [
-      { label: "Find work", page: "find-work" },
-      { label: "Browse categories", page: "home", anchor: "#categories" },
-      { label: "How it works", page: "how" },
-      { label: "Get verified", page: "trust" },
-      { label: "Freelancer reviews", page: "reviews" },
+      { labelKey: "ftr.findWork", page: "find-work" },
+      { labelKey: "ftr.browseCategories", page: "home", anchor: "#categories" },
+      { labelKey: "ftr.howItWorks", page: "how" },
+      { labelKey: "ftr.getVerified", page: "trust" },
+      { labelKey: "ftr.freelancerReviews", page: "reviews" },
     ],
   },
   {
-    title: "For clients",
+    titleKey: "ftr.forClients",
     links: [
-      { label: "Find talent", page: "find-talent" },
-      { label: "Post a job", page: "post-job" },
-      { label: "Pricing", page: "home", anchor: "#pricing" },
-      { label: "AI matching", page: "home", anchor: "#ai" },
-      { label: "Escrow & payments", page: "trust" },
+      { labelKey: "ftr.findTalent", page: "find-talent" },
+      { labelKey: "ftr.postJob", page: "post-job" },
+      { labelKey: "ftr.pricing", page: "home", anchor: "#pricing" },
+      { labelKey: "ftr.aiMatching", page: "home", anchor: "#ai" },
+      { labelKey: "ftr.escrowPayments", page: "trust" },
     ],
   },
   {
-    title: "Company",
+    titleKey: "ftr.company",
     links: [
-      { label: "About", page: "how" },
-      { label: "Trust & safety", page: "trust" },
-      { label: "Reviews", page: "reviews" },
-      { label: "Careers", page: "contact" },
-      { label: "Contact us", page: "contact" },
+      { labelKey: "ftr.about", page: "how" },
+      { labelKey: "ftr.trustSafety", page: "trust" },
+      { labelKey: "ftr.reviews", page: "reviews" },
+      { labelKey: "ftr.careers", page: "contact" },
+      { labelKey: "ftr.contactUs", page: "contact" },
     ],
   },
   {
-    title: "Support",
+    titleKey: "ftr.support",
     links: [
-      { label: "Help center", page: "help" },
-      { label: "FAQ", page: "help" },
-      { label: "Dispute resolution", page: "dispute-policy" },
-      { label: "Privacy policy", page: "help" },
-      { label: "Terms of service", page: "terms" },
+      { labelKey: "ftr.helpCenter", page: "help" },
+      { labelKey: "ftr.faq", page: "help" },
+      { labelKey: "ftr.disputes", page: "dispute-policy" },
+      { labelKey: "ftr.privacy", page: "help" },
+      { labelKey: "ftr.terms", page: "terms" },
     ],
   },
 ];
 
 export default function Footer() {
   const { nav } = useNav();
+  const t = useT();
 
   const go = (link) => {
     nav(link.page);
@@ -61,25 +63,24 @@ export default function Footer() {
             <span className="bg-gradient-to-r from-brand-soft to-neon bg-clip-text text-transparent">ATIV</span>
           </button>
           <p className="mt-3 max-w-xs text-[13px] leading-relaxed text-white/45">
-            The design-first marketplace where elite freelancers and ambitious
-            teams ship exceptional work.
+            {t("ftr.tagline")}
           </p>
           <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-mint/25 bg-mint/10 px-3 py-1.5 text-[11px] font-medium text-mint">
             <ShieldCheck className="h-3.5 w-3.5" />
-            Escrow-protected payments
+            {t("ftr.escrowBadge")}
           </p>
         </div>
         {COLS.map((c) => (
-          <div key={c.title}>
-            <p className="text-[12px] font-semibold uppercase tracking-widest text-white/40">{c.title}</p>
+          <div key={c.titleKey}>
+            <p className="text-[12px] font-semibold uppercase tracking-widest text-white/40">{t(c.titleKey)}</p>
             <ul className="mt-4 space-y-2.5">
               {c.links.map((l) => (
-                <li key={l.label}>
+                <li key={l.labelKey}>
                   <button
                     onClick={() => go(l)}
                     className="text-[13px] text-white/60 transition-colors hover:text-brand-soft"
                   >
-                    {l.label}
+                    {t(l.labelKey)}
                   </button>
                 </li>
               ))}
@@ -88,7 +89,7 @@ export default function Footer() {
         ))}
       </div>
       <p className="mt-12 text-center text-[12px] text-white/30">
-        © 2026 KREATIV — Built for elite work.
+        {t("ftr.copyright")}
       </p>
     </footer>
   );

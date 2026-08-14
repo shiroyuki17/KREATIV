@@ -3,6 +3,7 @@ import { Briefcase, Wallet, Star, MessageSquare, Plus, Search, FolderOpen } from
 import ActivityFeed from "../dashboard/ActivityFeed.jsx";
 import EmptyState from "../ui/EmptyState.jsx";
 import { useNav } from "../../nav.jsx";
+import { useT } from "../../i18n.jsx";
 import { useLive } from "../../live.jsx";
 import { getAccessToken, fetchClientProfile } from "../../lib/authApi.js";
 import { fetchMyJobs } from "../../lib/jobsApi.js";
@@ -30,6 +31,7 @@ function timeAgo(iso) {
 
 export default function ClientDashboard() {
   const { nav, user } = useNav();
+  const t = useT();
   const { unread } = useLive();
   const firstName = user?.name?.split(" ")[0] || user?.email?.split("@")[0] || "there";
 
@@ -62,19 +64,20 @@ export default function ClientDashboard() {
       <div className="flex flex-wrap items-end justify-between gap-5">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-soft">
-            — Client workspace
+            {t("cld.workspace")}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <h1 className="font-display text-3xl font-bold tracking-tight">
-              Welcome back, {firstName}
+              {t("fld.welcome", { name: firstName })}
             </h1>
             <span className="inline-flex items-center gap-1.5 rounded-full border border-brand/40 bg-brand/10 px-3.5 py-1.5 text-[10.5px] font-bold uppercase tracking-widest text-brand-soft">
               <Briefcase className="h-3.5 w-3.5" />
-              Client
+              {t("cld.roleBadge")}
             </span>
           </div>
           <p className="mt-1.5 text-[13px] text-white/45">
-            {profile?.orgName ? `${profile.orgName} · ` : ""}{jobs.length} job{jobs.length === 1 ? "" : "s"} posted · {openJobsCount} open
+            {profile?.orgName ? `${profile.orgName} · ` : ""}
+            {t("cld.jobsPostedSummary", { count: jobs.length, open: openJobsCount })}
           </p>
         </div>
         <div className="flex gap-3">
@@ -83,14 +86,14 @@ export default function ClientDashboard() {
             className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-3 text-[13px] font-semibold glow-brand transition-shadow"
           >
             <Plus className="h-4 w-4" />
-            Post a Job
+            {t("nav.postJob")}
           </button>
           <button
             onClick={() => nav("find-talent")}
             className="glass inline-flex items-center gap-2 rounded-xl px-5 py-3 text-[13px] font-semibold text-white/85 transition-colors hover:border-white/25"
           >
             <Search className="h-4 w-4" />
-            Find Talent
+            {t("nav.findTalent")}
           </button>
         </div>
       </div>
@@ -106,20 +109,20 @@ export default function ClientDashboard() {
             <Wallet className="h-4.5 w-4.5" />
           </span>
           <p className="relative mt-5 font-display text-4xl font-bold">${balance.toLocaleString("en-US")}</p>
-          <p className="relative mt-1 text-[11px] font-medium uppercase tracking-wider text-white/40">Wallet balance</p>
+          <p className="relative mt-1 text-[11px] font-medium uppercase tracking-wider text-white/40">{t("cld.walletBalance")}</p>
           <button
             onClick={() => nav("payments")}
             className="relative mt-4 text-[12px] font-semibold text-amber-400 hover:text-amber-300"
           >
-            Manage funds →
+            {t("cld.manageFunds")}
           </button>
         </div>
 
         <div className="grid grid-cols-3 gap-4 lg:col-span-2">
           {[
-            { label: "Jobs posted", value: jobs.length, Icon: Briefcase, cls: "text-brand-soft border-brand/30 bg-brand/10" },
-            { label: "Open jobs", value: openJobsCount, Icon: Briefcase, cls: "text-mint border-mint/30 bg-mint/10" },
-            { label: "Unread messages", value: unread.messages, Icon: MessageSquare, cls: "text-neon border-neon/30 bg-neon/10" },
+            { label: t("cld.jobsPosted"), value: jobs.length, Icon: Briefcase, cls: "text-brand-soft border-brand/30 bg-brand/10" },
+            { label: t("cld.openJobs"), value: openJobsCount, Icon: Briefcase, cls: "text-mint border-mint/30 bg-mint/10" },
+            { label: t("cld.unreadMessages"), value: unread.messages, Icon: MessageSquare, cls: "text-neon border-neon/30 bg-neon/10" },
           ].map(({ label, value, Icon, cls }) => (
             <div key={label} className="glass rounded-2xl p-4">
               <span className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border ${cls}`}>
@@ -137,13 +140,13 @@ export default function ClientDashboard() {
           <div className="glass rounded-2xl p-6">
             <div className="flex items-center justify-between">
               <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
-                Your posted jobs
+                {t("cld.yourPostedJobs")}
               </p>
               <button
                 onClick={() => nav("my-projects")}
                 className="text-[12px] font-medium text-brand-soft hover:text-white"
               >
-                View all →
+                {t("cld.viewAll")}
               </button>
             </div>
             <div className="mt-4 space-y-3">
@@ -161,7 +164,7 @@ export default function ClientDashboard() {
                       </p>
                     </div>
                     <span className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${STATUS_BADGE[j.status]}`}>
-                      {j.status.replace("_", " ")}
+                      {t(`status.${j.status}`)}
                     </span>
                   </div>
                 </div>
@@ -169,9 +172,9 @@ export default function ClientDashboard() {
               {!loading && jobs.length === 0 && (
                 <EmptyState
                   Icon={FolderOpen}
-                  title="No jobs posted yet"
-                  desc="Post a brief and start receiving proposals from vetted specialists within hours."
-                  actionLabel="Post your first job"
+                  title={t("cld.noJobsTitle")}
+                  desc={t("cld.noJobsDesc")}
+                  actionLabel={t("cld.postFirstJob")}
                   onAction={() => nav("post-job")}
                 />
               )}

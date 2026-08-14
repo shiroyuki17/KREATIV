@@ -4,6 +4,7 @@ import StarBorder from "../fx/StarBorder.jsx";
 import Magnet from "../fx/Magnet.jsx";
 import BlurText from "../fx/BlurText.jsx";
 import { useNav } from "../../nav.jsx";
+import { useT } from "../../i18n.jsx";
 import { hasSession } from "../../lib/authApi.js";
 import { fetchPlans, startSubscriptionCheckout } from "../../lib/billingApi.js";
 
@@ -13,11 +14,11 @@ const PLAN_ICON = { Starter: Feather, Pro: Rocket, Enterprise: Building2 };
 // src/data/mock.js-д hardcode байсан бөгөөд товч нь onClick ч үгүй байв —
 // өөрөөр хэлбэл "Pro $29/сар" гэдэг нь ердөө зурсан текст байлаа.
 
-function Price({ plan, yearly }) {
+function Price({ plan, yearly, t }) {
   if (plan.monthlyUsd === null)
-    return <p className="font-display text-4xl font-bold">Custom</p>;
+    return <p className="font-display text-4xl font-bold">{t("prc.custom")}</p>;
   if (plan.monthlyUsd === 0)
-    return <p className="font-display text-4xl font-bold">Free</p>;
+    return <p className="font-display text-4xl font-bold">{t("prc.free")}</p>;
   // Жилийн үнийг серверийн yearlyUsd-аас гаргана — 0.8-аар үржүүлж
   // таамаглахгүй (Stripe дээрх бодит Price-тай зөрвөл хэрэглэгч
   // өөр дүн харснаа өөр дүнгээр төлнө).
@@ -27,12 +28,32 @@ function Price({ plan, yearly }) {
   return (
     <p className="font-display text-4xl font-bold">
       ${price}
-      <span className="text-[13px] font-medium text-white/40">/mo</span>
+      <span className="text-[13px] font-medium text-white/40">{t("prc.perMonth")}</span>
     </p>
   );
 }
 
-function PlanCard({ plan, yearly, onSelect, busy, disabledReason }) {
+// Багцын үнэ/эрх нь backend-ийн эрх мэдэлд үлдэнэ (мөнгөтэй холбоотой) —
+// зөвхөн ХАРАГДАХ бичвэрийг орчуулна. Толь бичигт байхгүй багц ирвэл
+// t() түлхүүрээ буцаадаг тул тэр тохиолдолд backend-ийн англи бичвэр рүү
+// эргэж унана; ингэснээр шинэ багц нэмэхэд хуудас эвдрэхгүй.
+function localized(t, key, fallback) {
+  const val = t(key);
+  return val === key ? fallback : val;
+}
+
+function planFeatures(t, plan) {
+  const keyed = [];
+  for (let i = 1; i <= plan.features.length; i++) {
+    const k = `plan.${plan.key}.feat${i}`;
+    const val = t(k);
+    if (val === k) return plan.features; // дутуу орчуулгатай бол бүхэлд нь англиар
+    keyed.push(val);
+  }
+  return keyed;
+}
+
+function PlanCard({ plan, yearly, onSelect, busy, disabledReason, t }) {
   const Icon = PLAN_ICON[plan.name] || Feather;
   const disabled = busy || (!plan.purchasable && plan.key === "pro");
   return (
@@ -49,17 +70,17 @@ function PlanCard({ plan, yearly, onSelect, busy, disabledReason }) {
         </span>
         {plan.popular && (
           <span className="rounded-full bg-brand/15 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-brand-soft">
-            Most popular
+            {t("prc.mostPopular")}
           </span>
         )}
       </div>
       <p className="mt-4 font-display text-lg font-semibold">{plan.name}</p>
-      <p className="mt-1 text-[12.5px] text-white/45">{plan.tagline}</p>
+      <p className="mt-1 text-[12.5px] text-white/45">{localized(t, `plan.${plan.key}.tagline`, plan.tagline)}</p>
       <div className="mt-6">
-        <Price plan={plan} yearly={yearly} />
+        <Price plan={plan} yearly={yearly} t={t} />
       </div>
       <ul className="mt-7 space-y-3">
-        {plan.features.map((f) => (
+        {planFeatures(t, plan).map((f) => (
           <li key={f} className="flex items-start gap-2.5 text-[13px] text-white/70">
             <Check className="mt-0.5 h-4 w-4 shrink-0 text-mint" />
             {f}
@@ -81,10 +102,10 @@ function PlanCard({ plan, yearly, onSelect, busy, disabledReason }) {
           >
             {busy ? (
               <span className="inline-flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" /> Redirecting…
+                <Loader2 className="h-4 w-4 animate-spin" /> {t("prc.redirecting")}
               </span>
             ) : (
-              plan.cta
+              localized(t, `plan.${plan.key}.cta`, plan.cta)
             )}
           </button>
         </Magnet>
@@ -98,6 +119,7 @@ function PlanCard({ plan, yearly, onSelect, busy, disabledReason }) {
 
 export default function Pricing() {
   const { nav } = useNav();
+  const t = useT();
   const [yearly, setYearly] = useState(true);
   const [plans, setPlans] = useState([]);
   const [billingEnabled, setBillingEnabled] = useState(false);
@@ -148,7 +170,7 @@ export default function Pricing() {
     }
   }
 
-  const disabledReason = billingEnabled ? "" : "Online billing is not configured yet.";
+  const disabledReason = billingEnabled ? "" : t("prc.billingOff");
 
   // Хөнгөлөлтийг серверийн үнээс тооцоолно — гараар бичсэн хувь нь Stripe
   // дээрх бодит үнэ солигдоход чимээгүй худал болно.
@@ -166,27 +188,30 @@ export default function Pricing() {
       <div className="relative mx-auto max-w-6xl px-6">
         <div className="text-center">
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-soft">
-            — Pricing
+            {t("prc.eyebrow")}
           </p>
           <h2 className="mt-3 font-display text-[clamp(1.9rem,3.6vw,2.8rem)] font-bold text-brand text-glow tracking-tight">
-            <BlurText text="Lower fees. Higher leverage." />
+            <BlurText text={t("prc.title")} />
           </h2>
 
           <div className="mt-8 inline-flex items-center gap-1 rounded-full glass p-1.5">
-            {["Monthly", "Yearly"].map((mode) => {
-              const active = (mode === "Yearly") === yearly;
+            {[
+              { key: "monthly", label: t("prc.monthly") },
+              { key: "yearly", label: t("prc.yearly") },
+            ].map((mode) => {
+              const active = (mode.key === "yearly") === yearly;
               return (
                 <button
-                  key={mode}
-                  onClick={() => setYearly(mode === "Yearly")}
+                  key={mode.key}
+                  onClick={() => setYearly(mode.key === "yearly")}
                   className={
                     active
                       ? "rounded-full bg-brand px-5 py-2 text-[12.5px] font-semibold glow-brand"
                       : "rounded-full px-5 py-2 text-[12.5px] font-medium text-white/50 hover:text-white"
                   }
                 >
-                  {mode}
-                  {mode === "Yearly" && savings && (
+                  {mode.label}
+                  {mode.key === "yearly" && savings && (
                     <span className="ml-1.5 text-[10px] font-bold text-mint">
                       −{savings}%
                     </span>
@@ -213,6 +238,7 @@ export default function Pricing() {
                 onSelect={selectPlan}
                 busy={busyKey === plan.key}
                 disabledReason={disabledReason}
+                t={t}
               />
             );
             return plan.popular ? (

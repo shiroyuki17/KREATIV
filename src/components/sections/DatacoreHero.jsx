@@ -1,5 +1,6 @@
 import { ArrowRight } from "lucide-react";
 import { useNav } from "../../nav.jsx";
+import { useI18n } from "../../i18n.jsx";
 
 // Видео дэвсгэртэй hero — KREATIV-ийн брэнд (--color-brand / --font-display)
 // дээр тохируулсан.
@@ -14,6 +15,7 @@ const VIDEO_URL =
 
 export default function DatacoreHero() {
   const { nav } = useNav();
+  const { locale, t } = useI18n();
 
   return (
     <section className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden">
@@ -43,19 +45,30 @@ export default function DatacoreHero() {
           className="glass animate-rise-in inline-flex h-[38px] items-center gap-2 rounded-[10px] px-3"
           style={{ animationDelay: "0.05s" }}
         >
-          <span className="rounded-[6px] bg-brand px-2 py-0.5 text-[12px] font-bold text-fg-1">New</span>
-          <span className="text-[14px] font-medium text-white">AI matching now live on KREATIV</span>
+          <span className="rounded-[6px] bg-brand px-2 py-0.5 text-[12px] font-bold text-fg-1">{t("home.newBadge")}</span>
+          <span className="text-[14px] font-medium text-white">{t("home.aiLive")}</span>
         </div>
 
-        {/* Instrument Serif: static English marketing copy only (never
-            Cyrillic user content), per the site-wide font token comment. */}
+        {/* Instrument Serif нь ЗӨВХӨН латин үсэгтэй (site-wide font token
+            дээрх тэмдэглэлийг үз) тул монгол гарчгийг түүгээр бичвэл кирилл
+            нь системийн ямар нэг serif рүү унаж, нэг гарчиг дотор хоёр өөр
+            фонт холилдоно. Тиймээс монгол үед кирилл дэмждэг display фонт
+            руу шилжинэ — жин/хэмжээгээр нь ижил хүчтэй харагдана. */}
         <h1
-          className="animate-rise-in mt-6 max-w-4xl text-balance font-serif text-[clamp(2.6rem,7.5vw,6rem)] font-normal leading-[1.05] text-white"
+          className={`animate-rise-in mt-6 max-w-4xl text-balance text-[clamp(2.6rem,7.5vw,6rem)] leading-[1.05] text-white ${
+            locale === "en" ? "font-serif font-normal" : "font-display font-bold tracking-tight"
+          }`}
           style={{ animationDelay: "0.15s" }}
         >
-          Elite work meets{" "}
-          <span className="bg-gradient-to-r from-brand-soft via-neon to-violet-soft bg-clip-text italic text-transparent">
-            elite talent
+          {t("home.heroTitleA")}{" "}
+          <span
+            // pr-[0.08em]: bg-clip-text нь үсгийн хайрцгаар тасалдаг тул
+            // налуу "t"-ийн сүүлчийн туйв ирмэг дээр огтлогдож байв.
+            className={`bg-gradient-to-r from-brand-soft via-neon to-violet-soft bg-clip-text text-transparent ${
+              locale === "en" ? "italic pr-[0.08em]" : ""
+            }`}
+          >
+            {t("home.heroTitleB")}
           </span>
         </h1>
 
@@ -63,8 +76,7 @@ export default function DatacoreHero() {
           className="animate-rise-in mt-6 max-w-[620px] text-[clamp(0.95rem,2vw,1.125rem)] leading-relaxed text-white/70"
           style={{ animationDelay: "0.28s" }}
         >
-          Post a brief, get AI-matched in hours, and track every milestone in real time — with
-          escrow-protected payments.
+          {t("home.heroSub")}
         </p>
 
         <div
@@ -75,14 +87,14 @@ export default function DatacoreHero() {
             onClick={() => nav("find-talent")}
             className="group inline-flex items-center gap-2 rounded-xl bg-brand px-7 py-3.5 text-[15px] font-semibold text-fg-1 glow-brand transition-transform duration-300 hover:scale-[1.03]"
           >
-            Find Talent
+            {t("nav.findTalent")}
             <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
           </button>
           <button
             onClick={() => nav("post-job")}
             className="glass rounded-xl px-7 py-3.5 text-[15px] font-semibold text-white/90 transition-all duration-300 hover:border-white/25 hover:-translate-y-0.5"
           >
-            Post a Job
+            {t("nav.postJob")}
           </button>
         </div>
       </div>
