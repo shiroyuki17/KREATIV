@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Search, Star, SlidersHorizontal, ChevronLeft, ChevronRight, AlertCircle, BadgeCheck, Clock, ImageIcon, Plus, X, Loader2 } from "lucide-react";
 import { useNav } from "../../nav.jsx";
+import { useT } from "../../i18n.jsx";
 import { avatarSrc } from "../../lib/authApi.js";
 import { fetchGigs, createGig, uploadGigImage, fetchMyGigs, updateGig, deleteGig } from "../../lib/gigApi.js";
 import { CardGridSkeleton } from "../ui/Skeleton.jsx";
@@ -9,10 +10,10 @@ import { useEscapeKey } from "../../hooks/useEscapeKey.js";
 
 const CATS = ["All", "Design", "Dev", "AI", "Motion", "Writing", "Marketing"];
 const SORTS = {
-  relevant: "Most relevant",
-  newest: "Newest",
-  priceLow: "Price: low to high",
-  priceHigh: "Price: high to low",
+  relevant: "sv.sortRelevant",
+  newest: "sv.sortNewest",
+  priceLow: "sv.sortPriceLow",
+  priceHigh: "sv.sortPriceHigh",
 };
 
 function initialsOf(name) {
@@ -20,6 +21,7 @@ function initialsOf(name) {
 }
 
 function GigCard({ g, nav, i = 0 }) {
+  const t = useT();
   return (
     <button
       onClick={() => nav("gig", { id: g.id })}
@@ -48,7 +50,7 @@ function GigCard({ g, nav, i = 0 }) {
         <p className="mt-2.5 line-clamp-2 text-[13.5px] font-semibold leading-snug">{g.title}</p>
         <div className="mt-3 flex items-center justify-between border-t border-white/8 pt-3">
           <span className="flex items-center gap-1 text-[11px] text-white/40">
-            <Clock className="h-3.5 w-3.5" /> {g.deliveryDays}d delivery
+            <Clock className="h-3.5 w-3.5" /> {t("sv.deliveryDays", { n: g.deliveryDays })}
           </span>
           {g.reviewCount > 0 ? (
             <span className="flex items-center gap-1 text-[11px] font-bold text-amber-400">
@@ -62,7 +64,7 @@ function GigCard({ g, nav, i = 0 }) {
         </div>
         <div className="mt-1.5 flex items-center justify-between">
           {g.ordersCount > 0 ? (
-            <span className="text-[10.5px] text-white/35">{g.ordersCount} захиалагдсан</span>
+            <span className="text-[10.5px] text-white/35">{t("sv.ordered", { n: g.ordersCount })}</span>
           ) : <span />}
         </div>
         <p className="mt-1.5 text-right font-display text-[16px] font-bold text-mint">${g.price}</p>
@@ -83,6 +85,7 @@ const INPUT =
 // талбарууд, ижил validation — гэхдээ хэрэглэгч зар үзэж байгаа хуудсаа
 // орхихгүйгээр нэмнэ.
 function CreateGigModal({ onClose, onCreated }) {
+  const t = useT();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState(GIG_CATEGORIES[0]);
@@ -113,12 +116,12 @@ function CreateGigModal({ onClose, onCreated }) {
 
   const submit = async () => {
     setError("");
-    if (title.trim().length < 5) { setError("Гарчиг дор хаяж 5 тэмдэгт"); return; }
-    if (description.trim().length < 20) { setError("Тайлбар дор хаяж 20 тэмдэгт"); return; }
+    if (title.trim().length < 5) { setError(t("sv.titleTooShort")); return; }
+    if (description.trim().length < 20) { setError(t("sv.descTooShort")); return; }
     const priceNum = Number(price);
     const daysNum = Number(deliveryDays);
-    if (!priceNum || priceNum <= 0) { setError("Үнэ зөв тоо байх ёстой"); return; }
-    if (!daysNum || daysNum <= 0) { setError("Хугацаа зөв тоо байх ёстой"); return; }
+    if (!priceNum || priceNum <= 0) { setError(t("sv.priceInvalid")); return; }
+    if (!daysNum || daysNum <= 0) { setError(t("sv.daysInvalid")); return; }
 
     setSaving(true);
     try {
@@ -148,7 +151,7 @@ function CreateGigModal({ onClose, onCreated }) {
         className="glass max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-2xl p-6"
       >
         <div className="flex items-center justify-between">
-          <p id="create-gig-title" className="text-[15px] font-bold">Шинэ үйлчилгээ</p>
+          <p id="create-gig-title" className="text-[15px] font-bold">{t("sv.newService")}</p>
           <button onClick={onClose} aria-label="Close" className="rounded-lg p-1.5 text-white/45 hover:text-white">
             <X className="h-4 w-4" />
           </button>
@@ -162,14 +165,14 @@ function CreateGigModal({ onClose, onCreated }) {
 
         <div className="mt-5 space-y-5">
           <div>
-            <p className={LABEL}>Зураг</p>
+            <p className={LABEL}>{t("sv.images")}</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {imageUrls.map((u) => (
                 <div key={u} className="relative">
                   <img src={avatarSrc(u)} alt="" className="h-[68px] w-[68px] rounded-xl object-cover" />
                   <button
                     onClick={() => setImageUrls((arr) => arr.filter((x) => x !== u))}
-                    aria-label="Зураг хасах"
+                    aria-label={t("sv.removeImage")}
                     className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-white/15 bg-[#1b1730] text-white/60 transition-colors hover:text-white"
                   >
                     <X className="h-3 w-3" />
@@ -182,19 +185,19 @@ function CreateGigModal({ onClose, onCreated }) {
                 className="flex h-[68px] w-[68px] flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-white/20 text-white/40 transition-colors hover:border-brand/50 hover:text-white/70 disabled:opacity-50"
               >
                 {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                {!uploading && <span className="text-[9.5px] font-medium">Нэмэх</span>}
+                {!uploading && <span className="text-[9.5px] font-medium">{t("sv.add")}</span>}
               </button>
               <input ref={fileRef} type="file" accept="image/png,image/jpeg" onChange={onImageSelected} className="hidden" />
             </div>
-            <p className="mt-1.5 text-[11px] text-white/30">PNG эсвэл JPG · заавал биш</p>
+            <p className="mt-1.5 text-[11px] text-white/30">{t("sv.imageHint")}</p>
           </div>
 
           <label className="block">
-            <span className={LABEL}>Гарчиг</span>
+            <span className={LABEL}>{t("sv.gigTitle")}</span>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="I will design a modern minimalist logo"
+              placeholder={t("sv.gigTitlePlaceholder")}
               className={`${INPUT} mt-2`}
             />
           </label>
@@ -205,21 +208,21 @@ function CreateGigModal({ onClose, onCreated }) {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
-              placeholder="Юу багтдаг, хэдэн засвар орно, ямар файл хүлээлгэн өгөх вэ…"
+              placeholder={t("sv.gigDescPlaceholder")}
               className={`${INPUT} mt-2 resize-none`}
             />
-            <span className="mt-1.5 block text-[11px] text-white/30">{description.trim().length}/20 тэмдэгт доод хэмжээ</span>
+            <span className="mt-1.5 block text-[11px] text-white/30">{t("sv.minChars", { n: description.trim().length })}</span>
           </label>
 
           <div>
-            <p className={LABEL}>Категори</p>
+            <p className={LABEL}>{t("sv.category")}</p>
             <div className="mt-2">
               {/* Native <select>-ийн оронд custom Select: browser-ийн
                   өгөгдмөл цагаан dropdown нь бараан theme-тэй зөрчилддөг. */}
               <Select
                 value={category}
                 onChange={setCategory}
-                options={GIG_CATEGORIES.map((c) => ({ value: c, label: c }))}
+                options={GIG_CATEGORIES.map((c) => ({ value: c, label: t(`cat.${c}`) }))}
                 className="w-full [&>button]:w-full [&>button]:justify-between [&>button]:rounded-xl [&>button]:text-[14px]"
               />
             </div>
@@ -227,7 +230,7 @@ function CreateGigModal({ onClose, onCreated }) {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block">
-              <span className={LABEL}>Үнэ (USD)</span>
+              <span className={LABEL}>{t("sv.price")}</span>
               <div className="relative mt-2">
                 <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[14px] text-white/35">$</span>
                 <input
@@ -240,7 +243,7 @@ function CreateGigModal({ onClose, onCreated }) {
               </div>
             </label>
             <label className="block">
-              <span className={LABEL}>Хүргэх хугацаа</span>
+              <span className={LABEL}>{t("sv.deliveryTime")}</span>
               <div className="relative mt-2">
                 <input
                   value={deliveryDays}
@@ -249,7 +252,7 @@ function CreateGigModal({ onClose, onCreated }) {
                   placeholder="3"
                   className={`${INPUT} pr-14`}
                 />
-                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[13px] text-white/35">өдөр</span>
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[13px] text-white/35">{t("sv.days")}</span>
               </div>
             </label>
           </div>
@@ -260,14 +263,14 @@ function CreateGigModal({ onClose, onCreated }) {
             onClick={onClose}
             className="rounded-xl border border-white/12 bg-white/[0.03] px-5 py-3 text-[13.5px] font-semibold text-white/70 transition-colors hover:border-white/25 hover:text-white"
           >
-            Болих
+            {t("common.cancel")}
           </button>
           <button
             onClick={submit}
             disabled={saving}
             className="flex-1 rounded-xl bg-brand py-3 text-[13.5px] font-bold text-fg-1 glow-brand disabled:opacity-50"
           >
-            {saving ? "Нэмж байна…" : "Үйлчилгээ нэмэх"}
+            {saving ? t("sv.adding") : t("sv.addService")}
           </button>
         </div>
       </div>
@@ -278,6 +281,7 @@ function CreateGigModal({ onClose, onCreated }) {
 // Өөрийн үйлчилгээг удирдах — Settings → "My Services" таб байсныг энд
 // авчирсан: жагсаалтаа хараад тэндээсээ удирдах нь тохиргоо руу орохоос зөв.
 function MyGigs({ onCreate }) {
+  const t = useT();
   const { nav } = useNav();
   const [gigs, setGigs] = useState(null);
   const [busyId, setBusyId] = useState(null);
@@ -312,7 +316,7 @@ function MyGigs({ onCreate }) {
     }
   };
 
-  if (gigs === null) return <p className="mt-6 text-[13px] text-white/40">Ачааллаж байна…</p>;
+  if (gigs === null) return <p className="mt-6 text-[13px] text-white/40">{t("common.loading")}</p>;
 
   return (
     <div className="mt-6 space-y-3">
@@ -323,10 +327,10 @@ function MyGigs({ onCreate }) {
       )}
       {gigs.length === 0 && (
         <div className="glass rounded-2xl p-10 text-center">
-          <p className="text-[14px] font-semibold">Танд одоогоор үйлчилгээ алга</p>
-          <p className="mt-1.5 text-[12.5px] text-white/45">Эхний үйлчилгээгээ нэмээд захиалга авч эхлээрэй.</p>
+          <p className="text-[14px] font-semibold">{t("sv.noneOfMine")}</p>
+          <p className="mt-1.5 text-[12.5px] text-white/45">{t("sv.noneOfMineHint")}</p>
           <button onClick={onCreate} className="mt-5 rounded-xl bg-brand px-5 py-2.5 text-[12.5px] font-bold text-fg-1 glow-brand">
-            Үйлчилгээ нэмэх
+            {t("sv.addService")}
           </button>
         </div>
       )}
@@ -345,13 +349,13 @@ function MyGigs({ onCreate }) {
             </button>
             <p className="mt-0.5 text-[11.5px] text-white/40">
               {g.category} · ${g.price} · {g.deliveryDays}d
-              {g.ordersCount > 0 && ` · ${g.ordersCount} захиалга`}
+              {g.ordersCount > 0 && ` · ${t("sv.orders", { n: g.ordersCount })}`}
             </p>
           </div>
           <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
             g.active ? "border-mint/30 bg-mint/10 text-mint" : "border-white/15 bg-white/[0.05] text-white/45"
           }`}>
-            {g.active ? "Идэвхтэй" : "Зогссон"}
+            {g.active ? t("sv.active") : t("sv.paused")}
           </span>
           <div className="flex shrink-0 gap-2">
             <button
@@ -359,14 +363,14 @@ function MyGigs({ onCreate }) {
               disabled={busyId === g.id}
               className="rounded-lg border border-white/12 px-3 py-1.5 text-[11.5px] font-semibold text-white/70 transition-colors hover:border-white/25 hover:text-white disabled:opacity-50"
             >
-              {g.active ? "Түр зогсоох" : "Идэвхжүүлэх"}
+              {g.active ? t("sv.pause") : t("sv.activate")}
             </button>
             <button
               onClick={() => remove(g.id)}
               disabled={busyId === g.id}
               className="rounded-lg border border-red-400/30 px-3 py-1.5 text-[11.5px] font-semibold text-red-300 transition-colors hover:bg-red-400/10 disabled:opacity-50"
             >
-              Устгах
+              {t("common.delete")}
             </button>
           </div>
         </div>
@@ -376,6 +380,7 @@ function MyGigs({ onCreate }) {
 }
 
 export default function FindServices() {
+  const t = useT();
   const { params, nav } = useNav();
   const [q, setQ] = useState(params?.query || "");
   const [cat, setCat] = useState(params?.category || "All");
@@ -420,13 +425,13 @@ export default function FindServices() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-soft">
-            — Browse services
+            {t("sv.eyebrow")}
           </p>
           <h1 className="mt-3 font-display text-[clamp(1.9rem,3.6vw,2.8rem)] font-bold text-brand text-glow tracking-tight">
-            Бэлэн үйлчилгээ захиалах
+            {t("sv.title")}
           </h1>
           <p className="mt-2 max-w-xl text-[13.5px] text-white/50">
-            Fixed-price — үнэ, хугацаа урьдчилж тодорхой. Захиалаад л, freelancer шууд эхэлнэ.
+            {t("sv.subtitle")}
           </p>
         </div>
         {/* Өмнө нь үйлчилгээ нэмэхийн тулд Settings → My Services руу
@@ -437,14 +442,14 @@ export default function FindServices() {
           className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-brand px-5 py-3 text-[13.5px] font-semibold text-fg-1 glow-brand transition-transform hover:scale-[1.02]"
         >
           <Plus className="h-4 w-4" />
-          Үйлчилгээ нэмэх
+          {t("sv.addService")}
         </button>
       </div>
 
       <div className="mt-6 flex gap-2">
         {[
-          { id: "all", label: "Бүх үйлчилгээ" },
-          { id: "mine", label: "Миний үйлчилгээ" },
+          { id: "all", label: t("sv.tabAll") },
+          { id: "mine", label: t("sv.tabMine") },
         ].map(({ id, label }) => (
           <button
             key={id}
@@ -470,7 +475,7 @@ export default function FindServices() {
           <input
             value={q}
             onChange={(e) => { setQ(e.target.value); setPage(1); }}
-            placeholder="Search services…"
+            placeholder={t("sv.searchPlaceholder")}
             className="w-full bg-transparent text-[14px] outline-none placeholder:text-white/30"
           />
         </div>
@@ -478,7 +483,7 @@ export default function FindServices() {
           icon={SlidersHorizontal}
           value={sort}
           onChange={(v) => { setSort(v); setPage(1); }}
-          options={Object.entries(SORTS).map(([k, v]) => ({ value: k, label: v }))}
+          options={Object.entries(SORTS).map(([k, v]) => ({ value: k, label: t(v) }))}
         />
       </div>
 
@@ -493,13 +498,13 @@ export default function FindServices() {
                 : "rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-medium text-white/55 transition-colors hover:border-brand/40 hover:text-white"
             }
           >
-            {c}
+            {t(`cat.${c}`)}
           </button>
         ))}
       </div>
 
       <p className="mt-6 text-[12.5px] text-white/40">
-        {loading ? "Loading services…" : <>{total} {total === 1 ? "service" : "services"} found</>}
+        {loading ? t("sv.loading") : <>{total} {t("sv.found")}</>}
       </p>
 
       {error && (
@@ -515,13 +520,13 @@ export default function FindServices() {
 
       {!loading && gigs.length === 0 && !error && (
         <div className="glass mt-4 rounded-2xl p-12 text-center">
-          <p className="text-[14px] font-semibold">Одоогоор энэ шүүлтэд тохирох үйлчилгээ алга</p>
-          <p className="mt-1.5 text-[12.5px] text-white/45">Өөр категори эсвэл хайлт туршиж үзээрэй.</p>
+          <p className="text-[14px] font-semibold">{t("sv.noneMatch")}</p>
+          <p className="mt-1.5 text-[12.5px] text-white/45">{t("sv.noneMatchHint")}</p>
           <button
             onClick={() => { setQ(""); setCat("All"); setPage(1); }}
             className="mt-5 rounded-xl bg-brand px-5 py-2.5 text-[12.5px] font-bold text-fg-1 glow-brand"
           >
-            Шүүлтүүр цэвэрлэх
+            {t("sv.clearFilters")}
           </button>
         </div>
       )}
@@ -535,7 +540,7 @@ export default function FindServices() {
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <span className="text-[12.5px] text-white/50">Page {page} of {totalPages}</span>
+          <span className="text-[12.5px] text-white/50">{t("fw.pageOf", { page, total: totalPages })}</span>
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page >= totalPages}
