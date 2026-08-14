@@ -9,7 +9,7 @@
     "dev:backend": "npm --prefix backend run dev",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node src/lib/apiClient.test.mjs"
+    "test": "node src/lib/apiClient.test.mjs && node src/locales/locales.test.mjs"
   },
   "dependencies": {
     "animejs": "^4.5.0",

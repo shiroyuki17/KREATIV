@@ -2,9 +2,12 @@ import { useEffect, useState } from "react";
 import { Menu, X, ShieldCheck, Search, Users } from "lucide-react";
 import { useNav } from "../../nav.jsx";
 import { useEscapeKey } from "../../hooks/useEscapeKey.js";
+import { useT } from "../../i18n.jsx";
+import { LocaleToggle } from "../ui/LocalePicker.jsx";
 
 export default function Navbar() {
   const { page, nav } = useNav();
+  const t = useT();
   const [mobile, setMobile] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -53,7 +56,7 @@ export default function Navbar() {
               page === "find-work" ? "text-brand-soft" : "text-white/55"
             }`}
           >
-            Find Work
+            {t("nav.findWork")}
           </button>
           <button
             onClick={() => nav("find-talent")}
@@ -61,7 +64,7 @@ export default function Navbar() {
               page === "find-talent" ? "text-brand-soft" : "text-white/55"
             }`}
           >
-            Find Talent
+            {t("nav.findTalent")}
           </button>
           <button
             onClick={() => nav("trust")}
@@ -69,28 +72,31 @@ export default function Navbar() {
               page === "trust" ? "text-mint" : "text-white/55"
             }`}
           >
-            Trust & Safety
+            {t("nav.trustSafety")}
           </button>
         </nav>
 
         <div className="flex items-center gap-3">
+          {/* Хэл солих нь нэвтрэхээс ӨМНӨ хэрэгтэй — тэр үед account menu
+              байхгүй тул энэ бол цорын ганц зам. */}
+          <LocaleToggle />
           <button
             onClick={() => nav("auth", { mode: "login" })}
             className="hidden text-[13px] font-medium text-white/70 transition-colors hover:text-white sm:block"
           >
-            Log in
+            {t("common.logIn")}
           </button>
           <button
             onClick={() => nav("post-job")}
             className="hidden rounded-xl bg-brand px-4 py-2 text-[13px] font-semibold text-fg-1 transition-shadow glow-brand sm:block"
           >
-            Post a Job
+            {t("nav.postJob")}
           </button>
 
           {/* Hamburger — mobile only */}
           <button
             onClick={() => setMobile((m) => !m)}
-            aria-label={mobile ? "Close menu" : "Open menu"}
+            aria-label={mobile ? t("nav.closeMenu") : t("nav.openMenu")}
             aria-expanded={mobile}
             className="flex h-10 w-10 items-center justify-center rounded-xl border border-line bg-white/[0.04] text-white/80 transition-colors hover:text-white md:hidden"
           >
@@ -111,19 +117,19 @@ export default function Navbar() {
               onClick={() => go("find-work")}
               className="flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left text-[14px] font-medium text-white/80 transition-colors hover:bg-white/5 hover:text-white"
             >
-              <Search className="h-4.5 w-4.5 text-brand-soft" /> Find Work
+              <Search className="h-4.5 w-4.5 text-brand-soft" /> {t("nav.findWork")}
             </button>
             <button
               onClick={() => go("find-talent")}
               className="flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left text-[14px] font-medium text-white/80 transition-colors hover:bg-white/5 hover:text-white"
             >
-              <Users className="h-4.5 w-4.5 text-brand-soft" /> Find Talent
+              <Users className="h-4.5 w-4.5 text-brand-soft" /> {t("nav.findTalent")}
             </button>
             <button
               onClick={() => go("trust")}
               className="flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left text-[14px] font-medium text-white/80 transition-colors hover:bg-white/5 hover:text-white"
             >
-              <ShieldCheck className="h-4.5 w-4.5 text-mint" /> Trust & Safety
+              <ShieldCheck className="h-4.5 w-4.5 text-mint" /> {t("nav.trustSafety")}
             </button>
 
             <div className="mt-3 grid grid-cols-2 gap-2">
@@ -131,13 +137,13 @@ export default function Navbar() {
                 onClick={() => go("auth", { mode: "login" })}
                 className="rounded-xl border border-white/12 py-3 text-[13.5px] font-semibold text-white/80 transition-colors hover:border-white/25"
               >
-                Log in
+                {t("common.logIn")}
               </button>
               <button
                 onClick={() => go("post-job")}
                 className="rounded-xl bg-brand py-3 text-[13.5px] font-semibold text-fg-1 glow-brand"
               >
-                Post a Job
+                {t("nav.postJob")}
               </button>
             </div>
           </div>

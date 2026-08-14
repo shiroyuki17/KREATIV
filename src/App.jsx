@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect } from "react";
 import { MotionConfig } from "framer-motion";
 import { NavProvider, useNav, DASHBOARD_FOR } from "./nav.jsx";
 import { LiveProvider } from "./live.jsx";
+import { I18nProvider } from "./i18n.jsx";
 import { hasSession, stashRedirect } from "./lib/authApi.js";
 import LiveToasts from "./components/LiveToasts.jsx";
 import Navbar from "./components/layout/Navbar.jsx";
@@ -243,15 +244,18 @@ import { ErrorBoundary } from "./components/ui/ErrorBoundary.jsx";
 export default function App() {
   return (
     <ErrorBoundary>
-      <MotionConfig reducedMotion="user">
-        <NavProvider>
-          <LiveProvider>
-            <Shell />
-            <LiveToasts />
-            <ChatWidget />
-          </LiveProvider>
-        </NavProvider>
-      </MotionConfig>
+      {/* Хэл нь бүх хуудсанд хэрэгтэй тул хамгийн гадна талд. */}
+      <I18nProvider>
+        <MotionConfig reducedMotion="user">
+          <NavProvider>
+            <LiveProvider>
+              <Shell />
+              <LiveToasts />
+              <ChatWidget />
+            </LiveProvider>
+          </NavProvider>
+        </MotionConfig>
+      </I18nProvider>
     </ErrorBoundary>
   );
 }

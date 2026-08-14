@@ -29,6 +29,8 @@ import {
 } from "lucide-react";
 import { DASHBOARD_FOR, useNav } from "../../nav.jsx";
 import { useLive } from "../../live.jsx";
+import { useT } from "../../i18n.jsx";
+import LocalePicker from "../ui/LocalePicker.jsx";
 import { logoutUser, getAccessToken, avatarSrc } from "../../lib/authApi.js";
 import { fetchNotifications, markAllNotificationsRead, markNotificationRead } from "../../lib/notificationsApi.js";
 import { getSocket } from "../../lib/socket.js";
@@ -57,14 +59,16 @@ function timeAgo(iso) {
 // Дунд товч нь горимоос хамаарна: захиалагчид "Post a Job", ажил гүйцэтгэгчид
 // "Find Work" — өмнө нь хоёуланд нь "Post" гардаг байсан тул freelancer
 // хүн дарахад 403 авдаг байв.
+// labelKey нь i18n түлхүүр — эдгээр массив нь модулийн хамрах хүрээнд байгаа
+// тул t()-г энд дуудаж болохгүй, рендэрийн үед шийднэ.
 const TABS = [
-  { page: "dashboard", label: "Home", Icon: LayoutDashboard },
-  { page: "find-work", label: "Jobs", Icon: Search, alias: ["project"], modes: ["freelancer"] },
-  { page: "find-talent", label: "Talent", Icon: Users, modes: ["client"] },
-  { page: "post-job", label: "Post", Icon: Plus, modes: ["client"], accent: true },
-  { page: "my-projects", label: "Work", Icon: FolderKanban, modes: ["freelancer"], accent: true },
-  { page: "messages", label: "Chat", Icon: MessageSquare, live: "messages" },
-  { page: "profile", label: "Profile", Icon: User, own: true },
+  { page: "dashboard", labelKey: "tab.home", Icon: LayoutDashboard },
+  { page: "find-work", labelKey: "tab.jobs", Icon: Search, alias: ["project"], modes: ["freelancer"] },
+  { page: "find-talent", labelKey: "tab.talent", Icon: Users, modes: ["client"] },
+  { page: "post-job", labelKey: "tab.post", Icon: Plus, modes: ["client"], accent: true },
+  { page: "my-projects", labelKey: "tab.work", Icon: FolderKanban, modes: ["freelancer"], accent: true },
+  { page: "messages", labelKey: "tab.chat", Icon: MessageSquare, live: "messages" },
+  { page: "profile", labelKey: "tab.profile", Icon: User, own: true },
 ];
 
 // Notification bell болон account (profile/settings/log out) одоо дээд
@@ -74,15 +78,15 @@ const TABS = [
 // мөр нэг дор гардаг байсан тул freelancer хүн "Post a Job"/"Find Talent"-ыг,
 // захиалагч "Find Work"-ийг харж, дарвал 403 авдаг байв.
 const MAIN = [
-  { page: "dashboard", label: "Dashboard", Icon: LayoutDashboard },
-  { page: "find-work", label: "Find Work", Icon: Search, alias: ["project"], modes: ["freelancer"] },
-  { page: "find-talent", label: "Find Talent", Icon: Users, modes: ["client"] },
-  { page: "find-services", label: "Services", Icon: Tag, alias: ["gig"] },
-  { page: "post-job", label: "Post a Job", Icon: Plus, modes: ["client"] },
-  { page: "my-projects", label: "My Projects", Icon: FolderKanban },
-  { page: "messages", label: "Messages", Icon: MessageSquare, live: "messages" },
-  { page: "payments", label: "Payments", Icon: Wallet },
-  { page: "subscription", label: "Plan & billing", Icon: CreditCard },
+  { page: "dashboard", labelKey: "nav.dashboard", Icon: LayoutDashboard },
+  { page: "find-work", labelKey: "nav.findWork", Icon: Search, alias: ["project"], modes: ["freelancer"] },
+  { page: "find-talent", labelKey: "nav.findTalent", Icon: Users, modes: ["client"] },
+  { page: "find-services", labelKey: "nav.services", Icon: Tag, alias: ["gig"] },
+  { page: "post-job", labelKey: "nav.postJob", Icon: Plus, modes: ["client"] },
+  { page: "my-projects", labelKey: "nav.myProjects", Icon: FolderKanban },
+  { page: "messages", labelKey: "nav.messages", Icon: MessageSquare, live: "messages" },
+  { page: "payments", labelKey: "nav.payments", Icon: Wallet },
+  { page: "subscription", labelKey: "nav.billing", Icon: CreditCard },
 ];
 
 // "dashboard" бол хийсвэр мөр — бодит хуудас нь горимоос хамаарна.
@@ -184,6 +188,7 @@ function NavRow({ page: p, label, Icon, active, badge, collapsed, onClick }) {
 function AdminRow({ active, collapsed, onClick }) {
   const ref = useRef(null);
   const [hovered, setHovered] = useState(false);
+  const t = useT();
 
   return (
     <button
@@ -192,12 +197,12 @@ function AdminRow({ active, collapsed, onClick }) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       className={railRowClass(active, true, collapsed)}
-      aria-label="Admin Panel"
+      aria-label={t("nav.adminPanel")}
     >
       <Crown className="h-[18px] w-[18px] shrink-0" />
       {!collapsed && (
         <>
-          <span className="flex-1">Admin Panel</span>
+          <span className="flex-1">{t("nav.adminPanel")}</span>
           <span className="rounded-full border border-amber-400/40 bg-amber-400/10 px-2 py-0.5 text-[8.5px] font-bold uppercase tracking-wider text-amber-300">
             Root
           </span>
@@ -205,7 +210,7 @@ function AdminRow({ active, collapsed, onClick }) {
       )}
       {collapsed && (
         <RailTip anchorRef={ref} active={hovered}>
-          Admin Panel
+          {t("nav.adminPanel")}
         </RailTip>
       )}
     </button>
@@ -214,6 +219,7 @@ function AdminRow({ active, collapsed, onClick }) {
 
 function NavList({ page, go, collapsed, role, mode }) {
   const { unread } = useLive();
+  const t = useT();
 
   const items = MAIN
     .filter((item) => !item.modes || item.modes.includes(mode))
@@ -221,11 +227,11 @@ function NavList({ page, go, collapsed, role, mode }) {
 
   return (
     <nav className={`flex-1 space-y-1 overflow-y-auto overflow-x-hidden py-4 ${collapsed ? "px-2" : "px-3"}`}>
-      {items.map(({ page: p, label, Icon, live, alias }) => (
+      {items.map(({ page: p, labelKey, Icon, live, alias }) => (
         <NavRow
-          key={label}
+          key={labelKey}
           page={p}
-          label={label}
+          label={t(labelKey)}
           Icon={Icon}
           active={isActive({ page: p, alias }, page)}
           badge={live ? unread[live] || 0 : 0}
@@ -254,11 +260,12 @@ function NavList({ page, go, collapsed, role, mode }) {
  * товчийг үргэлж харуулж, дутуу талыг нь "Set up" гэж тэмдэглэнэ.
  */
 function ModeSwitcher({ collapsed, mode, user, onSwitch }) {
+  const t = useT();
   if (!user) return null;
 
   const OPTIONS = [
-    { key: "freelancer", label: "Freelancing", Icon: Search, ready: !!user.hasFreelancerProfile },
-    { key: "client", label: "Hiring", Icon: Briefcase, ready: !!user.hasClientProfile },
+    { key: "freelancer", label: t("mode.freelancing"), Icon: Search, ready: !!user.hasFreelancerProfile },
+    { key: "client", label: t("mode.hiring"), Icon: Briefcase, ready: !!user.hasClientProfile },
   ];
 
   if (collapsed) {
@@ -268,7 +275,7 @@ function ModeSwitcher({ collapsed, mode, user, onSwitch }) {
       <div className="px-2 pt-3">
         <button
           onClick={() => onSwitch(other.key)}
-          aria-label={`Switch to ${other.label}`}
+          aria-label={t("mode.switchTo", { mode: other.label })}
           className="flex w-full items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] p-2.5 text-white/70 transition-colors hover:bg-white/[0.08] hover:text-white"
         >
           <other.Icon className="h-[18px] w-[18px]" />
@@ -280,11 +287,11 @@ function ModeSwitcher({ collapsed, mode, user, onSwitch }) {
   return (
     <div className="px-3 pt-4">
       <p className="px-1 pb-1.5 text-[9.5px] font-bold uppercase tracking-[0.14em] text-white/30">
-        Working as
+        {t("mode.workingAs")}
       </p>
       <div
         role="radiogroup"
-        aria-label="Working mode"
+        aria-label={t("mode.workingAs")}
         className="grid grid-cols-2 gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1"
       >
         {OPTIONS.map(({ key, label, Icon, ready }) => {
@@ -295,7 +302,7 @@ function ModeSwitcher({ collapsed, mode, user, onSwitch }) {
               role="radio"
               aria-checked={active}
               onClick={() => onSwitch(key)}
-              title={ready ? label : `${label} — set up your profile first`}
+              title={ready ? label : t("mode.setUpFirst", { mode: label })}
               className={`flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-[11.5px] font-semibold transition-all ${
                 active
                   ? "bg-brand text-ink shadow-sm"
@@ -338,6 +345,7 @@ function UserCard({ go, collapsed, user, setUser, authReady }) {
   const [avatarHovered, setAvatarHovered] = useState(false);
   const logoutRef = useRef(null);
   const [logoutHovered, setLogoutHovered] = useState(false);
+  const t = useT();
 
   // Still resolving the initial /auth/me call — render neither the login
   // prompt nor a persona so an already-logged-in user doesn't see a flash
@@ -354,13 +362,13 @@ function UserCard({ go, collapsed, user, setUser, authReady }) {
       <div className={`border-t border-white/8 ${collapsed ? "p-2" : "p-3"}`}>
         <button
           onClick={() => go("auth")}
-          aria-label="Log in"
+          aria-label={t("common.logIn")}
           className={`flex w-full items-center rounded-xl text-[13px] font-semibold text-brand-soft transition-colors hover:bg-white/5 hover:text-white ${
             collapsed ? "justify-center p-2.5" : "gap-2.5 p-2.5"
           }`}
         >
           <LogIn className="h-4 w-4 shrink-0" />
-          {!collapsed && "Log in"}
+          {!collapsed && t("common.logIn")}
         </button>
       </div>
     );
@@ -369,7 +377,7 @@ function UserCard({ go, collapsed, user, setUser, authReady }) {
   const isAdmin = user.role === "ADMIN";
   const initials = initialsOf(user.name || user.email);
   const name = user.name || user.email;
-  const subtitle = isAdmin ? "Superadmin" : user.email;
+  const subtitle = isAdmin ? t("common.superadmin") : user.email;
   const logout = () => {
     logoutUser(); // best-effort: revokes refresh token server-side + clears local tokens
     setUser(null);
@@ -393,7 +401,7 @@ function UserCard({ go, collapsed, user, setUser, authReady }) {
             : initials}
           {collapsed && (
             <RailTip anchorRef={avatarRef} active={avatarHovered}>
-              {name} · Log out
+              {name} · {t("common.logOut")}
             </RailTip>
           )}
         </span>
@@ -405,7 +413,7 @@ function UserCard({ go, collapsed, user, setUser, authReady }) {
             </div>
             <button
               onClick={logout}
-              aria-label="Log out"
+              aria-label={t("common.logOut")}
               className="rounded-lg p-2 text-white/40 transition-colors hover:bg-white/5 hover:text-white"
             >
               <LogOut className="h-4 w-4" />
@@ -419,12 +427,12 @@ function UserCard({ go, collapsed, user, setUser, authReady }) {
           onClick={logout}
           onMouseEnter={() => setLogoutHovered(true)}
           onMouseLeave={() => setLogoutHovered(false)}
-          aria-label="Log out"
+          aria-label={t("common.logOut")}
           className="mt-1 flex w-full justify-center rounded-xl py-2.5 text-white/40 transition-colors hover:bg-white/5 hover:text-white"
         >
           <LogOut className="h-4 w-4" />
           <RailTip anchorRef={logoutRef} active={logoutHovered}>
-            Log out
+            {t("common.logOut")}
           </RailTip>
         </button>
       )}
@@ -440,6 +448,7 @@ function NotifDropdown({ anchorRef, open, onClose, onViewAll, onNavigate, align 
   const panelRef = useRef(null);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const t = useT();
 
   // Мэдэгдэл дарах: уншсанаар тэмдэглээд (optimistic) холбоос руу шилжинэ.
   // link байхгүй мэдэгдэл ч дарагдана — зүгээр л уншсан болж хаагдана.
@@ -509,19 +518,19 @@ function NotifDropdown({ anchorRef, open, onClose, onViewAll, onNavigate, align 
       className="animate-toast-in fixed z-50 w-[340px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-white/10 bg-[#1b1730] shadow-[0_24px_60px_rgba(0,0,0,0.6)]"
     >
       <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
-        <p className="text-[13px] font-bold">Notifications</p>
+        <p className="text-[13px] font-bold">{t("notif.title")}</p>
         <button
           onClick={() => { markAllNotificationsRead(getAccessToken()).catch(() => {}); setItems((arr) => arr.map((n) => ({ ...n, read: true }))); }}
           className="inline-flex items-center gap-1 text-[11px] font-medium text-white/40 transition-colors hover:text-mint"
         >
           <CheckCheck className="h-3.5 w-3.5" />
-          {unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
+          {unreadCount > 0 ? t("notif.unreadCount", { count: unreadCount }) : t("notif.allCaughtUp")}
         </button>
       </div>
       <div className="max-h-[360px] overflow-y-auto">
-        {loading && <p className="px-4 py-6 text-center text-[12px] text-white/35">Ачааллаж байна…</p>}
+        {loading && <p className="px-4 py-6 text-center text-[12px] text-white/35">{t("notif.loading")}</p>}
         {!loading && items.length === 0 && (
-          <p className="px-4 py-6 text-center text-[12px] text-white/35">No notifications yet</p>
+          <p className="px-4 py-6 text-center text-[12px] text-white/35">{t("notif.none")}</p>
         )}
         {/* Мэдэгдэл бүр нь ДАРАГДАХ ёстой: Notification.link (жишээ нь
             "messages", "my-projects") нь DB-д хадгалагддаг байсан ч хаана ч
@@ -553,7 +562,7 @@ function NotifDropdown({ anchorRef, open, onClose, onViewAll, onNavigate, align 
         onClick={onViewAll}
         className="block w-full border-t border-white/8 py-3 text-center text-[12px] font-semibold text-brand-soft transition-colors hover:bg-white/[0.03] hover:text-white"
       >
-        View all notifications
+        {t("notif.viewAll")}
       </button>
     </div>,
     document.body
@@ -561,6 +570,7 @@ function NotifDropdown({ anchorRef, open, onClose, onViewAll, onNavigate, align 
 }
 
 function NotifBell({ collapsed, badge, onViewAll, onNavigate, align, buttonClassName, dotClassName }) {
+  const t = useT();
   const ref = useRef(null);
   const [hovered, setHovered] = useState(false);
   const [open, setOpen] = useState(false);
@@ -572,7 +582,7 @@ function NotifBell({ collapsed, badge, onViewAll, onNavigate, align, buttonClass
         onClick={() => setOpen((v) => !v)}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        aria-label="Notifications"
+        aria-label={t("notif.title")}
         className={buttonClassName || "relative rounded-lg p-2 text-white/40 transition-colors hover:bg-white/5 hover:text-white"}
       >
         <Bell className="h-4.5 w-4.5" />
@@ -581,7 +591,7 @@ function NotifBell({ collapsed, badge, onViewAll, onNavigate, align, buttonClass
         )}
         {collapsed && !open && (
           <RailTip anchorRef={ref} active={hovered}>
-            Notifications{badge > 0 ? ` · ${badge}` : ""}
+            {t("notif.title")}{badge > 0 ? ` · ${badge}` : ""}
           </RailTip>
         )}
       </button>
@@ -618,6 +628,7 @@ function Brand({ go, collapsed, homePage }) {
 function UserMenu({ go, user, setUser }) {
   const rootRef = useRef(null);
   const [open, setOpen] = useState(false);
+  const t = useT();
 
   useEffect(() => {
     if (!open) return;
@@ -639,7 +650,7 @@ function UserMenu({ go, user, setUser }) {
     <div ref={rootRef} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        aria-label="Account menu"
+        aria-label={t("common.account")}
         className="flex items-center gap-2.5 rounded-xl py-1.5 pl-1.5 pr-3 text-left transition-colors hover:bg-white/5"
       >
         <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-brand/50 to-neon/40 font-display text-[11px] font-bold ring-1 ring-white/15">
@@ -649,42 +660,44 @@ function UserMenu({ go, user, setUser }) {
         </span>
         <span className="hidden sm:block">
           <span className="block max-w-[140px] truncate text-[12.5px] font-semibold leading-tight">{user.name || user.email}</span>
-          <span className="block text-[10.5px] leading-tight text-white/40">{isAdmin ? "Superadmin" : "Account"}</span>
+          <span className="block text-[10.5px] leading-tight text-white/40">{isAdmin ? t("common.superadmin") : t("common.account")}</span>
         </span>
       </button>
 
       {open && (
         <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-56 overflow-hidden rounded-2xl border border-white/10 bg-[#1b1730] shadow-[0_24px_60px_rgba(0,0,0,0.6)]">
           <div className="border-b border-white/8 px-4 py-3">
-            <p className="truncate text-[13px] font-semibold">{user.name || "Account"}</p>
+            <p className="truncate text-[13px] font-semibold">{user.name || t("common.account")}</p>
             <p className="truncate text-[11.5px] text-white/40">{user.email}</p>
           </div>
           <button
             onClick={() => { setOpen(false); go("profile", { userId: user.id }); }}
             className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-[13px] text-white/80 transition-colors hover:bg-white/5"
           >
-            <User className="h-4 w-4 text-white/40" /> View profile
+            <User className="h-4 w-4 text-white/40" /> {t("common.viewProfile")}
           </button>
           <button
             onClick={() => { setOpen(false); go("settings"); }}
             className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-[13px] text-white/80 transition-colors hover:bg-white/5"
           >
-            <Settings className="h-4 w-4 text-white/40" /> Settings
+            <Settings className="h-4 w-4 text-white/40" /> {t("nav.settings")}
           </button>
           {isAdmin && (
             <button
               onClick={() => { setOpen(false); go("admin"); }}
               className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-[13px] text-amber-300 transition-colors hover:bg-amber-400/10"
             >
-              <Crown className="h-4 w-4" /> Admin Panel
+              <Crown className="h-4 w-4" /> {t("nav.adminPanel")}
             </button>
           )}
+          <div className="border-t border-white/8" />
+          <LocalePicker />
           <div className="border-t border-white/8" />
           <button
             onClick={logout}
             className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-[13px] text-red-400 transition-colors hover:bg-red-500/10"
           >
-            <LogOut className="h-4 w-4" /> Log out
+            <LogOut className="h-4 w-4" /> {t("common.logOut")}
           </button>
         </div>
       )}
@@ -822,6 +835,7 @@ export default function AppShell({ children }) {
 // destinations, mirroring the drawer's full nav for everything else.
 function MobileTabBar({ page, go, user, mode }) {
   const { unread } = useLive();
+  const t = useT();
 
   const tabs = TABS
     .filter((item) => !item.modes || item.modes.includes(mode))
@@ -829,14 +843,15 @@ function MobileTabBar({ page, go, user, mode }) {
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 flex items-stretch justify-around border-t border-white/8 bg-[#141517]/95 px-1 lg:hidden">
-      {tabs.map(({ page: p, label, Icon, alias, live, own, accent }) => {
+      {tabs.map(({ page: p, labelKey, Icon, alias, live, own, accent }) => {
+        const label = t(labelKey);
         const active = isActive({ page: p, alias }, page);
         const badge = live ? unread[live] || 0 : 0;
         const isPost = !!accent;
 
         return (
           <button
-            key={label}
+            key={labelKey}
             onClick={() => go(p, own && user ? { userId: user.id } : undefined)}
             aria-label={label}
             className={`relative flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-semibold transition-colors ${
