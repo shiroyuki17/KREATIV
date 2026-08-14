@@ -5,6 +5,7 @@ import { PrismaClient } from '../src/generated/prisma/client.ts';
 import { PrismaPg } from '@prisma/adapter-pg';
 import 'dotenv/config';
 import { hashPassword } from '../src/utils/password.js';
+import { generateUniqueUsername } from '../src/lib/username.js';
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
@@ -187,11 +188,32 @@ const ADMIN = { email: process.env.ADMIN_EMAIL || 'admin@kreativ.mn', name: 'Ula
 //     тэр нууц үгээр үүсгэнэ.
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
+// Хуваалцах хаяггүй үлдсэн хэрэглэгчдэд slug олгоно.
+//
+// username талбар хожуу нэмэгдсэн тул түүнээс өмнө бүртгүүлсэн бүх мөр
+// null хэвээр байна — тэдгээр хүмүүс профайлаа /#/u/… хаягаар хуваалцаж
+// чадахгүй. Deploy бүрд ажиллана; хаягтай болсон хойноо юу ч хийхгүй.
+async function backfillUsernames() {
+  const users = await prisma.user.findMany({
+    where: { username: null },
+    select: { id: true, name: true, email: true },
+  });
+  if (!users.length) return;
+  for (const u of users) {
+    await prisma.user.update({
+      where: { id: u.id },
+      data: { username: await generateUniqueUsername(u.name || u.email) },
+    });
+  }
+  console.log(`  username: ${users.length} хэрэглэгчид олголоо`);
+}
+
 async function main() {
   console.log('🌱 Seeding...');
   const passwordHash = await hashPassword(DEMO_PASSWORD);
 
   if (IS_PRODUCTION) {
+    await backfillUsernames();
     const adminPassword = process.env.ADMIN_PASSWORD;
     if (!adminPassword) {
       console.log('  admin: алгаслаа (ADMIN_PASSWORD өгөөгүй)');
